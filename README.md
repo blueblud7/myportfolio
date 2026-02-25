@@ -1,48 +1,36 @@
-# 내 포트폴리오 추적
+This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
-미국 주식, 한국 주식, 코인을 포함한 포트폴리오를 추적하고 시각화하는 웹 애플리케이션입니다.
+## Getting Started
 
-## 기능
-
-- ✅ 포트폴리오 자산 추가/삭제 (미국 주식, 한국 주식, 코인)
-- ✅ 여러 기간별 포트폴리오 가치 변화 그래프 (1일, 1주, 1개월, 3개월, 6개월, 1년, 전체)
-- ✅ 자산 증식 추적 및 시각화
-- ✅ 손익 계산 및 표시
-- ✅ 로컬 스토리지에 데이터 자동 저장
-
-## 시작하기
-
-### 설치
-
-```bash
-npm install
-```
-
-### 개발 서버 실행
+First, run the development server:
 
 ```bash
 npm run dev
+# or
+yarn dev
+# or
+pnpm dev
+# or
+bun dev
 ```
 
-### 빌드
+Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-```bash
-npm run build
-```
+You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
-## 사용 방법
+This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
-1. **포트폴리오 추가**: 왼쪽 패널에서 자산 유형, 심볼, 이름, 수량, 매수 가격, 매수 일자를 입력하여 포트폴리오에 추가합니다.
+## Learn More
 
-2. **스냅샷 생성**: "스냅샷 생성" 버튼을 클릭하여 현재 포트폴리오 가치를 기록합니다. 이 데이터는 그래프에 표시됩니다.
+To learn more about Next.js, take a look at the following resources:
 
-3. **기간 선택**: 차트 위의 기간 버튼(1일, 1주, 1개월 등)을 클릭하여 원하는 기간의 데이터를 확인합니다.
+- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
+- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
 
-## 참고사항
+You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
 
-현재는 모의 가격 데이터를 사용하고 있습니다. 실제 주식/코인 가격을 가져오려면 `src/utils/priceService.ts`에서 실제 API를 연동해야 합니다.
+## Deploy on Vercel
 
-추천 API:
-- 미국 주식: Alpha Vantage, Yahoo Finance
-- 한국 주식: 한국투자증권 API, 네이버/다음 금융
-- 코인: CoinGecko, CoinMarketCap
+The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+
+Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
