@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { StockSearchInput } from "@/components/ui/stock-search-input";
 import {
   Dialog,
   DialogContent,
@@ -11,6 +12,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import type { StockSearchResult } from "@/app/api/stocks/search/route";
 
 interface HoldingData {
   id?: number;
@@ -37,6 +39,11 @@ export function HoldingForm({ holding, accountId, currency, open, onClose, onSav
   const [quantity, setQuantity] = useState(holding?.quantity?.toString() ?? "");
   const [avgCost, setAvgCost] = useState(holding?.avg_cost?.toString() ?? "");
   const [saving, setSaving] = useState(false);
+
+  const handleStockSelect = (result: StockSearchResult) => {
+    setTicker(result.ticker);
+    setName(result.name);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -68,17 +75,29 @@ export function HoldingForm({ holding, accountId, currency, open, onClose, onSav
       <DialogContent>
         <DialogHeader>
           <DialogTitle>{holding ? "종목 수정" : "종목 추가"}</DialogTitle>
-          <DialogDescription>종목 정보를 입력해주세요.</DialogDescription>
+          <DialogDescription>종목명 또는 종목코드로 검색하세요.</DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
+          {/* 종목 검색 (수정 모드에서는 기존 값 표시) */}
+          {!holding ? (
+            <div className="space-y-2">
+              <Label>종목 검색</Label>
+              <StockSearchInput
+                onSelect={handleStockSelect}
+                placeholder="예: 삼성전자, 005930, AAPL, Apple"
+              />
+            </div>
+          ) : null}
+
+          {/* 선택된 종목 정보 (또는 직접 입력) */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="ticker">티커</Label>
+              <Label htmlFor="ticker">종목코드</Label>
               <Input
                 id="ticker"
                 value={ticker}
                 onChange={(e) => setTicker(e.target.value)}
-                placeholder="예: 005930 또는 AAPL"
+                placeholder="005930"
                 required
               />
             </div>
@@ -88,11 +107,12 @@ export function HoldingForm({ holding, accountId, currency, open, onClose, onSav
                 id="holdingName"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="예: 삼성전자"
+                placeholder="삼성전자"
                 required
               />
             </div>
           </div>
+
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="quantity">수량</Label>
@@ -119,11 +139,12 @@ export function HoldingForm({ holding, accountId, currency, open, onClose, onSav
               />
             </div>
           </div>
+
           <div className="flex justify-end gap-2">
             <Button type="button" variant="outline" onClick={onClose}>
               취소
             </Button>
-            <Button type="submit" disabled={saving}>
+            <Button type="submit" disabled={saving || !ticker || !name}>
               {saving ? "저장 중..." : "저장"}
             </Button>
           </div>
