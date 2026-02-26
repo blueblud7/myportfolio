@@ -1,10 +1,13 @@
 "use client";
 
+import { useState } from "react";
 import { useTranslations } from "next-intl";
-import { formatPercent, gainLossColor } from "@/lib/format";
-import { Money } from "@/components/ui/money";
+import { formatPercent, gainLossColor, formatKRW, formatUSD } from "@/lib/format";
+import { usePrivacy } from "@/contexts/privacy-context";
 import { TrendingUp, TrendingDown, DollarSign, Wallet, Building2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+
+const MASK = "•••••";
 
 interface Props {
   totalKrw: number;
@@ -58,65 +61,90 @@ export function SummaryCards({
   bankValueKrw,
 }: Props) {
   const t = useTranslations("SummaryCards");
+  const { isPrivate } = usePrivacy();
+  const [currency, setCurrency] = useState<"KRW" | "USD">("KRW");
   const isGain = gainLossKrw >= 0;
 
+  const fmt = (krwValue: number) => {
+    if (isPrivate) return <span className="select-none tracking-widest opacity-40">{MASK}</span>;
+    return currency === "KRW"
+      ? formatKRW(krwValue)
+      : formatUSD(krwValue / exchangeRate);
+  };
+
+  const subFmt = (krwValue: number) => {
+    if (isPrivate) return <span className="select-none tracking-widest opacity-40">{MASK}</span>;
+    return currency === "KRW"
+      ? formatUSD(krwValue / exchangeRate)
+      : formatKRW(krwValue);
+  };
+
   return (
-    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-      <StatCard
-        label={t("totalAssets")}
-        value={<Money value={totalKrw} />}
-        sub={<Money value={totalUsd} usd />}
-        icon={<Wallet className="h-4 w-4 text-blue-600" />}
-        iconBg="bg-blue-50 dark:bg-blue-500/10"
-        accent="border-l-blue-500"
-      />
+    <div className="space-y-3">
+      <div className="flex justify-end">
+        <div className="flex rounded-md border overflow-hidden text-sm">
+          {(["KRW", "USD"] as const).map((cur) => (
+            <button
+              key={cur}
+              onClick={() => setCurrency(cur)}
+              className={cn(
+                "px-3 py-1 font-medium transition-colors",
+                currency === cur
+                  ? "bg-blue-500 text-white"
+                  : "bg-transparent text-muted-foreground hover:bg-muted"
+              )}
+            >
+              {cur}
+            </button>
+          ))}
+        </div>
+      </div>
 
-      <StatCard
-        label={t("totalGainLoss")}
-        value={
-          <span className={gainLossColor(gainLossKrw)}>
-            <Money value={gainLossKrw} />
-          </span>
-        }
-        sub={
-          <span className={gainLossColor(gainLossPct)}>
-            {formatPercent(gainLossPct)}
-          </span>
-        }
-        icon={
-          isGain
-            ? <TrendingUp className="h-4 w-4 text-emerald-600" />
-            : <TrendingDown className="h-4 w-4 text-red-500" />
-        }
-        iconBg={isGain ? "bg-emerald-50 dark:bg-emerald-500/10" : "bg-red-50 dark:bg-red-500/10"}
-        accent={isGain ? "border-l-emerald-500" : "border-l-red-500"}
-      />
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <StatCard
+          label={t("totalAssets")}
+          value={fmt(totalKrw)}
+          sub={subFmt(totalKrw)}
+          icon={<Wallet className="h-4 w-4 text-blue-600" />}
+          iconBg="bg-blue-50 dark:bg-blue-500/10"
+          accent="border-l-blue-500"
+        />
 
-      <StatCard
-        label={t("stockBank")}
-        value={<Money value={stockValueKrw} />}
-        sub={
-          <span>
-            {t("bank")} <Money value={bankValueKrw} />
-          </span>
-        }
-        icon={<Building2 className="h-4 w-4 text-violet-600" />}
-        iconBg="bg-violet-50 dark:bg-violet-500/10"
-        accent="border-l-violet-500"
-      />
+        <StatCard
+          label={t("totalGainLoss")}
+          value={<span className={gainLossColor(gainLossKrw)}>{fmt(gainLossKrw)}</span>}
+          sub={<span className={gainLossColor(gainLossPct)}>{formatPercent(gainLossPct)}</span>}
+          icon={
+            isGain
+              ? <TrendingUp className="h-4 w-4 text-emerald-600" />
+              : <TrendingDown className="h-4 w-4 text-red-500" />
+          }
+          iconBg={isGain ? "bg-emerald-50 dark:bg-emerald-500/10" : "bg-red-50 dark:bg-red-500/10"}
+          accent={isGain ? "border-l-emerald-500" : "border-l-red-500"}
+        />
 
-      <StatCard
-        label={t("exchangeRate")}
-        value={
-          <span className="font-mono">
-            ₩{exchangeRate.toLocaleString("ko-KR", { maximumFractionDigits: 2 })}
-          </span>
-        }
-        sub="Yahoo Finance"
-        icon={<DollarSign className="h-4 w-4 text-amber-600" />}
-        iconBg="bg-amber-50 dark:bg-amber-500/10"
-        accent="border-l-amber-500"
-      />
+        <StatCard
+          label={t("stockBank")}
+          value={fmt(stockValueKrw)}
+          sub={<span>{t("bank")} {fmt(bankValueKrw)}</span>}
+          icon={<Building2 className="h-4 w-4 text-violet-600" />}
+          iconBg="bg-violet-50 dark:bg-violet-500/10"
+          accent="border-l-violet-500"
+        />
+
+        <StatCard
+          label={t("exchangeRate")}
+          value={
+            <span className="font-mono">
+              ₩{exchangeRate.toLocaleString("ko-KR", { maximumFractionDigits: 2 })}
+            </span>
+          }
+          sub="Yahoo Finance"
+          icon={<DollarSign className="h-4 w-4 text-amber-600" />}
+          iconBg="bg-amber-50 dark:bg-amber-500/10"
+          accent="border-l-amber-500"
+        />
+      </div>
     </div>
   );
 }
