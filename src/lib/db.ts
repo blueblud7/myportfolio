@@ -143,7 +143,7 @@ function initSchema(db: Database.Database) {
 
   // 기존 DB 마이그레이션: holdings.date 컬럼
   try {
-    db.exec(`ALTER TABLE holdings ADD COLUMN date TEXT NOT NULL DEFAULT (date('now'))`);
+    db.exec(`ALTER TABLE holdings ADD COLUMN date TEXT NOT NULL DEFAULT ''`);
   } catch {
     // 이미 존재하면 무시
   }
