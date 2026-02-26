@@ -234,6 +234,7 @@
     "ticker": "종목",
     "returnRate": "수익률",
     "noDataShort": "데이터 없음",
+    "allPerformance": "전체 종목 수익률",
     "allocationDetail": "자산 배분 상세",
     "account": "계좌",
     "valuation": "평가금액 (KRW)",

@@ -108,6 +108,7 @@ export interface ReportData {
   by_sector: { sector: string; value_krw: number; pct: number }[];
   top_performers: { ticker: string; name: string; gain_loss_pct: number }[];
   worst_performers: { ticker: string; name: string; gain_loss_pct: number }[];
+  all_performers: { ticker: string; name: string; gain_loss_pct: number }[];
   dividend_income: {
     total_krw: number;
     items: {

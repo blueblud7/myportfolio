@@ -234,6 +234,7 @@
     "ticker": "Ticker",
     "returnRate": "Return",
     "noDataShort": "No data",
+    "allPerformance": "All Holdings Performance",
     "allocationDetail": "Allocation Detail",
     "account": "Account",
     "valuation": "Valuation (KRW)",

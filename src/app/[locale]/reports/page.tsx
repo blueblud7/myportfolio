@@ -215,6 +215,44 @@ export default function ReportsPage() {
 
       <Card>
         <CardHeader>
+          <CardTitle>{t("allPerformance")}</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {report.all_performers.length === 0 ? (
+            <div className="py-8 text-center text-muted-foreground">{t("noDataShort")}</div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>{t("ticker")}</TableHead>
+                  <TableHead className="text-right">{t("returnRate")}</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {report.all_performers.map((p) => (
+                  <TableRow key={p.ticker}>
+                    <TableCell>
+                      <div className="font-medium">{p.name}</div>
+                      <div className="text-xs text-muted-foreground">{p.ticker}</div>
+                    </TableCell>
+                    <TableCell
+                      className={cn(
+                        "text-right font-mono font-medium",
+                        gainLossColor(p.gain_loss_pct)
+                      )}
+                    >
+                      {formatPercent(p.gain_loss_pct)}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
           <CardTitle>{t("allocationDetail")}</CardTitle>
         </CardHeader>
         <CardContent>

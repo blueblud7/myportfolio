@@ -130,6 +130,7 @@ export async function GET() {
       .sort((a, b) => b.value_krw - a.value_krw),
     top_performers: [...performers].sort((a, b) => b.gain_loss_pct - a.gain_loss_pct).slice(0, 5),
     worst_performers: [...performers].sort((a, b) => a.gain_loss_pct - b.gain_loss_pct).slice(0, 5),
+    all_performers: [...performers].sort((a, b) => b.gain_loss_pct - a.gain_loss_pct),
     dividend_income: {
       total_krw: totalDividendKrw,
       items: dividendItems,
