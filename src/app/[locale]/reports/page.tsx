@@ -228,10 +228,22 @@ export default function ReportsPage() {
                     <TableHead>{t("ticker")}</TableHead>
                     <TableHead>{t("account")}</TableHead>
                     <TableHead className="text-right">{t("quantity")}</TableHead>
-                    <TableHead className="text-right">{t("cost")}</TableHead>
-                    <TableHead className="text-right">{t("currentPrice")}</TableHead>
-                    <TableHead className="text-right">{t("valuation2")}</TableHead>
-                    <TableHead className="text-right">{t("gainLoss")}</TableHead>
+                    <TableHead className="text-right whitespace-nowrap">
+                      {t("cost")}
+                      <span className="ml-0.5 text-[10px] font-normal text-muted-foreground">(만/K)</span>
+                    </TableHead>
+                    <TableHead className="text-right whitespace-nowrap">
+                      {t("currentPrice")}
+                      <span className="ml-0.5 text-[10px] font-normal text-muted-foreground">(만/K)</span>
+                    </TableHead>
+                    <TableHead className="text-right whitespace-nowrap">
+                      {t("valuation2")}
+                      <span className="ml-0.5 text-[10px] font-normal text-muted-foreground">(만/억/K/M)</span>
+                    </TableHead>
+                    <TableHead className="text-right whitespace-nowrap">
+                      {t("gainLoss")}
+                      <span className="ml-0.5 text-[10px] font-normal text-muted-foreground">(만/억/K/M)</span>
+                    </TableHead>
                     <TableHead className="text-right">{t("returnRate")}</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -239,7 +251,12 @@ export default function ReportsPage() {
                   {report.all_performers.map((p) => (
                     <TableRow key={`${p.ticker}-${p.account_name}`}>
                       <TableCell>
-                        <div className="font-medium">{p.name}</div>
+                        <div className="flex items-center gap-1.5 font-medium">
+                          {p.name}
+                          <Badge variant="outline" className="text-[10px] px-1 py-0 h-4 font-normal">
+                            {p.currency}
+                          </Badge>
+                        </div>
                         <div className="text-xs text-muted-foreground">{p.ticker}</div>
                       </TableCell>
                       <TableCell className="text-sm text-muted-foreground whitespace-nowrap">
