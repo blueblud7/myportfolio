@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import { translateSector } from "@/lib/sectors";
 import { useReports } from "@/hooks/use-api";
+import { usePrivacy } from "@/contexts/privacy-context";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { AllocationChart } from "@/components/dashboard/AllocationChart";
 import { Button } from "@/components/ui/button";
@@ -20,9 +21,12 @@ import { formatKRW, formatPercent, gainLossColor } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { RefreshCw } from "lucide-react";
 
+const MASK = "•••••";
+
 export default function ReportsPage() {
   const t = useTranslations("Reports");
   const locale = useLocale();
+  const { isPrivate } = usePrivacy();
   const { data: report, isLoading, mutate } = useReports();
   const [fetching, setFetching] = useState(false);
   const [fetchResult, setFetchResult] = useState<{ total: number; success: number; failed: number } | null>(null);
@@ -227,7 +231,7 @@ export default function ReportsPage() {
                 <TableRow key={a.name}>
                   <TableCell className="font-medium">{a.name}</TableCell>
                   <TableCell className="text-right font-mono">
-                    {formatKRW(a.value_krw)}
+                    {isPrivate ? MASK : formatKRW(a.value_krw)}
                   </TableCell>
                   <TableCell className="text-right font-mono">
                     {a.pct.toFixed(1)}%
@@ -253,7 +257,7 @@ export default function ReportsPage() {
               <div className="mb-4 flex items-center gap-2">
                 <span className="text-sm text-muted-foreground">{t("totalDividend")}</span>
                 <span className="text-lg font-bold font-mono">
-                  {formatKRW(report.dividend_income.total_krw)}
+                  {isPrivate ? MASK : formatKRW(report.dividend_income.total_krw)}
                 </span>
                 <span className="text-sm text-muted-foreground">/ 년</span>
               </div>
@@ -276,10 +280,10 @@ export default function ReportsPage() {
                         </div>
                       </TableCell>
                       <TableCell className="text-right font-mono text-sm">
-                        {item.annual_dividend.toFixed(2)}
+                        {isPrivate ? MASK : item.annual_dividend.toFixed(2)}
                       </TableCell>
                       <TableCell className="text-right font-mono font-medium">
-                        {formatKRW(item.annual_income_krw)}
+                        {isPrivate ? MASK : formatKRW(item.annual_income_krw)}
                       </TableCell>
                       <TableCell className="text-right font-mono text-sm text-emerald-600">
                         {item.dividend_yield.toFixed(2)}%
