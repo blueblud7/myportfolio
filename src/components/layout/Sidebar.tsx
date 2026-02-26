@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 import {
   LayoutDashboard,
   Wallet,
-  Landmark,
+
   BarChart3,
   TrendingUp,
   BookOpen,
@@ -24,7 +24,6 @@ export function Sidebar() {
   const navItems = [
     { href: "/", label: t("dashboard"), icon: LayoutDashboard },
     { href: "/accounts", label: t("accounts"), icon: Wallet },
-    { href: "/bank", label: t("bank"), icon: Landmark },
     { href: "/reports", label: t("reports"), icon: BarChart3 },
     { href: "/calculator", label: t("calculator"), icon: TrendingUp },
     { href: "/diary", label: t("diary"), icon: BookOpen },
