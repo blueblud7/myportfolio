@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -22,6 +22,8 @@ interface HoldingData {
   quantity: number;
   avg_cost: number;
   currency: string;
+  note?: string;
+  manual_price?: number | null;
 }
 
 interface Props {
@@ -38,7 +40,22 @@ export function HoldingForm({ holding, accountId, currency, open, onClose, onSav
   const [name, setName] = useState(holding?.name ?? "");
   const [quantity, setQuantity] = useState(holding?.quantity?.toString() ?? "");
   const [avgCost, setAvgCost] = useState(holding?.avg_cost?.toString() ?? "");
+  const [note, setNote] = useState(holding?.note ?? "");
+  const [useManualPrice, setUseManualPrice] = useState(holding?.manual_price != null);
+  const [manualPrice, setManualPrice] = useState(holding?.manual_price?.toString() ?? "");
   const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (open) {
+      setTicker(holding?.ticker ?? "");
+      setName(holding?.name ?? "");
+      setQuantity(holding?.quantity?.toString() ?? "");
+      setAvgCost(holding?.avg_cost?.toString() ?? "");
+      setNote(holding?.note ?? "");
+      setUseManualPrice(holding?.manual_price != null);
+      setManualPrice(holding?.manual_price?.toString() ?? "");
+    }
+  }, [open, holding]);
 
   const handleStockSelect = (result: StockSearchResult) => {
     setTicker(result.ticker);
@@ -57,6 +74,8 @@ export function HoldingForm({ holding, accountId, currency, open, onClose, onSav
       quantity: parseFloat(quantity) || 0,
       avg_cost: parseFloat(avgCost) || 0,
       currency,
+      note: note.trim(),
+      manual_price: useManualPrice && manualPrice ? parseFloat(manualPrice) : null,
     };
 
     await fetch("/api/holdings", {
@@ -75,29 +94,29 @@ export function HoldingForm({ holding, accountId, currency, open, onClose, onSav
       <DialogContent>
         <DialogHeader>
           <DialogTitle>{holding ? "종목 수정" : "종목 추가"}</DialogTitle>
-          <DialogDescription>종목명 또는 종목코드로 검색하세요.</DialogDescription>
+          <DialogDescription>
+            {holding ? "정보를 수정하세요." : "종목명 또는 종목코드로 검색하세요."}
+          </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
-          {/* 종목 검색 (수정 모드에서는 기존 값 표시) */}
           {!holding ? (
             <div className="space-y-2">
               <Label>종목 검색</Label>
               <StockSearchInput
                 onSelect={handleStockSelect}
-                placeholder="예: 삼성전자, 005930, AAPL, Apple"
+                placeholder="예: 삼성전자, 005930, AAPL, 비상장회사명"
               />
             </div>
           ) : null}
 
-          {/* 선택된 종목 정보 (또는 직접 입력) */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="ticker">종목코드</Label>
+              <Label htmlFor="ticker">종목코드 / 식별자</Label>
               <Input
                 id="ticker"
                 value={ticker}
                 onChange={(e) => setTicker(e.target.value)}
-                placeholder="005930"
+                placeholder="005930 또는 자유 입력"
                 required
               />
             </div>
@@ -138,6 +157,48 @@ export function HoldingForm({ holding, accountId, currency, open, onClose, onSav
                 required
               />
             </div>
+          </div>
+
+          {/* 수동 현재가 (비상장 등) */}
+          <div className="rounded-md border p-3 space-y-3">
+            <label className="flex cursor-pointer items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={useManualPrice}
+                onChange={(e) => {
+                  setUseManualPrice(e.target.checked);
+                  if (!e.target.checked) setManualPrice("");
+                }}
+                className="h-4 w-4 rounded"
+              />
+              <span className="font-medium">현재가 직접 입력</span>
+              <span className="text-muted-foreground">(비상장 · 자동조회 불가 종목)</span>
+            </label>
+            {useManualPrice && (
+              <div className="space-y-1">
+                <Label htmlFor="manualPrice">현재가 ({currency})</Label>
+                <Input
+                  id="manualPrice"
+                  type="number"
+                  step="any"
+                  value={manualPrice}
+                  onChange={(e) => setManualPrice(e.target.value)}
+                  placeholder="현재 평가 가격 입력"
+                  required={useManualPrice}
+                />
+              </div>
+            )}
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="note">메모 (선택)</Label>
+            <Input
+              id="note"
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              placeholder="예: 분할매수 예정, 비상장 스타트업 등"
+              maxLength={100}
+            />
           </div>
 
           <div className="flex justify-end gap-2">

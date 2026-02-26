@@ -12,11 +12,14 @@ import {
 import { formatKRW } from "@/lib/format";
 
 const COLORS = [
-  "hsl(var(--chart-1))",
-  "hsl(var(--chart-2))",
-  "hsl(var(--chart-3))",
-  "hsl(var(--chart-4))",
-  "hsl(var(--chart-5))",
+  "#6366f1", // indigo
+  "#22c55e", // green
+  "#f59e0b", // amber
+  "#ec4899", // pink
+  "#14b8a6", // teal
+  "#f97316", // orange
+  "#8b5cf6", // violet
+  "#3b82f6", // blue
 ];
 
 interface AllocationItem {

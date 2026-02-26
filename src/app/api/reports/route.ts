@@ -10,7 +10,9 @@ export async function GET() {
   const holdings = db
     .prepare(
       `SELECT h.*, a.name as account_name, a.currency as account_currency, a.type as account_type,
-              COALESCE(p.price, 0) as current_price
+              CASE WHEN h.ticker = 'CASH' THEN h.avg_cost
+                   ELSE COALESCE(p.price, 0)
+              END as current_price
        FROM holdings h
        JOIN accounts a ON h.account_id = a.id
        LEFT JOIN price_history p ON h.ticker = p.ticker
@@ -51,7 +53,7 @@ export async function GET() {
     byCurrency[h.currency] = (byCurrency[h.currency] ?? 0) + valueKrw;
     byAccount[h.account_name] = (byAccount[h.account_name] ?? 0) + valueKrw;
 
-    if (costBasis > 0) {
+    if (costBasis > 0 && h.ticker !== "CASH") {
       performers.push({
         ticker: h.ticker,
         name: h.name,

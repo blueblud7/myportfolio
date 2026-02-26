@@ -15,6 +15,7 @@ export interface Holding {
   quantity: number;
   avg_cost: number;
   currency: "KRW" | "USD";
+  note: string;
 }
 
 export interface HoldingWithPrice extends Holding {

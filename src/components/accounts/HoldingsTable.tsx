@@ -23,6 +23,8 @@ interface HoldingRow {
   currency: string;
   current_price: number;
   change_pct: number;
+  note: string;
+  manual_price: number | null;
 }
 
 interface Props {
@@ -63,6 +65,8 @@ export function HoldingsTable({ holdings, accountCurrency, exchangeRate, onEdit,
         </TableHeader>
         <TableBody>
           {holdings.map((h) => {
+            const isCash = h.ticker === "CASH";
+            const isManual = h.manual_price != null;
             const price = h.current_price || h.avg_cost;
             const marketValue = h.quantity * price;
             const costBasis = h.quantity * h.avg_cost;
@@ -74,32 +78,42 @@ export function HoldingsTable({ holdings, accountCurrency, exchangeRate, onEdit,
               <TableRow key={h.id}>
                 <TableCell>
                   <div>
-                    <div className="font-medium">{h.name}</div>
+                    <div className="flex items-center gap-1.5 font-medium">
+                      {h.name}
+                      {isManual && (
+                        <Badge variant="outline" className="text-[10px] px-1 py-0 h-4 text-muted-foreground">
+                          수동
+                        </Badge>
+                      )}
+                    </div>
                     <div className="text-xs text-muted-foreground">{h.ticker}</div>
+                    {h.note && (
+                      <div className="mt-0.5 text-xs text-muted-foreground/70 italic">
+                        {h.note}
+                      </div>
+                    )}
                   </div>
                 </TableCell>
                 <TableCell className="text-right font-mono">
-                  {h.quantity.toLocaleString()}
+                  {isCash ? "-" : h.quantity.toLocaleString()}
                 </TableCell>
                 <TableCell className="text-right font-mono">
-                  {formatCurrency(h.avg_cost, h.currency)}
+                  {isCash ? "-" : formatCurrency(h.avg_cost, h.currency)}
                 </TableCell>
                 <TableCell className="text-right font-mono">
-                  {h.current_price > 0
-                    ? formatCurrency(h.current_price, h.currency)
-                    : "-"}
+                  {isCash ? "-" : (h.current_price > 0 ? formatCurrency(h.current_price, h.currency) : "-")}
                 </TableCell>
                 <TableCell className="text-right font-mono font-medium">
                   {formatCurrency(marketValue, h.currency)}
                 </TableCell>
                 <TableCell className={cn("text-right font-mono", gainLossColor(gainLoss))}>
-                  {formatCurrency(gainLoss, h.currency)}
+                  {isCash ? "-" : formatCurrency(gainLoss, h.currency)}
                 </TableCell>
                 <TableCell className={cn("text-right font-mono", gainLossColor(gainLossPct))}>
-                  {formatPercent(gainLossPct)}
+                  {isCash ? "-" : formatPercent(gainLossPct)}
                 </TableCell>
                 <TableCell className="text-right">
-                  {h.change_pct !== 0 && (
+                  {!isCash && h.change_pct !== 0 && (
                     <Badge
                       variant={h.change_pct > 0 ? "default" : "destructive"}
                       className={cn(

@@ -22,7 +22,7 @@ export default function DashboardPage() {
   }, [snapshotCreated]);
 
   const summary = useMemo(() => {
-    if (!holdings || !accounts) {
+    if (!Array.isArray(holdings) || !Array.isArray(accounts)) {
       return { totalKrw: 0, totalUsd: 0, gainLossKrw: 0, gainLossPct: 0, stockValueKrw: 0, bankValueKrw: 0 };
     }
 
@@ -69,7 +69,7 @@ export default function DashboardPage() {
   }, [holdings, accounts, bankBalances, exchangeRate]);
 
   const allocationByAccount = useMemo(() => {
-    if (!accounts || !holdings) return [];
+    if (!Array.isArray(accounts) || !Array.isArray(holdings)) return [];
 
     const valueByAccount: Record<string, number> = {};
     for (const h of holdings as { account_id: number; quantity: number; current_price: number; avg_cost: number; currency: string }[]) {

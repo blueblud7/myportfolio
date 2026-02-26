@@ -36,6 +36,16 @@ export function StockSearchInput({ onSelect, defaultValue = "", placeholder }: P
       setOpen(false);
       return;
     }
+
+    // CASH / 현금 입력 시 바로 현금 옵션 표시
+    if (/^(cash|현금)$/i.test(debouncedQuery.trim())) {
+      const cashOption: StockSearchResult = { ticker: "CASH", name: "현금", exchange: "", symbol: "CASH" };
+      setResults([cashOption]);
+      setOpen(true);
+      setActiveIdx(-1);
+      return;
+    }
+
     setLoading(true);
     fetch(`/api/stocks/search?q=${encodeURIComponent(debouncedQuery)}`)
       .then((r) => r.json())

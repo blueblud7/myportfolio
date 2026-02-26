@@ -13,6 +13,36 @@ export interface QuoteResult {
 }
 
 export async function getQuote(ticker: string): Promise<QuoteResult | null> {
+  // 현금은 가격 조회 불필요
+  if (ticker === "CASH") return null;
+
+  // 한국 종목(숫자로 시작하는 6자리 영숫자)은 .KS → .KQ 순으로 시도
+  if (/^\d[A-Z0-9]{5}$/i.test(ticker)) {
+    for (const suffix of [".KS", ".KQ"]) {
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const result: any = await yf.quote(`${ticker}${suffix}`);
+        if (!result?.regularMarketPrice) continue;
+
+        const name = result.shortName ?? result.longName ?? "";
+        // shortName에 ticker가 포함되거나 쉼표가 있으면 잘못된 데이터 → 다음 suffix 시도
+        if (!name || name.includes(ticker) || name.includes(",")) continue;
+
+        return {
+          ticker,
+          price: result.regularMarketPrice,
+          changePct: result.regularMarketChangePercent ?? 0,
+          currency: result.currency ?? "KRW",
+          name,
+        };
+      } catch {
+        // 해당 suffix로 조회 실패 시 다음 시도
+      }
+    }
+    return null;
+  }
+
+  // 해외 종목
   try {
     const symbol = resolveYahooSymbol(ticker);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

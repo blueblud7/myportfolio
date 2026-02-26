@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import useSWR from "swr";
@@ -40,11 +40,26 @@ export default function AccountDetailPage() {
   const [editingHolding, setEditingHolding] = useState<any>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [kiwoomOpen, setKiwoomOpen] = useState(false);
+  const autoRefreshed = useRef(false);
+
+  // holdings 로드 후 현재가 없으면 자동 새로고침
+  useEffect(() => {
+    if (!holdings || holdings.length === 0 || autoRefreshed.current) return;
+    const hasNoPrice = holdings.some((h: { current_price: number; ticker: string; manual_price: number | null }) => !h.current_price && h.ticker !== "CASH" && !h.manual_price);
+    if (hasNoPrice) {
+      autoRefreshed.current = true;
+      const tickers = holdings.map((h: { ticker: string; manual_price: number | null }) => h).filter((h) => h.ticker !== "CASH" && !h.manual_price).map((h) => h.ticker);
+      setRefreshing(true);
+      refreshPrices(tickers).then(() => mutateHoldings()).finally(() => setRefreshing(false));
+    }
+  }, [holdings, mutateHoldings]);
 
   const handleRefresh = useCallback(async () => {
     if (!holdings || holdings.length === 0) return;
     setRefreshing(true);
-    const tickers = holdings.map((h: { ticker: string }) => h.ticker);
+    const tickers = holdings
+      .filter((h: { ticker: string; manual_price: number | null }) => h.ticker !== "CASH" && !h.manual_price)
+      .map((h: { ticker: string }) => h.ticker);
     await refreshPrices(tickers);
     await mutateHoldings();
     setRefreshing(false);

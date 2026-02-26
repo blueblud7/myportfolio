@@ -2,14 +2,15 @@ import useSWR from "swr";
 import type { Account, Snapshot, ReportData, BankBalance } from "@/types";
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
+const arrayFetcher = (url: string) => fetch(url).then((r) => r.json()).then((d) => Array.isArray(d) ? d : []);
 
 export function useAccounts() {
-  return useSWR<Account[]>("/api/accounts", fetcher);
+  return useSWR<Account[]>("/api/accounts", arrayFetcher);
 }
 
 export function useHoldings(accountId?: number) {
   const key = accountId ? `/api/holdings?account_id=${accountId}` : "/api/holdings";
-  return useSWR(key, fetcher);
+  return useSWR(key, arrayFetcher);
 }
 
 export function useExchangeRate() {

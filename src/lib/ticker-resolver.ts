@@ -7,8 +7,10 @@ const KOSPI_MAJOR = new Set([
   "000810", "021240", "001570", "068270", "035250",
 ]);
 
+// 한국 종목코드: 숫자로 시작하는 6자리 영숫자 (순수숫자, 우선주·ETF 혼합코드 포함)
+// 예: 005930, 0100K0, 00680K
 export function isKoreanTicker(ticker: string): boolean {
-  return /^\d{6}$/.test(ticker);
+  return /^\d[A-Z0-9]{5}$/i.test(ticker);
 }
 
 export function resolveYahooSymbol(ticker: string): string {

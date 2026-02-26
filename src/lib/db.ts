@@ -42,6 +42,7 @@ function initSchema(db: Database.Database) {
       quantity REAL NOT NULL DEFAULT 0,
       avg_cost REAL NOT NULL DEFAULT 0,
       currency TEXT NOT NULL DEFAULT 'KRW' CHECK(currency IN ('KRW', 'USD')),
+      note TEXT NOT NULL DEFAULT '',
       FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE CASCADE
     );
 
@@ -90,6 +91,20 @@ function initSchema(db: Database.Database) {
       FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE CASCADE
     );
   `);
+
+  // 기존 DB 마이그레이션: holdings.note 컬럼
+  try {
+    db.exec(`ALTER TABLE holdings ADD COLUMN note TEXT NOT NULL DEFAULT ''`);
+  } catch {
+    // 이미 존재하면 무시
+  }
+
+  // 기존 DB 마이그레이션: holdings.manual_price 컬럼
+  try {
+    db.exec(`ALTER TABLE holdings ADD COLUMN manual_price REAL`);
+  } catch {
+    // 이미 존재하면 무시
+  }
 }
 
 export default getDb;

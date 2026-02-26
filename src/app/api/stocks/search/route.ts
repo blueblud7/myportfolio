@@ -26,13 +26,13 @@ export async function GET(req: NextRequest) {
     const stocks: StockSearchResult[] = quotes
       .filter(
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (q: any) => q.quoteType === "EQUITY" && q.symbol
+        (q: any) => ["EQUITY", "ETF"].includes(q.quoteType) && q.symbol
       )
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       .map((q: any) => ({
         ticker: extractTicker(q.symbol),
-        name: q.shortName ?? q.longName ?? q.symbol,
-        exchange: q.exchDisp ?? q.exchange ?? "",
+        name: q.shortname ?? q.longname ?? q.shortName ?? q.longName ?? q.symbol,
+        exchange: q.quoteType === "ETF" ? "ETF" : (q.exchDisp ?? q.exchange ?? ""),
         symbol: q.symbol,
       }))
       .slice(0, 10);

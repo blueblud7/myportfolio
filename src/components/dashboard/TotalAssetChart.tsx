@@ -96,28 +96,28 @@ export function TotalAssetChart() {
                 type="monotone"
                 dataKey="total"
                 name="총자산"
-                stroke="hsl(var(--chart-1))"
-                fill="hsl(var(--chart-1))"
-                fillOpacity={0.1}
+                stroke="#6366f1"
+                fill="#6366f1"
+                fillOpacity={0.15}
                 strokeWidth={2}
               />
               <Area
                 type="monotone"
                 dataKey="stock"
                 name="주식"
-                stroke="hsl(var(--chart-2))"
-                fill="hsl(var(--chart-2))"
-                fillOpacity={0.05}
-                strokeWidth={1}
+                stroke="#22c55e"
+                fill="#22c55e"
+                fillOpacity={0.08}
+                strokeWidth={1.5}
               />
               <Area
                 type="monotone"
                 dataKey="bank"
                 name="은행"
-                stroke="hsl(var(--chart-3))"
-                fill="hsl(var(--chart-3))"
-                fillOpacity={0.05}
-                strokeWidth={1}
+                stroke="#f59e0b"
+                fill="#f59e0b"
+                fillOpacity={0.08}
+                strokeWidth={1.5}
               />
             </AreaChart>
           </ResponsiveContainer>
