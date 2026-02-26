@@ -54,6 +54,23 @@ export interface ExchangeRate {
   date: string;
 }
 
+export interface BrokerCredential {
+  id: number;
+  account_id: number;
+  broker: string;
+  app_key: string;
+  secret_key: string;
+  account_number: string;
+  last_synced_at: string | null;
+}
+
+export interface KiwoomHolding {
+  ticker: string;
+  name: string;
+  quantity: number;
+  avg_cost: number;
+}
+
 export interface AccountSummary extends Account {
   total_value: number;
   total_value_krw: number;

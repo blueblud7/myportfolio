@@ -78,6 +78,17 @@ function initSchema(db: Database.Database) {
       rate REAL NOT NULL,
       date TEXT NOT NULL UNIQUE
     );
+
+    CREATE TABLE IF NOT EXISTS broker_credentials (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      account_id INTEGER NOT NULL UNIQUE,
+      broker TEXT NOT NULL DEFAULT 'kiwoom',
+      app_key TEXT NOT NULL,
+      secret_key TEXT NOT NULL,
+      account_number TEXT NOT NULL,
+      last_synced_at TEXT,
+      FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE CASCADE
+    );
   `);
 }
 

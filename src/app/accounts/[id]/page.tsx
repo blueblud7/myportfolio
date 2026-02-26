@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { HoldingsTable } from "@/components/accounts/HoldingsTable";
 import { HoldingForm } from "@/components/accounts/HoldingForm";
+import { KiwoomSyncDialog } from "@/components/accounts/KiwoomSyncDialog";
 import { ArrowLeft, Plus, RefreshCw } from "lucide-react";
 import { formatCurrency, formatPercent, gainLossColor } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -38,6 +39,7 @@ export default function AccountDetailPage() {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [editingHolding, setEditingHolding] = useState<any>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [kiwoomOpen, setKiwoomOpen] = useState(false);
 
   const handleRefresh = useCallback(async () => {
     if (!holdings || holdings.length === 0) return;
@@ -129,6 +131,16 @@ export default function AccountDetailPage() {
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>보유 종목</CardTitle>
           <div className="flex gap-2">
+            {account?.type === "stock" && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setKiwoomOpen(true)}
+              >
+                <RefreshCw className="mr-2 h-3.5 w-3.5" />
+                키움 동기화
+              </Button>
+            )}
             <Button
               variant="outline"
               size="sm"
@@ -174,6 +186,13 @@ export default function AccountDetailPage() {
           onSave={() => mutateHoldings()}
         />
       )}
+
+      <KiwoomSyncDialog
+        accountId={accountId}
+        open={kiwoomOpen}
+        onClose={() => setKiwoomOpen(false)}
+        onSynced={() => mutateHoldings()}
+      />
     </div>
   );
 }
