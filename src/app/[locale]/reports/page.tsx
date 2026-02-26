@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import { translateSector } from "@/lib/sectors";
-import { useReports } from "@/hooks/use-api";
+import { useReports, useExchangeRate } from "@/hooks/use-api";
 import { usePrivacy } from "@/contexts/privacy-context";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { AllocationChart } from "@/components/dashboard/AllocationChart";
@@ -28,6 +28,9 @@ export default function ReportsPage() {
   const locale = useLocale();
   const { isPrivate } = usePrivacy();
   const { data: report, isLoading, mutate } = useReports();
+  const { data: exchangeRateData } = useExchangeRate();
+  const exchangeRate = exchangeRateData?.rate ?? 1350;
+  const [perfCurrency, setPerfCurrency] = useState<"KRW" | "USD">("KRW");
   const [fetching, setFetching] = useState(false);
   const [fetchResult, setFetchResult] = useState<{ total: number; success: number; failed: number } | null>(null);
 
@@ -214,8 +217,24 @@ export default function ReportsPage() {
       </div>
 
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between pb-2">
           <CardTitle>{t("allPerformance")}</CardTitle>
+          <div className="flex rounded-md border overflow-hidden text-sm">
+            {(["KRW", "USD"] as const).map((cur) => (
+              <button
+                key={cur}
+                onClick={() => setPerfCurrency(cur)}
+                className={cn(
+                  "px-3 py-1 font-medium transition-colors",
+                  perfCurrency === cur
+                    ? "bg-blue-500 text-white"
+                    : "bg-transparent text-muted-foreground hover:bg-muted"
+                )}
+              >
+                {cur}
+              </button>
+            ))}
+          </div>
         </CardHeader>
         <CardContent className="p-0">
           {report.all_performers.length === 0 ? (
@@ -228,60 +247,54 @@ export default function ReportsPage() {
                     <TableHead>{t("ticker")}</TableHead>
                     <TableHead>{t("account")}</TableHead>
                     <TableHead className="text-right">{t("quantity")}</TableHead>
-                    <TableHead className="text-right whitespace-nowrap">
-                      {t("cost")}
-                      <span className="ml-0.5 text-[10px] font-normal text-muted-foreground">(만/K)</span>
-                    </TableHead>
-                    <TableHead className="text-right whitespace-nowrap">
-                      {t("currentPrice")}
-                      <span className="ml-0.5 text-[10px] font-normal text-muted-foreground">(만/K)</span>
-                    </TableHead>
-                    <TableHead className="text-right whitespace-nowrap">
-                      {t("valuation2")}
-                      <span className="ml-0.5 text-[10px] font-normal text-muted-foreground">(만/억/K/M)</span>
-                    </TableHead>
-                    <TableHead className="text-right whitespace-nowrap">
-                      {t("gainLoss")}
-                      <span className="ml-0.5 text-[10px] font-normal text-muted-foreground">(만/억/K/M)</span>
-                    </TableHead>
+                    <TableHead className="text-right">{t("cost")}</TableHead>
+                    <TableHead className="text-right">{t("currentPrice")}</TableHead>
+                    <TableHead className="text-right">{t("valuation2")}</TableHead>
+                    <TableHead className="text-right">{t("gainLoss")}</TableHead>
                     <TableHead className="text-right">{t("returnRate")}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {report.all_performers.map((p) => (
-                    <TableRow key={`${p.ticker}-${p.account_name}`}>
-                      <TableCell>
-                        <div className="flex items-center gap-1.5 font-medium">
-                          {p.name}
-                          <Badge variant="outline" className="text-[10px] px-1 py-0 h-4 font-normal">
-                            {p.currency}
-                          </Badge>
-                        </div>
-                        <div className="text-xs text-muted-foreground">{p.ticker}</div>
-                      </TableCell>
-                      <TableCell className="text-sm text-muted-foreground whitespace-nowrap">
-                        {p.account_name}
-                      </TableCell>
-                      <TableCell className="text-right font-mono">
-                        {isPrivate ? MASK : p.quantity.toLocaleString()}
-                      </TableCell>
-                      <TableCell className="text-right font-mono">
-                        {isPrivate ? MASK : formatCompact(p.avg_cost, p.currency, locale)}
-                      </TableCell>
-                      <TableCell className="text-right font-mono">
-                        {isPrivate ? MASK : formatCompact(p.current_price, p.currency, locale)}
-                      </TableCell>
-                      <TableCell className="text-right font-mono font-medium">
-                        {isPrivate ? MASK : formatCompact(p.market_value, p.currency, locale)}
-                      </TableCell>
-                      <TableCell className={cn("text-right font-mono", gainLossColor(p.gain_loss))}>
-                        {isPrivate ? MASK : formatCompact(p.gain_loss, p.currency, locale)}
-                      </TableCell>
-                      <TableCell className={cn("text-right font-mono font-medium", gainLossColor(p.gain_loss_pct))}>
-                        {formatPercent(p.gain_loss_pct)}
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                  {report.all_performers.map((p) => {
+                    const toDisplay = (val: number) => {
+                      if (perfCurrency === "KRW") {
+                        const krw = p.currency === "USD" ? val * exchangeRate : val;
+                        return formatCompact(krw, "KRW", locale);
+                      } else {
+                        const usd = p.currency === "KRW" ? val / exchangeRate : val;
+                        return formatCompact(usd, "USD", locale);
+                      }
+                    };
+                    return (
+                      <TableRow key={`${p.ticker}-${p.account_name}`}>
+                        <TableCell>
+                          <div className="font-medium">{p.name}</div>
+                          <div className="text-xs text-muted-foreground">{p.ticker}</div>
+                        </TableCell>
+                        <TableCell className="text-sm text-muted-foreground whitespace-nowrap">
+                          {p.account_name}
+                        </TableCell>
+                        <TableCell className="text-right font-mono">
+                          {isPrivate ? MASK : p.quantity.toLocaleString()}
+                        </TableCell>
+                        <TableCell className="text-right font-mono">
+                          {isPrivate ? MASK : toDisplay(p.avg_cost)}
+                        </TableCell>
+                        <TableCell className="text-right font-mono">
+                          {isPrivate ? MASK : toDisplay(p.current_price)}
+                        </TableCell>
+                        <TableCell className="text-right font-mono font-medium">
+                          {isPrivate ? MASK : toDisplay(p.market_value)}
+                        </TableCell>
+                        <TableCell className={cn("text-right font-mono", gainLossColor(p.gain_loss))}>
+                          {isPrivate ? MASK : toDisplay(p.gain_loss)}
+                        </TableCell>
+                        <TableCell className={cn("text-right font-mono font-medium", gainLossColor(p.gain_loss_pct))}>
+                          {formatPercent(p.gain_loss_pct)}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
                 </TableBody>
               </Table>
             </div>
