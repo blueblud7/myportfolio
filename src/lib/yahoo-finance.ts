@@ -72,20 +72,6 @@ export async function getQuotes(tickers: string[]): Promise<QuoteResult[]> {
     .filter((r): r is QuoteResult => r !== null);
 }
 
-const SECTOR_MAP: Record<string, string> = {
-  Technology: "기술",
-  Financials: "금융",
-  "Health Care": "헬스케어",
-  Energy: "에너지",
-  Materials: "소재",
-  Industrials: "산업재",
-  Utilities: "유틸리티",
-  "Real Estate": "부동산",
-  "Consumer Staples": "필수소비재",
-  "Consumer Discretionary": "자유소비재",
-  "Communication Services": "통신서비스",
-};
-
 export async function getStockMetadataFromYahoo(ticker: string): Promise<{
   sector: string;
   annual_dividend: number;
@@ -100,8 +86,8 @@ export async function getStockMetadataFromYahoo(ticker: string): Promise<{
         modules: ["assetProfile", "summaryDetail"],
       });
       if (!result) return null;
-      const sectorEn: string = result.assetProfile?.sector ?? "";
-      const sector = SECTOR_MAP[sectorEn] ?? sectorEn;
+      // 영어 원문 그대로 저장 (화면에서 locale에 맞게 번역)
+      const sector: string = result.assetProfile?.sector ?? "";
       const annualDividend: number =
         result.summaryDetail?.trailingAnnualDividendRate ?? 0;
       const dividendYieldRaw: number =

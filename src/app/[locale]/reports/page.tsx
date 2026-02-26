@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
+import { translateSector } from "@/lib/sectors";
 import { useReports } from "@/hooks/use-api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { AllocationChart } from "@/components/dashboard/AllocationChart";
@@ -21,6 +22,7 @@ import { RefreshCw } from "lucide-react";
 
 export default function ReportsPage() {
   const t = useTranslations("Reports");
+  const locale = useLocale();
   const { data: report, isLoading, mutate } = useReports();
   const [fetching, setFetching] = useState(false);
   const [fetchResult, setFetchResult] = useState<{ total: number; success: number; failed: number } | null>(null);
@@ -61,7 +63,7 @@ export default function ReportsPage() {
   }
 
   const allSectorOther =
-    report.by_sector.length === 1 && report.by_sector[0].sector === "기타";
+    report.by_sector.length === 1 && report.by_sector[0].sector === "Other";
 
   return (
     <div className="space-y-6">
@@ -106,7 +108,7 @@ export default function ReportsPage() {
         <AllocationChart
           title={t("bySector")}
           data={report.by_sector.map((s) => ({
-            name: s.sector,
+            name: translateSector(s.sector, locale),
             value: s.value_krw,
           }))}
         />

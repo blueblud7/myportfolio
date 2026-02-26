@@ -70,7 +70,7 @@ export async function GET() {
     byCurrency[h.currency] = (byCurrency[h.currency] ?? 0) + valueKrw;
     byAccount[h.account_name] = (byAccount[h.account_name] ?? 0) + valueKrw;
 
-    const sectorKey = h.sector || "기타";
+    const sectorKey = h.sector || "Other";
     bySector[sectorKey] = (bySector[sectorKey] ?? 0) + valueKrw;
 
     if (costBasis > 0 && h.ticker !== "CASH") {
