@@ -2,6 +2,7 @@ import Database from "better-sqlite3";
 import path from "path";
 import fs from "fs";
 import os from "os";
+import { hashPassword } from "./auth";
 
 // OneDrive 등 클라우드 동기화 폴더에서는 SQLite WAL 모드가 충돌하므로
 // 로컬 홈 디렉토리에 DB를 저장
@@ -109,7 +110,22 @@ function initSchema(db: Database.Database) {
       dividend_yield REAL DEFAULT 0,
       updated_at TEXT
     );
+
+    CREATE TABLE IF NOT EXISTS users (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      username TEXT NOT NULL UNIQUE,
+      password_hash TEXT NOT NULL
+    );
   `);
+
+  // 기본 사용자 초기화
+  const existing = db.prepare("SELECT id FROM users WHERE username = 'blueming'").get();
+  if (!existing) {
+    db.prepare("INSERT INTO users (username, password_hash) VALUES (?, ?)").run(
+      "blueming",
+      hashPassword("123qwe")
+    );
+  }
 
   // 기존 DB 마이그레이션: holdings.note 컬럼
   try {

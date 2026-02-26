@@ -1,9 +1,11 @@
 "use client";
 
+import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { useReports } from "@/hooks/use-api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { AllocationChart } from "@/components/dashboard/AllocationChart";
+import { Button } from "@/components/ui/button";
 import {
   Table,
   TableBody,
@@ -15,10 +17,26 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { formatKRW, formatPercent, gainLossColor } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import { RefreshCw } from "lucide-react";
 
 export default function ReportsPage() {
   const t = useTranslations("Reports");
-  const { data: report, isLoading } = useReports();
+  const { data: report, isLoading, mutate } = useReports();
+  const [fetching, setFetching] = useState(false);
+  const [fetchResult, setFetchResult] = useState<{ total: number; success: number; failed: number } | null>(null);
+
+  const handleBulkFetch = async () => {
+    setFetching(true);
+    setFetchResult(null);
+    try {
+      const res = await fetch("/api/stock-metadata", { method: "POST" });
+      const result = await res.json();
+      setFetchResult(result);
+      await mutate();
+    } finally {
+      setFetching(false);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -42,9 +60,30 @@ export default function ReportsPage() {
     );
   }
 
+  const allSectorOther =
+    report.by_sector.length === 1 && report.by_sector[0].sector === "기타";
+
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold">{t("title")}</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold">{t("title")}</h1>
+        <div className="flex items-center gap-2">
+          {fetchResult && (
+            <span className="text-xs text-muted-foreground">
+              {t("bulkFetchResult", { success: fetchResult.success, total: fetchResult.total })}
+            </span>
+          )}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleBulkFetch}
+            disabled={fetching}
+          >
+            <RefreshCw className={cn("mr-1.5 h-3.5 w-3.5", fetching && "animate-spin")} />
+            {fetching ? t("bulkFetching") : t("bulkFetch")}
+          </Button>
+        </div>
+      </div>
 
       <div className="grid gap-4 md:grid-cols-2">
         <AllocationChart
@@ -63,7 +102,7 @@ export default function ReportsPage() {
         />
       </div>
 
-      {report.by_sector.length > 0 ? (
+      {report.by_sector.length > 0 && !allSectorOther ? (
         <AllocationChart
           title={t("bySector")}
           data={report.by_sector.map((s) => ({
@@ -73,10 +112,10 @@ export default function ReportsPage() {
         />
       ) : (
         <Card>
-          <CardHeader>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle>{t("bySector")}</CardTitle>
           </CardHeader>
-          <CardContent className="py-6 text-center text-muted-foreground text-sm">
+          <CardContent className="py-6 text-center text-sm text-muted-foreground">
             {t("noSectorData")}
           </CardContent>
         </Card>
