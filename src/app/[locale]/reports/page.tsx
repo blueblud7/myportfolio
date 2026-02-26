@@ -17,7 +17,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { formatKRW, formatPercent, gainLossColor } from "@/lib/format";
+import { formatKRW, formatPercent, gainLossColor, formatCompact } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { RefreshCw } from "lucide-react";
 
@@ -217,36 +217,57 @@ export default function ReportsPage() {
         <CardHeader>
           <CardTitle>{t("allPerformance")}</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-0">
           {report.all_performers.length === 0 ? (
             <div className="py-8 text-center text-muted-foreground">{t("noDataShort")}</div>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>{t("ticker")}</TableHead>
-                  <TableHead className="text-right">{t("returnRate")}</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {report.all_performers.map((p) => (
-                  <TableRow key={p.ticker}>
-                    <TableCell>
-                      <div className="font-medium">{p.name}</div>
-                      <div className="text-xs text-muted-foreground">{p.ticker}</div>
-                    </TableCell>
-                    <TableCell
-                      className={cn(
-                        "text-right font-mono font-medium",
-                        gainLossColor(p.gain_loss_pct)
-                      )}
-                    >
-                      {formatPercent(p.gain_loss_pct)}
-                    </TableCell>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>{t("ticker")}</TableHead>
+                    <TableHead>{t("account")}</TableHead>
+                    <TableHead className="text-right">{t("quantity")}</TableHead>
+                    <TableHead className="text-right">{t("cost")}</TableHead>
+                    <TableHead className="text-right">{t("currentPrice")}</TableHead>
+                    <TableHead className="text-right">{t("valuation2")}</TableHead>
+                    <TableHead className="text-right">{t("gainLoss")}</TableHead>
+                    <TableHead className="text-right">{t("returnRate")}</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {report.all_performers.map((p) => (
+                    <TableRow key={`${p.ticker}-${p.account_name}`}>
+                      <TableCell>
+                        <div className="font-medium">{p.name}</div>
+                        <div className="text-xs text-muted-foreground">{p.ticker}</div>
+                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground whitespace-nowrap">
+                        {p.account_name}
+                      </TableCell>
+                      <TableCell className="text-right font-mono">
+                        {isPrivate ? MASK : p.quantity.toLocaleString()}
+                      </TableCell>
+                      <TableCell className="text-right font-mono">
+                        {isPrivate ? MASK : formatCompact(p.avg_cost, p.currency, locale)}
+                      </TableCell>
+                      <TableCell className="text-right font-mono">
+                        {isPrivate ? MASK : formatCompact(p.current_price, p.currency, locale)}
+                      </TableCell>
+                      <TableCell className="text-right font-mono font-medium">
+                        {isPrivate ? MASK : formatCompact(p.market_value, p.currency, locale)}
+                      </TableCell>
+                      <TableCell className={cn("text-right font-mono", gainLossColor(p.gain_loss))}>
+                        {isPrivate ? MASK : formatCompact(p.gain_loss, p.currency, locale)}
+                      </TableCell>
+                      <TableCell className={cn("text-right font-mono font-medium", gainLossColor(p.gain_loss_pct))}>
+                        {formatPercent(p.gain_loss_pct)}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
           )}
         </CardContent>
       </Card>

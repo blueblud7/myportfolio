@@ -52,7 +52,18 @@ export async function GET() {
   const byCurrency: Record<string, number> = {};
   const byAccount: Record<string, number> = {};
   const bySector: Record<string, number> = {};
-  const performers: { ticker: string; name: string; gain_loss_pct: number }[] = [];
+  const performers: {
+    ticker: string;
+    name: string;
+    quantity: number;
+    avg_cost: number;
+    current_price: number;
+    market_value: number;
+    gain_loss: number;
+    gain_loss_pct: number;
+    currency: string;
+    account_name: string;
+  }[] = [];
   const dividendItems: {
     ticker: string;
     name: string;
@@ -77,7 +88,14 @@ export async function GET() {
       performers.push({
         ticker: h.ticker,
         name: h.name,
+        quantity: h.quantity,
+        avg_cost: h.avg_cost,
+        current_price: h.current_price,
+        market_value: marketValue,
+        gain_loss: marketValue - costBasis,
         gain_loss_pct: ((marketValue - costBasis) / costBasis) * 100,
+        currency: h.currency,
+        account_name: h.account_name,
       });
     }
 

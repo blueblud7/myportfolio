@@ -102,13 +102,26 @@ export interface DashboardSummary {
   bank_value_krw: number;
 }
 
+export interface PerformerRow {
+  ticker: string;
+  name: string;
+  quantity: number;
+  avg_cost: number;
+  current_price: number;
+  market_value: number;
+  gain_loss: number;
+  gain_loss_pct: number;
+  currency: string;
+  account_name: string;
+}
+
 export interface ReportData {
   by_currency: { currency: string; value_krw: number; pct: number }[];
   by_account: { name: string; value_krw: number; pct: number }[];
   by_sector: { sector: string; value_krw: number; pct: number }[];
-  top_performers: { ticker: string; name: string; gain_loss_pct: number }[];
-  worst_performers: { ticker: string; name: string; gain_loss_pct: number }[];
-  all_performers: { ticker: string; name: string; gain_loss_pct: number }[];
+  top_performers: PerformerRow[];
+  worst_performers: PerformerRow[];
+  all_performers: PerformerRow[];
   dividend_income: {
     total_krw: number;
     items: {
