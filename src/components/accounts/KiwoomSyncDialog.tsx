@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useTranslations } from "next-intl";
 import {
   Dialog,
   DialogContent,
@@ -30,6 +31,7 @@ interface SavedCreds {
 type SyncStatus = "idle" | "syncing" | "success" | "error";
 
 export function KiwoomSyncDialog({ accountId, open, onClose, onSynced }: Props) {
+  const t = useTranslations("KiwoomSync");
   const [appKey, setAppKey] = useState("");
   const [secretKey, setSecretKey] = useState("");
   const [accountNumber, setAccountNumber] = useState("");
@@ -40,7 +42,6 @@ export function KiwoomSyncDialog({ accountId, open, onClose, onSynced }: Props) 
   const [syncResult, setSyncResult] = useState<{ added: number; updated: number; total: number } | null>(null);
   const [errorMsg, setErrorMsg] = useState("");
 
-  // 저장된 credentials 불러오기
   useEffect(() => {
     if (!open) return;
     fetch(`/api/broker/kiwoom?account_id=${accountId}`)
@@ -70,7 +71,7 @@ export function KiwoomSyncDialog({ accountId, open, onClose, onSynced }: Props) 
   };
 
   const handleDelete = async () => {
-    if (!confirm("API 키를 삭제하시겠습니까?")) return;
+    if (!confirm(t("deleteConfirm"))) return;
     await fetch(`/api/broker/kiwoom?account_id=${accountId}`, { method: "DELETE" });
     setSavedCreds(null);
   };
@@ -103,46 +104,43 @@ export function KiwoomSyncDialog({ accountId, open, onClose, onSynced }: Props) 
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Key className="h-4 w-4" />
-            키움 REST API 연동
+            {t("title")}
           </DialogTitle>
           <DialogDescription>
-            키움 REST API 키를 등록하면 보유종목을 자동으로 불러올 수 있습니다.
+            {t("description")}
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
-          {/* API 키 발급 안내 */}
           <div className="rounded-md bg-muted p-3 text-sm text-muted-foreground">
-            <p className="font-medium text-foreground">API 키 발급 방법</p>
-            <p className="mt-1">openapi.kiwoom.com 에서 신청 → App Key / Secret Key 발급</p>
+            <p className="font-medium text-foreground">{t("howToGetKey")}</p>
+            <p className="mt-1">{t("howToGetKeyDesc")}</p>
           </div>
 
           {savedCreds ? (
-            /* 저장된 키가 있는 경우 */
             <div className="space-y-3">
               <div className="flex items-center justify-between rounded-md border p-3">
                 <div>
-                  <p className="text-sm font-medium">계좌번호: {savedCreds.account_number}</p>
+                  <p className="text-sm font-medium">{t("accountNumber")}: {savedCreds.account_number}</p>
                   {savedCreds.last_synced_at && (
                     <p className="mt-0.5 text-xs text-muted-foreground">
-                      마지막 동기화: {new Date(savedCreds.last_synced_at).toLocaleString("ko-KR")}
+                      {t("lastSynced")}: {new Date(savedCreds.last_synced_at).toLocaleString()}
                     </p>
                   )}
                 </div>
                 <div className="flex gap-2">
-                  <Badge variant="secondary" className="text-xs">등록됨</Badge>
+                  <Badge variant="secondary" className="text-xs">{t("registered")}</Badge>
                   <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={handleDelete}>
                     <Trash2 className="h-3.5 w-3.5" />
                   </Button>
                 </div>
               </div>
 
-              {/* 동기화 결과 */}
               {syncStatus === "success" && syncResult && (
                 <div className="flex items-center gap-2 rounded-md bg-green-50 p-3 text-sm text-green-700 dark:bg-green-950 dark:text-green-300">
                   <CheckCircle className="h-4 w-4 shrink-0" />
                   <span>
-                    동기화 완료: 총 {syncResult.total}종목 (신규 {syncResult.added}개, 업데이트 {syncResult.updated}개)
+                    {t("syncResult", { total: syncResult.total, added: syncResult.added, updated: syncResult.updated })}
                   </span>
                 </div>
               )}
@@ -159,14 +157,13 @@ export function KiwoomSyncDialog({ accountId, open, onClose, onSynced }: Props) 
                 disabled={syncStatus === "syncing"}
               >
                 <RefreshCw className={cn("mr-2 h-4 w-4", syncStatus === "syncing" && "animate-spin")} />
-                {syncStatus === "syncing" ? "동기화 중..." : "보유종목 동기화"}
+                {syncStatus === "syncing" ? t("syncing") : t("syncBtn")}
               </Button>
             </div>
           ) : (
-            /* API 키 입력 폼 */
             <div className="space-y-3">
               <div className="space-y-1">
-                <Label htmlFor="app-key">App Key</Label>
+                <Label htmlFor="app-key">{t("appKey")}</Label>
                 <Input
                   id="app-key"
                   type="password"
@@ -176,7 +173,7 @@ export function KiwoomSyncDialog({ accountId, open, onClose, onSynced }: Props) 
                 />
               </div>
               <div className="space-y-1">
-                <Label htmlFor="secret-key">Secret Key</Label>
+                <Label htmlFor="secret-key">{t("secretKey")}</Label>
                 <Input
                   id="secret-key"
                   type="password"
@@ -186,7 +183,7 @@ export function KiwoomSyncDialog({ accountId, open, onClose, onSynced }: Props) 
                 />
               </div>
               <div className="space-y-1">
-                <Label htmlFor="account-number">계좌번호</Label>
+                <Label htmlFor="account-number">{t("accountNumber")}</Label>
                 <Input
                   id="account-number"
                   placeholder="예: 1234567890"
@@ -199,7 +196,7 @@ export function KiwoomSyncDialog({ accountId, open, onClose, onSynced }: Props) 
                 onClick={handleSave}
                 disabled={loading || !appKey || !secretKey || !accountNumber}
               >
-                {loading ? "저장 중..." : "API 키 저장"}
+                {loading ? t("saving") : t("saveKey")}
               </Button>
             </div>
           )}

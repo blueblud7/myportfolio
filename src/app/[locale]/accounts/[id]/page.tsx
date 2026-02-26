@@ -2,7 +2,8 @@
 
 import { useState, useCallback, useEffect, useRef } from "react";
 import { useParams } from "next/navigation";
-import Link from "next/link";
+import { useTranslations } from "next-intl";
+import { Link } from "@/i18n/navigation";
 import useSWR from "swr";
 import { useHoldings, useExchangeRate } from "@/hooks/use-api";
 import { refreshPrices } from "@/hooks/use-api";
@@ -13,13 +14,15 @@ import { HoldingsTable } from "@/components/accounts/HoldingsTable";
 import { HoldingForm } from "@/components/accounts/HoldingForm";
 import { KiwoomSyncDialog } from "@/components/accounts/KiwoomSyncDialog";
 import { ArrowLeft, Plus, RefreshCw } from "lucide-react";
-import { formatCurrency, formatPercent, gainLossColor } from "@/lib/format";
+import { formatPercent, gainLossColor } from "@/lib/format";
+import { Money } from "@/components/ui/money";
 import { cn } from "@/lib/utils";
 import type { Account } from "@/types";
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
 export default function AccountDetailPage() {
+  const t = useTranslations("AccountDetail");
   const params = useParams();
   const accountId = Number(params.id);
 
@@ -49,7 +52,6 @@ export default function AccountDetailPage() {
       .map((h: { ticker: string }) => h.ticker);
   }, [holdings]);
 
-  // holdings 로드 후 현재가 없으면 자동 새로고침
   useEffect(() => {
     if (!holdings || holdings.length === 0 || autoRefreshed.current) return;
     const hasNoPrice = holdings.some((h: { current_price: number; ticker: string; manual_price: number | null }) => !h.current_price && h.ticker !== "CASH" && !h.manual_price);
@@ -61,7 +63,6 @@ export default function AccountDetailPage() {
     }
   }, [holdings, mutateHoldings, getRefreshTickers]);
 
-  // 5분마다 자동 주가 새로고침
   useEffect(() => {
     const id = setInterval(async () => {
       const tickers = getRefreshTickers();
@@ -86,7 +87,7 @@ export default function AccountDetailPage() {
   }, [holdings, mutateHoldings]);
 
   const handleDelete = async (id: number) => {
-    if (!confirm("이 종목을 삭제하시겠습니까?")) return;
+    if (!confirm(t("deleteConfirm"))) return;
     await fetch(`/api/holdings?id=${id}`, { method: "DELETE" });
     mutateHoldings();
   };
@@ -117,7 +118,7 @@ export default function AccountDetailPage() {
             {account && (
               <>
                 <Badge variant="outline">
-                  {account.type === "stock" ? "주식" : "은행"}
+                  {account.type === "stock" ? t("stock") : t("bank")}
                 </Badge>
                 <Badge variant="secondary">{account.currency}</Badge>
                 {account.broker && (
@@ -132,27 +133,27 @@ export default function AccountDetailPage() {
       <div className="grid gap-4 sm:grid-cols-3">
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm text-muted-foreground">평가금액</CardTitle>
+            <CardTitle className="text-sm text-muted-foreground">{t("valuation")}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-xl font-bold">
-              {formatCurrency(totalValue, account?.currency ?? "KRW")}
+              <Money value={totalValue} currency={account?.currency ?? "KRW"} />
             </div>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm text-muted-foreground">총 손익</CardTitle>
+            <CardTitle className="text-sm text-muted-foreground">{t("totalGainLoss")}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className={cn("text-xl font-bold", gainLossColor(totalGainLoss))}>
-              {formatCurrency(totalGainLoss, account?.currency ?? "KRW")}
+              <Money value={totalGainLoss} currency={account?.currency ?? "KRW"} />
             </div>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm text-muted-foreground">수익률</CardTitle>
+            <CardTitle className="text-sm text-muted-foreground">{t("returnRate")}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className={cn("text-xl font-bold", gainLossColor(totalGainLossPct))}>
@@ -164,7 +165,7 @@ export default function AccountDetailPage() {
 
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle>보유 종목</CardTitle>
+          <CardTitle>{t("holdings")}</CardTitle>
           <div className="flex gap-2">
             {account?.type === "stock" && (
               <Button
@@ -173,7 +174,7 @@ export default function AccountDetailPage() {
                 onClick={() => setKiwoomOpen(true)}
               >
                 <RefreshCw className="mr-2 h-3.5 w-3.5" />
-                키움 동기화
+                {t("kiwoomSync")}
               </Button>
             )}
             <Button
@@ -183,7 +184,7 @@ export default function AccountDetailPage() {
               disabled={refreshing}
             >
               <RefreshCw className={cn("mr-2 h-3.5 w-3.5", refreshing && "animate-spin")} />
-              {refreshing ? "조회 중..." : "주가 새로고침"}
+              {refreshing ? t("refreshing") : t("refresh")}
             </Button>
             <Button
               size="sm"
@@ -193,7 +194,7 @@ export default function AccountDetailPage() {
               }}
             >
               <Plus className="mr-2 h-3.5 w-3.5" />
-              종목 추가
+              {t("addHolding")}
             </Button>
           </div>
         </CardHeader>

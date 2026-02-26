@@ -1,7 +1,9 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { formatKRW, formatUSD, formatPercent, gainLossColor } from "@/lib/format";
+import { formatPercent, gainLossColor } from "@/lib/format";
+import { Money } from "@/components/ui/money";
 import { TrendingUp, TrendingDown, DollarSign, Wallet } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -24,25 +26,27 @@ export function SummaryCards({
   stockValueKrw,
   bankValueKrw,
 }: Props) {
+  const t = useTranslations("SummaryCards");
+
   return (
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
       <Card>
         <CardHeader className="flex flex-row items-center justify-between pb-2">
           <CardTitle className="text-sm font-medium text-muted-foreground">
-            총 자산
+            {t("totalAssets")}
           </CardTitle>
           <Wallet className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold">{formatKRW(totalKrw)}</div>
-          <p className="text-xs text-muted-foreground">{formatUSD(totalUsd)}</p>
+          <div className="text-2xl font-bold"><Money value={totalKrw} /></div>
+          <p className="text-xs text-muted-foreground"><Money value={totalUsd} usd /></p>
         </CardContent>
       </Card>
 
       <Card>
         <CardHeader className="flex flex-row items-center justify-between pb-2">
           <CardTitle className="text-sm font-medium text-muted-foreground">
-            총 손익
+            {t("totalGainLoss")}
           </CardTitle>
           {gainLossKrw >= 0 ? (
             <TrendingUp className="h-4 w-4 text-emerald-600" />
@@ -52,7 +56,7 @@ export function SummaryCards({
         </CardHeader>
         <CardContent>
           <div className={cn("text-2xl font-bold", gainLossColor(gainLossKrw))}>
-            {formatKRW(gainLossKrw)}
+            <Money value={gainLossKrw} />
           </div>
           <p className={cn("text-xs", gainLossColor(gainLossPct))}>
             {formatPercent(gainLossPct)}
@@ -63,14 +67,14 @@ export function SummaryCards({
       <Card>
         <CardHeader className="flex flex-row items-center justify-between pb-2">
           <CardTitle className="text-sm font-medium text-muted-foreground">
-            주식 / 은행
+            {t("stockBank")}
           </CardTitle>
           <DollarSign className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold">{formatKRW(stockValueKrw)}</div>
+          <div className="text-2xl font-bold"><Money value={stockValueKrw} /></div>
           <p className="text-xs text-muted-foreground">
-            은행 {formatKRW(bankValueKrw)}
+            {t("bank")} <Money value={bankValueKrw} />
           </p>
         </CardContent>
       </Card>
@@ -78,7 +82,7 @@ export function SummaryCards({
       <Card>
         <CardHeader className="flex flex-row items-center justify-between pb-2">
           <CardTitle className="text-sm font-medium text-muted-foreground">
-            환율 (USD/KRW)
+            {t("exchangeRate")}
           </CardTitle>
           <DollarSign className="h-4 w-4 text-muted-foreground" />
         </CardHeader>

@@ -1,14 +1,17 @@
 "use client";
 
 import { useMemo } from "react";
+import { useTranslations } from "next-intl";
 import { useHoldings, useExchangeRate, useReports } from "@/hooks/use-api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { AllocationChart } from "@/components/dashboard/AllocationChart";
-import { formatKRW, formatPercent, gainLossColor } from "@/lib/format";
+import { formatPercent, gainLossColor } from "@/lib/format";
+import { Money } from "@/components/ui/money";
 import { cn } from "@/lib/utils";
 import { TrendingUp, TrendingDown, Wallet, PiggyBank, BarChart2 } from "lucide-react";
 
 export function AccountsOverview() {
+  const t = useTranslations("AccountsOverview");
   const { data: holdings } = useHoldings();
   const { data: exchangeRateData } = useExchangeRate();
   const { data: reports } = useReports();
@@ -50,18 +53,17 @@ export function AccountsOverview() {
 
   return (
     <div className="space-y-4">
-      {/* 요약 카드 3개 */}
       <div className="grid gap-4 sm:grid-cols-3">
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-              <Wallet className="h-4 w-4" />총 평가금액
+              <Wallet className="h-4 w-4" />{t("totalValuation")}
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{formatKRW(summary.totalKrw)}</div>
+            <div className="text-2xl font-bold"><Money value={summary.totalKrw} /></div>
             <div className="mt-0.5 text-xs text-muted-foreground">
-              ≈ ${(summary.totalKrw / exchangeRate).toLocaleString("en-US", { maximumFractionDigits: 0 })}
+              ≈ <Money value={summary.totalKrw / exchangeRate} usd />
             </div>
           </CardContent>
         </Card>
@@ -69,23 +71,23 @@ export function AccountsOverview() {
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-              <PiggyBank className="h-4 w-4" />투자원금
+              <PiggyBank className="h-4 w-4" />{t("invested")}
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{formatKRW(summary.costKrw)}</div>
+            <div className="text-2xl font-bold"><Money value={summary.costKrw} /></div>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-              <BarChart2 className="h-4 w-4" />총 손익
+              <BarChart2 className="h-4 w-4" />{t("totalGainLoss")}
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className={cn("text-2xl font-bold", gainLossColor(summary.gainLossKrw))}>
-              {formatKRW(summary.gainLossKrw)}
+              <Money value={summary.gainLossKrw} />
             </div>
             <div className={cn("mt-0.5 text-sm font-medium", gainLossColor(summary.gainLossPct))}>
               {formatPercent(summary.gainLossPct)}
@@ -94,25 +96,23 @@ export function AccountsOverview() {
         </Card>
       </div>
 
-      {/* 계좌별 비중 + 퍼포먼스 */}
       <div className="grid gap-4 lg:grid-cols-2">
-        <AllocationChart title="계좌별 비중" data={allocationData} />
+        <AllocationChart title={t("byAccount")} data={allocationData} />
 
         <Card>
           <CardHeader>
-            <CardTitle>종목 퍼포먼스</CardTitle>
+            <CardTitle>{t("performance")}</CardTitle>
           </CardHeader>
           <CardContent>
             {topPerformers.length === 0 ? (
               <div className="flex h-[200px] items-center justify-center text-sm text-muted-foreground">
-                보유 종목 데이터 없음
+                {t("noHoldings")}
               </div>
             ) : (
               <div className="grid grid-cols-2 gap-x-6">
-                {/* 상위 */}
                 <div>
                   <div className="mb-3 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-emerald-600">
-                    <TrendingUp className="h-3.5 w-3.5" />상위
+                    <TrendingUp className="h-3.5 w-3.5" />{t("top")}
                   </div>
                   <div className="space-y-0">
                     {topPerformers.slice(0, 5).map((p) => (
@@ -129,10 +129,9 @@ export function AccountsOverview() {
                   </div>
                 </div>
 
-                {/* 하위 */}
                 <div>
                   <div className="mb-3 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-red-500">
-                    <TrendingDown className="h-3.5 w-3.5" />하위
+                    <TrendingDown className="h-3.5 w-3.5" />{t("bottom")}
                   </div>
                   <div className="space-y-0">
                     {worstPerformers.slice(0, 5).map((p) => (

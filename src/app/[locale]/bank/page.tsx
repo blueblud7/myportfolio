@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import { useTranslations } from "next-intl";
 import { useAccounts, useBankBalances } from "@/hooks/use-api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -24,11 +25,14 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { Plus, Trash2 } from "lucide-react";
-import { formatCurrency, formatKRW } from "@/lib/format";
+import { formatKRW } from "@/lib/format";
+import { Money } from "@/components/ui/money";
 import { format } from "date-fns";
 import type { Account } from "@/types";
 
 export default function BankPage() {
+  const t = useTranslations("Bank");
+  const tCommon = useTranslations("Common");
   const { data: accounts } = useAccounts();
   const { data: balances, mutate } = useBankBalances();
   const [formOpen, setFormOpen] = useState(false);
@@ -60,7 +64,7 @@ export default function BankPage() {
   }, [balancesWithAccount]);
 
   const handleDelete = async (id: number) => {
-    if (!confirm("이 잔고 기록을 삭제하시겠습니까?")) return;
+    if (!confirm(t("deleteConfirm"))) return;
     await fetch(`/api/bank-balances?id=${id}`, { method: "DELETE" });
     mutate();
   };
@@ -68,20 +72,20 @@ export default function BankPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">은행 계좌</h1>
+        <h1 className="text-2xl font-bold">{t("title")}</h1>
         <Button
           onClick={() => setFormOpen(true)}
           disabled={bankAccounts.length === 0}
         >
           <Plus className="mr-2 h-4 w-4" />
-          잔고 입력
+          {t("addBalance")}
         </Button>
       </div>
 
       {bankAccounts.length === 0 && (
         <Card>
           <CardContent className="py-12 text-center text-muted-foreground">
-            은행 계좌가 없습니다. 계좌 관리에서 은행 계좌를 먼저 추가해주세요.
+            {t("noAccounts")}
           </CardContent>
         </Card>
       )}
@@ -89,7 +93,7 @@ export default function BankPage() {
       {chartData.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle>잔고 추이</CardTitle>
+            <CardTitle>{t("balanceTrend")}</CardTitle>
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={250}>
@@ -106,7 +110,7 @@ export default function BankPage() {
                   width={80}
                 />
                 <Tooltip
-                  formatter={(value) => [formatKRW(value as number), "잔고"]}
+                  formatter={(value) => [formatKRW(value as number), t("balance")]}
                   labelFormatter={(label) => format(new Date(label), "yyyy-MM-dd")}
                 />
                 <Line
@@ -125,16 +129,16 @@ export default function BankPage() {
       {balancesWithAccount.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle>잔고 이력</CardTitle>
+            <CardTitle>{t("history")}</CardTitle>
           </CardHeader>
           <CardContent>
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>날짜</TableHead>
-                  <TableHead>계좌</TableHead>
-                  <TableHead className="text-right">잔고</TableHead>
-                  <TableHead>메모</TableHead>
+                  <TableHead>{tCommon("date")}</TableHead>
+                  <TableHead>{t("account")}</TableHead>
+                  <TableHead className="text-right">{t("balance")}</TableHead>
+                  <TableHead>{tCommon("note")}</TableHead>
                   <TableHead className="w-12" />
                 </TableRow>
               </TableHeader>
@@ -149,7 +153,7 @@ export default function BankPage() {
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right font-mono font-medium">
-                      {formatCurrency(b.balance, b.currency)}
+                      <Money value={b.balance} currency={b.currency} />
                     </TableCell>
                     <TableCell className="text-muted-foreground">{b.note}</TableCell>
                     <TableCell>

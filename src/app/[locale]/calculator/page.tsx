@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import { useTranslations } from "next-intl";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -27,20 +28,21 @@ function formatKRW(value: number) {
   return value.toLocaleString();
 }
 
-const PRESETS = [
-  { label: "보수적 (5%)", cagr: 5 },
-  { label: "중립 (8%)", cagr: 8 },
-  { label: "공격적 (12%)", cagr: 12 },
-  { label: "S&P500 역사 (10.5%)", cagr: 10.5 },
-];
-
 export default function CalculatorPage() {
+  const t = useTranslations("Calculator");
   const [initial, setInitial] = useState("100000000");
   const [monthly, setMonthly] = useState("1000000");
   const [years, setYears] = useState("20");
   const [cagr1, setCagr1] = useState("5");
   const [cagr2, setCagr2] = useState("8");
   const [cagr3, setCagr3] = useState("12");
+
+  const PRESETS = [
+    { label: t("conservative"), cagr: 5 },
+    { label: t("neutral"), cagr: 8 },
+    { label: t("aggressive"), cagr: 12 },
+    { label: t("sp500"), cagr: 10.5 },
+  ];
 
   const data = useMemo(() => {
     const init = parseFloat(initial) || 0;
@@ -63,24 +65,24 @@ export default function CalculatorPage() {
       };
 
       return {
-        year: i === 0 ? "현재" : `${i}년`,
+        year: i === 0 ? t("now") : `${i}${t("yearsSuffix")}`,
         scenario1: calc(r1),
         scenario2: calc(r2),
         scenario3: calc(r3),
         invested: Math.round(init + mon * i * 12),
       };
     });
-  }, [initial, monthly, years, cagr1, cagr2, cagr3]);
+  }, [initial, monthly, years, cagr1, cagr2, cagr3, t]);
 
   const last = data[data.length - 1];
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const tooltipFormatter = (value: any, name: any) => {
     const labels: Record<string, string> = {
-      scenario1: `${cagr1}% 시나리오`,
-      scenario2: `${cagr2}% 시나리오`,
-      scenario3: `${cagr3}% 시나리오`,
-      invested: "투자 원금",
+      scenario1: `${cagr1}% ${t("scenarioLabel")}`,
+      scenario2: `${cagr2}% ${t("scenarioLabel")}`,
+      scenario3: `${cagr3}% ${t("scenarioLabel")}`,
+      invested: t("principal"),
     };
     return [`${((value ?? 0) / 1_0000).toFixed(0)}만원`, labels[String(name)] ?? name];
   };
@@ -90,21 +92,20 @@ export default function CalculatorPage() {
       <div>
         <h1 className="text-2xl font-bold flex items-center gap-2">
           <TrendingUp className="h-6 w-6" />
-          미래 자산 예측
+          {t("title")}
         </h1>
         <p className="text-muted-foreground text-sm mt-1">
-          복리 수익률을 기반으로 미래 자산을 시뮬레이션합니다.
+          {t("description")}
         </p>
       </div>
 
-      {/* 입력 */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">시뮬레이션 설정</CardTitle>
+          <CardTitle className="text-base">{t("settings")}</CardTitle>
         </CardHeader>
         <CardContent className="grid grid-cols-2 gap-4 md:grid-cols-4">
           <div className="space-y-2">
-            <Label>초기 자산 (원)</Label>
+            <Label>{t("initial")}</Label>
             <Input
               type="number"
               value={initial}
@@ -116,7 +117,7 @@ export default function CalculatorPage() {
             </p>
           </div>
           <div className="space-y-2">
-            <Label>월 적립금 (원)</Label>
+            <Label>{t("monthly")}</Label>
             <Input
               type="number"
               value={monthly}
@@ -128,7 +129,7 @@ export default function CalculatorPage() {
             </p>
           </div>
           <div className="space-y-2">
-            <Label>투자 기간 (년)</Label>
+            <Label>{t("years")}</Label>
             <Input
               type="number"
               min="1"
@@ -137,10 +138,10 @@ export default function CalculatorPage() {
               onChange={(e) => setYears(e.target.value)}
               placeholder="20"
             />
-            <p className="text-xs text-muted-foreground">{years}년 후</p>
+            <p className="text-xs text-muted-foreground">{years}{t("yearsSuffix")} {t("afterYears")}</p>
           </div>
           <div className="space-y-2">
-            <Label>기간 프리셋</Label>
+            <Label>{t("presets")}</Label>
             <div className="flex flex-wrap gap-1">
               {[10, 20, 30].map((y) => (
                 <Button
@@ -150,19 +151,19 @@ export default function CalculatorPage() {
                   className="text-xs h-7"
                   onClick={() => setYears(String(y))}
                 >
-                  {y}년
+                  {y}{t("yearsSuffix")}
                 </Button>
               ))}
             </div>
           </div>
         </CardContent>
         <CardContent className="border-t pt-4">
-          <p className="text-sm font-medium mb-3">수익률 시나리오 (%/년)</p>
+          <p className="text-sm font-medium mb-3">{t("scenarios")}</p>
           <div className="grid grid-cols-3 gap-4">
             {[
-              { label: "시나리오 1", value: cagr1, setter: setCagr1, color: "text-blue-600" },
-              { label: "시나리오 2", value: cagr2, setter: setCagr2, color: "text-emerald-600" },
-              { label: "시나리오 3", value: cagr3, setter: setCagr3, color: "text-orange-600" },
+              { label: t("scenario1"), value: cagr1, setter: setCagr1, color: "text-blue-600" },
+              { label: t("scenario2"), value: cagr2, setter: setCagr2, color: "text-emerald-600" },
+              { label: t("scenario3"), value: cagr3, setter: setCagr3, color: "text-orange-600" },
             ].map((s) => (
               <div key={s.label} className="space-y-2">
                 <Label className={s.color}>{s.label}</Label>
@@ -191,13 +192,12 @@ export default function CalculatorPage() {
         </CardContent>
       </Card>
 
-      {/* 결과 요약 */}
       <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
         {[
-          { label: "투자 원금", value: last.invested, color: "text-foreground" },
-          { label: `${cagr1}% 시나리오`, value: last.scenario1, color: "text-blue-600" },
-          { label: `${cagr2}% 시나리오`, value: last.scenario2, color: "text-emerald-600" },
-          { label: `${cagr3}% 시나리오`, value: last.scenario3, color: "text-orange-600" },
+          { label: t("principal"), value: last.invested, color: "text-foreground" },
+          { label: `${cagr1}% ${t("scenarioLabel")}`, value: last.scenario1, color: "text-blue-600" },
+          { label: `${cagr2}% ${t("scenarioLabel")}`, value: last.scenario2, color: "text-emerald-600" },
+          { label: `${cagr3}% ${t("scenarioLabel")}`, value: last.scenario3, color: "text-orange-600" },
         ].map((item) => (
           <Card key={item.label}>
             <CardContent className="pt-6">
@@ -207,7 +207,7 @@ export default function CalculatorPage() {
               </p>
               {item.value !== last.invested && (
                 <p className="text-xs text-muted-foreground mt-0.5">
-                  원금 대비{" "}
+                  {t("vsInvested")}{" "}
                   <span className="text-emerald-600 font-medium">
                     +{((item.value / last.invested - 1) * 100).toFixed(0)}%
                   </span>
@@ -218,10 +218,9 @@ export default function CalculatorPage() {
         ))}
       </div>
 
-      {/* 그래프 */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">자산 성장 추이</CardTitle>
+          <CardTitle className="text-base">{t("growthChart")}</CardTitle>
         </CardHeader>
         <CardContent>
           <ResponsiveContainer width="100%" height={380}>
@@ -237,10 +236,10 @@ export default function CalculatorPage() {
               <Legend
                 formatter={(value) => {
                   const labels: Record<string, string> = {
-                    scenario1: `${cagr1}% 시나리오`,
-                    scenario2: `${cagr2}% 시나리오`,
-                    scenario3: `${cagr3}% 시나리오`,
-                    invested: "투자 원금",
+                    scenario1: `${cagr1}% ${t("scenarioLabel")}`,
+                    scenario2: `${cagr2}% ${t("scenarioLabel")}`,
+                    scenario3: `${cagr3}% ${t("scenarioLabel")}`,
+                    invested: t("principal"),
                   };
                   return labels[value] ?? value;
                 }}
@@ -254,17 +253,16 @@ export default function CalculatorPage() {
         </CardContent>
       </Card>
 
-      {/* 상세 표 */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">연도별 자산 예측표</CardTitle>
+          <CardTitle className="text-base">{t("forecastTable")}</CardTitle>
         </CardHeader>
         <CardContent className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b text-muted-foreground">
-                <th className="py-2 text-left font-medium">연도</th>
-                <th className="py-2 text-right font-medium">투자 원금</th>
+                <th className="py-2 text-left font-medium">{t("year")}</th>
+                <th className="py-2 text-right font-medium">{t("principal")}</th>
                 <th className="py-2 text-right font-medium text-blue-600">{cagr1}%</th>
                 <th className="py-2 text-right font-medium text-emerald-600">{cagr2}%</th>
                 <th className="py-2 text-right font-medium text-orange-600">{cagr3}%</th>

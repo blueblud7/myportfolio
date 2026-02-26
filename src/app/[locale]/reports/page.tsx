@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useReports } from "@/hooks/use-api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { AllocationChart } from "@/components/dashboard/AllocationChart";
@@ -16,13 +17,14 @@ import { formatKRW, formatPercent, gainLossColor } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 export default function ReportsPage() {
+  const t = useTranslations("Reports");
   const { data: report, isLoading } = useReports();
 
   if (isLoading) {
     return (
       <div className="space-y-6">
-        <h1 className="text-2xl font-bold">리포트</h1>
-        <div className="py-12 text-center text-muted-foreground">로딩 중...</div>
+        <h1 className="text-2xl font-bold">{t("title")}</h1>
+        <div className="py-12 text-center text-muted-foreground">{t("loading")}</div>
       </div>
     );
   }
@@ -30,10 +32,10 @@ export default function ReportsPage() {
   if (!report) {
     return (
       <div className="space-y-6">
-        <h1 className="text-2xl font-bold">리포트</h1>
+        <h1 className="text-2xl font-bold">{t("title")}</h1>
         <Card>
           <CardContent className="py-12 text-center text-muted-foreground">
-            데이터가 없습니다. 계좌와 종목을 먼저 추가해주세요.
+            {t("noData")}
           </CardContent>
         </Card>
       </div>
@@ -42,18 +44,18 @@ export default function ReportsPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold">리포트</h1>
+      <h1 className="text-2xl font-bold">{t("title")}</h1>
 
       <div className="grid gap-4 md:grid-cols-2">
         <AllocationChart
-          title="통화별 배분"
+          title={t("byCurrency")}
           data={report.by_currency.map((c) => ({
             name: c.currency,
             value: c.value_krw,
           }))}
         />
         <AllocationChart
-          title="계좌별 배분"
+          title={t("byAccount")}
           data={report.by_account.map((a) => ({
             name: a.name,
             value: a.value_krw,
@@ -61,11 +63,30 @@ export default function ReportsPage() {
         />
       </div>
 
+      {report.by_sector.length > 0 ? (
+        <AllocationChart
+          title={t("bySector")}
+          data={report.by_sector.map((s) => ({
+            name: s.sector,
+            value: s.value_krw,
+          }))}
+        />
+      ) : (
+        <Card>
+          <CardHeader>
+            <CardTitle>{t("bySector")}</CardTitle>
+          </CardHeader>
+          <CardContent className="py-6 text-center text-muted-foreground text-sm">
+            {t("noSectorData")}
+          </CardContent>
+        </Card>
+      )}
+
       <div className="grid gap-4 md:grid-cols-2">
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              Top 5 수익 종목
+              {t("topGainers")}
               <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100">
                 Best
               </Badge>
@@ -73,13 +94,13 @@ export default function ReportsPage() {
           </CardHeader>
           <CardContent>
             {report.top_performers.length === 0 ? (
-              <div className="py-8 text-center text-muted-foreground">데이터 없음</div>
+              <div className="py-8 text-center text-muted-foreground">{t("noDataShort")}</div>
             ) : (
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>종목</TableHead>
-                    <TableHead className="text-right">수익률</TableHead>
+                    <TableHead>{t("ticker")}</TableHead>
+                    <TableHead className="text-right">{t("returnRate")}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -108,19 +129,19 @@ export default function ReportsPage() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              Top 5 손실 종목
+              {t("topLosers")}
               <Badge variant="destructive">Worst</Badge>
             </CardTitle>
           </CardHeader>
           <CardContent>
             {report.worst_performers.length === 0 ? (
-              <div className="py-8 text-center text-muted-foreground">데이터 없음</div>
+              <div className="py-8 text-center text-muted-foreground">{t("noDataShort")}</div>
             ) : (
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>종목</TableHead>
-                    <TableHead className="text-right">수익률</TableHead>
+                    <TableHead>{t("ticker")}</TableHead>
+                    <TableHead className="text-right">{t("returnRate")}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -149,15 +170,15 @@ export default function ReportsPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>자산 배분 상세</CardTitle>
+          <CardTitle>{t("allocationDetail")}</CardTitle>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>계좌</TableHead>
-                <TableHead className="text-right">평가금액 (KRW)</TableHead>
-                <TableHead className="text-right">비중</TableHead>
+                <TableHead>{t("account")}</TableHead>
+                <TableHead className="text-right">{t("valuation")}</TableHead>
+                <TableHead className="text-right">{t("weight")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -174,6 +195,60 @@ export default function ReportsPage() {
               ))}
             </TableBody>
           </Table>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>{t("dividendIncome")}</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {report.dividend_income.items.length === 0 ? (
+            <div className="py-8 text-center text-muted-foreground text-sm">
+              {t("noDividendData")}
+            </div>
+          ) : (
+            <>
+              <div className="mb-4 flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">{t("totalDividend")}</span>
+                <span className="text-lg font-bold font-mono">
+                  {formatKRW(report.dividend_income.total_krw)}
+                </span>
+                <span className="text-sm text-muted-foreground">/ 년</span>
+              </div>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>{t("ticker")}</TableHead>
+                    <TableHead className="text-right">{t("perShare")}</TableHead>
+                    <TableHead className="text-right">{t("annualIncome")}</TableHead>
+                    <TableHead className="text-right">{t("dividendYield")}</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {report.dividend_income.items.map((item) => (
+                    <TableRow key={item.ticker}>
+                      <TableCell>
+                        <div className="font-medium">{item.name}</div>
+                        <div className="text-xs text-muted-foreground">
+                          {item.ticker} · {item.quantity.toLocaleString()}주
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-right font-mono text-sm">
+                        {item.annual_dividend.toFixed(2)}
+                      </TableCell>
+                      <TableCell className="text-right font-mono font-medium">
+                        {formatKRW(item.annual_income_krw)}
+                      </TableCell>
+                      <TableCell className="text-right font-mono text-sm text-emerald-600">
+                        {item.dividend_yield.toFixed(2)}%
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </>
+          )}
         </CardContent>
       </Card>
     </div>

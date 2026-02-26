@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
+import { useTranslations } from "next-intl";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import type { StockSearchResult } from "@/app/api/stocks/search/route";
@@ -21,6 +22,7 @@ function useDebounce<T>(value: T, delay: number): T {
 }
 
 export function StockSearchInput({ onSelect, defaultValue = "", placeholder }: Props) {
+  const t = useTranslations("StockSearch");
   const [query, setQuery] = useState(defaultValue);
   const [results, setResults] = useState<StockSearchResult[]>([]);
   const [open, setOpen] = useState(false);
@@ -29,7 +31,6 @@ export function StockSearchInput({ onSelect, defaultValue = "", placeholder }: P
   const containerRef = useRef<HTMLDivElement>(null);
   const debouncedQuery = useDebounce(query, 300);
 
-  // 검색 실행
   useEffect(() => {
     if (debouncedQuery.length < 1) {
       setResults([]);
@@ -37,9 +38,8 @@ export function StockSearchInput({ onSelect, defaultValue = "", placeholder }: P
       return;
     }
 
-    // CASH / 현금 입력 시 바로 현금 옵션 표시
     if (/^(cash|현금)$/i.test(debouncedQuery.trim())) {
-      const cashOption: StockSearchResult = { ticker: "CASH", name: "현금", exchange: "", symbol: "CASH" };
+      const cashOption: StockSearchResult = { ticker: "CASH", name: t("cash"), exchange: "", symbol: "CASH" };
       setResults([cashOption]);
       setOpen(true);
       setActiveIdx(-1);
@@ -55,9 +55,8 @@ export function StockSearchInput({ onSelect, defaultValue = "", placeholder }: P
         setActiveIdx(-1);
       })
       .finally(() => setLoading(false));
-  }, [debouncedQuery]);
+  }, [debouncedQuery, t]);
 
-  // 외부 클릭 시 닫기
   useEffect(() => {
     const handleClick = (e: MouseEvent) => {
       if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
@@ -100,12 +99,12 @@ export function StockSearchInput({ onSelect, defaultValue = "", placeholder }: P
         onChange={(e) => setQuery(e.target.value)}
         onKeyDown={handleKeyDown}
         onFocus={() => results.length > 0 && setOpen(true)}
-        placeholder={placeholder ?? "종목코드 또는 종목명 검색"}
+        placeholder={placeholder ?? t("placeholder")}
         autoComplete="off"
       />
       {loading && (
         <div className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
-          검색 중...
+          {t("searching")}
         </div>
       )}
       {open && results.length > 0 && (

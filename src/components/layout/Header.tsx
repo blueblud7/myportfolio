@@ -1,6 +1,7 @@
 "use client";
 
 import { useExchangeRate } from "@/hooks/use-api";
+import { LanguageSwitcher } from "./LanguageSwitcher";
 import { RefreshCw } from "lucide-react";
 
 export function Header() {
@@ -10,6 +11,7 @@ export function Header() {
     <header className="sticky top-0 z-20 flex h-14 items-center justify-between border-b bg-background/95 px-6 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div />
       <div className="flex items-center gap-4">
+        <LanguageSwitcher />
         <div className="flex items-center gap-2 text-sm">
           <span className="text-muted-foreground">USD/KRW</span>
           <span className="font-mono font-semibold">

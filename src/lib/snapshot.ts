@@ -16,7 +16,9 @@ export async function createDailySnapshot(): Promise<boolean> {
   const holdings = db
     .prepare(
       `SELECT h.ticker, h.quantity, h.currency,
-              COALESCE(p.price, h.avg_cost) as current_price,
+              CASE WHEN h.manual_price IS NOT NULL AND h.manual_price > 0 THEN h.manual_price
+                   ELSE COALESCE(p.price, h.avg_cost)
+              END as current_price,
               a.type
        FROM holdings h
        JOIN accounts a ON h.account_id = a.id

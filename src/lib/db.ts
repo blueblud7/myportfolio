@@ -101,6 +101,14 @@ function initSchema(db: Database.Database) {
       created_at TEXT NOT NULL DEFAULT (datetime('now')),
       updated_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
+
+    CREATE TABLE IF NOT EXISTS stock_metadata (
+      ticker TEXT PRIMARY KEY,
+      sector TEXT DEFAULT '',
+      annual_dividend REAL DEFAULT 0,
+      dividend_yield REAL DEFAULT 0,
+      updated_at TEXT
+    );
   `);
 
   // 기존 DB 마이그레이션: holdings.note 컬럼

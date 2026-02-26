@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useTranslations } from "next-intl";
 import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -38,6 +39,8 @@ interface Props {
 }
 
 export function HoldingForm({ holding, accountId, currency, open, onClose, onSave }: Props) {
+  const t = useTranslations("HoldingForm");
+  const tCommon = useTranslations("Common");
   const [ticker, setTicker] = useState(holding?.ticker ?? "");
   const [name, setName] = useState(holding?.name ?? "");
   const [quantity, setQuantity] = useState(holding?.quantity?.toString() ?? "");
@@ -46,6 +49,9 @@ export function HoldingForm({ holding, accountId, currency, open, onClose, onSav
   const [useManualPrice, setUseManualPrice] = useState(holding?.manual_price != null);
   const [manualPrice, setManualPrice] = useState(holding?.manual_price?.toString() ?? "");
   const [date, setDate] = useState(holding?.date ?? format(new Date(), "yyyy-MM-dd"));
+  const [sector, setSector] = useState("");
+  const [annualDividend, setAnnualDividend] = useState("");
+  const [fetchingMeta, setFetchingMeta] = useState(false);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -58,12 +64,40 @@ export function HoldingForm({ holding, accountId, currency, open, onClose, onSav
       setUseManualPrice(holding?.manual_price != null);
       setManualPrice(holding?.manual_price?.toString() ?? "");
       setDate(holding?.date ?? format(new Date(), "yyyy-MM-dd"));
+      setSector("");
+      setAnnualDividend("");
+      setFetchingMeta(false);
+      if (holding?.ticker) {
+        fetch(`/api/stock-metadata?ticker=${holding.ticker}`)
+          .then((r) => r.json())
+          .then((data) => {
+            if (data.sector) setSector(data.sector);
+            if (data.annual_dividend) setAnnualDividend(data.annual_dividend.toString());
+          })
+          .catch(() => {});
+      }
     }
   }, [open, holding]);
 
   const handleStockSelect = (result: StockSearchResult) => {
     setTicker(result.ticker);
     setName(result.name);
+  };
+
+  const handleAutoFetchMeta = async () => {
+    const t_ = ticker.trim();
+    if (!t_) return;
+    setFetchingMeta(true);
+    try {
+      const res = await fetch(`/api/stock-metadata?ticker=${t_}`);
+      const data = await res.json();
+      if (data.sector) setSector(data.sector);
+      if (data.annual_dividend) setAnnualDividend(data.annual_dividend.toString());
+    } catch {
+      // ignore
+    } finally {
+      setFetchingMeta(false);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -89,6 +123,18 @@ export function HoldingForm({ holding, accountId, currency, open, onClose, onSav
       body: JSON.stringify(body),
     });
 
+    if (sector.trim() || annualDividend) {
+      await fetch("/api/stock-metadata", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ticker: body.ticker,
+          sector: sector.trim(),
+          annual_dividend: parseFloat(annualDividend) || 0,
+        }),
+      });
+    }
+
     setSaving(false);
     onSave();
     onClose();
@@ -98,15 +144,15 @@ export function HoldingForm({ holding, accountId, currency, open, onClose, onSav
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{holding ? "종목 수정" : "종목 추가"}</DialogTitle>
+          <DialogTitle>{holding ? t("editTitle") : t("addTitle")}</DialogTitle>
           <DialogDescription>
-            {holding ? "정보를 수정하세요." : "종목명 또는 종목코드로 검색하세요."}
+            {holding ? t("editDescription") : t("addDescription")}
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           {!holding ? (
             <div className="space-y-2">
-              <Label>종목 검색</Label>
+              <Label>{t("search")}</Label>
               <StockSearchInput
                 onSelect={handleStockSelect}
                 placeholder="예: 삼성전자, 005930, AAPL, 비상장회사명"
@@ -116,7 +162,7 @@ export function HoldingForm({ holding, accountId, currency, open, onClose, onSav
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="ticker">종목코드 / 식별자</Label>
+              <Label htmlFor="ticker">{t("tickerLabel")}</Label>
               <Input
                 id="ticker"
                 value={ticker}
@@ -126,7 +172,7 @@ export function HoldingForm({ holding, accountId, currency, open, onClose, onSav
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="holdingName">종목명</Label>
+              <Label htmlFor="holdingName">{t("nameLabel")}</Label>
               <Input
                 id="holdingName"
                 value={name}
@@ -139,7 +185,7 @@ export function HoldingForm({ holding, accountId, currency, open, onClose, onSav
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="quantity">수량</Label>
+              <Label htmlFor="quantity">{t("quantity")}</Label>
               <Input
                 id="quantity"
                 type="number"
@@ -151,7 +197,7 @@ export function HoldingForm({ holding, accountId, currency, open, onClose, onSav
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="avgCost">평균 매입가 ({currency})</Label>
+              <Label htmlFor="avgCost">{t("avgCost")} ({currency})</Label>
               <Input
                 id="avgCost"
                 type="number"
@@ -164,7 +210,6 @@ export function HoldingForm({ holding, accountId, currency, open, onClose, onSav
             </div>
           </div>
 
-          {/* 수동 현재가 (비상장 등) */}
           <div className="rounded-md border p-3 space-y-3">
             <label className="flex cursor-pointer items-center gap-2 text-sm">
               <input
@@ -176,19 +221,19 @@ export function HoldingForm({ holding, accountId, currency, open, onClose, onSav
                 }}
                 className="h-4 w-4 rounded"
               />
-              <span className="font-medium">현재가 직접 입력</span>
-              <span className="text-muted-foreground">(비상장 · 자동조회 불가 종목)</span>
+              <span className="font-medium">{t("manualToggle")}</span>
+              <span className="text-muted-foreground">{t("manualLabel")}</span>
             </label>
             {useManualPrice && (
               <div className="space-y-1">
-                <Label htmlFor="manualPrice">현재가 ({currency})</Label>
+                <Label htmlFor="manualPrice">{t("manualNote")} ({currency})</Label>
                 <Input
                   id="manualPrice"
                   type="number"
                   step="any"
                   value={manualPrice}
                   onChange={(e) => setManualPrice(e.target.value)}
-                  placeholder="현재 평가 가격 입력"
+                  placeholder={t("manualPlaceholder")}
                   required={useManualPrice}
                 />
               </div>
@@ -197,7 +242,7 @@ export function HoldingForm({ holding, accountId, currency, open, onClose, onSav
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="date">날짜</Label>
+              <Label htmlFor="date">{t("dateLabel")}</Label>
               <Input
                 id="date"
                 type="date"
@@ -207,23 +252,60 @@ export function HoldingForm({ holding, accountId, currency, open, onClose, onSav
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="note">메모 (선택)</Label>
+              <Label htmlFor="note">{t("noteLabel")}</Label>
               <Input
                 id="note"
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
-                placeholder="예: 분할매수 예정, 비상장 스타트업 등"
+                placeholder={t("notePlaceholder")}
                 maxLength={100}
               />
             </div>
           </div>
 
+          <div className="rounded-md border p-3 space-y-3">
+            <div className="text-sm font-medium">{t("extraInfo")}</div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="sector">{t("sector")}</Label>
+                <div className="flex gap-1">
+                  <Input
+                    id="sector"
+                    value={sector}
+                    onChange={(e) => setSector(e.target.value)}
+                    placeholder={t("sectorPlaceholder")}
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="annualDividend">{t("annualDividend")}</Label>
+                <Input
+                  id="annualDividend"
+                  type="number"
+                  step="any"
+                  value={annualDividend}
+                  onChange={(e) => setAnnualDividend(e.target.value)}
+                  placeholder="0"
+                />
+              </div>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleAutoFetchMeta}
+              disabled={fetchingMeta || !ticker}
+            >
+              {fetchingMeta ? t("fetching") : t("autoFetch")}
+            </Button>
+          </div>
+
           <div className="flex justify-end gap-2">
             <Button type="button" variant="outline" onClick={onClose}>
-              취소
+              {tCommon("cancel")}
             </Button>
             <Button type="submit" disabled={saving || !ticker || !name}>
-              {saving ? "저장 중..." : "저장"}
+              {saving ? tCommon("saving") : tCommon("save")}
             </Button>
           </div>
         </form>

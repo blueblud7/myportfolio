@@ -1,12 +1,14 @@
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
+import { useTranslations } from "next-intl";
 import { SummaryCards } from "@/components/dashboard/SummaryCards";
 import { TotalAssetChart } from "@/components/dashboard/TotalAssetChart";
 import { AllocationChart } from "@/components/dashboard/AllocationChart";
 import { useAccounts, useHoldings, useExchangeRate, useBankBalances } from "@/hooks/use-api";
 
 export default function DashboardPage() {
+  const t = useTranslations("Dashboard");
   const { data: accounts } = useAccounts();
   const { data: holdings } = useHoldings();
   const { data: exchangeRateData } = useExchangeRate();
@@ -85,14 +87,14 @@ export default function DashboardPage() {
 
   const allocationByType = useMemo(() => {
     return [
-      { name: "주식", value: summary.stockValueKrw },
-      { name: "은행", value: summary.bankValueKrw },
+      { name: t("stockLabel"), value: summary.stockValueKrw },
+      { name: t("bankLabel"), value: summary.bankValueKrw },
     ].filter((d) => d.value > 0);
-  }, [summary]);
+  }, [summary, t]);
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold">대시보드</h1>
+      <h1 className="text-2xl font-bold">{t("title")}</h1>
 
       <SummaryCards
         totalKrw={summary.totalKrw}
@@ -107,8 +109,8 @@ export default function DashboardPage() {
       <TotalAssetChart />
 
       <div className="grid gap-4 md:grid-cols-2">
-        <AllocationChart title="자산 구성 (유형별)" data={allocationByType} />
-        <AllocationChart title="자산 구성 (계좌별)" data={allocationByAccount} />
+        <AllocationChart title={t("byCurrency")} data={allocationByType} />
+        <AllocationChart title={t("byAccount")} data={allocationByAccount} />
       </div>
     </div>
   );

@@ -3,9 +3,11 @@
 import { SWRConfig } from "swr";
 import { Sidebar } from "./Sidebar";
 import { Header } from "./Header";
+import { PrivacyProvider } from "@/contexts/privacy-context";
 
 export function ClientLayout({ children }: { children: React.ReactNode }) {
   return (
+    <PrivacyProvider>
     <SWRConfig
       value={{
         revalidateOnFocus: false,
@@ -20,5 +22,6 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
         </div>
       </div>
     </SWRConfig>
+    </PrivacyProvider>
   );
 }

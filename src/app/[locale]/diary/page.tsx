@@ -2,8 +2,9 @@
 
 import { useState } from "react";
 import useSWR from "swr";
+import { useTranslations, useLocale } from "next-intl";
 import { format } from "date-fns";
-import { ko } from "date-fns/locale";
+import { ko, enUS } from "date-fns/locale";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,21 +21,21 @@ import type { DiaryEntry } from "@/types";
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
-const MOODS = [
-  { value: "great", label: "😄 최고", color: "bg-emerald-100 text-emerald-700" },
-  { value: "good", label: "🙂 좋음", color: "bg-blue-100 text-blue-700" },
-  { value: "neutral", label: "😐 보통", color: "bg-gray-100 text-gray-700" },
-  { value: "bad", label: "😟 나쁨", color: "bg-orange-100 text-orange-700" },
-  { value: "terrible", label: "😡 최악", color: "bg-red-100 text-red-700" },
-] as const;
+type Mood = "great" | "good" | "neutral" | "bad" | "terrible";
 
-type Mood = typeof MOODS[number]["value"];
-
-function MoodBadge({ mood }: { mood: string }) {
-  const m = MOODS.find((x) => x.value === mood) ?? MOODS[2];
+function MoodBadge({ mood, labels }: { mood: string; labels: Record<string, string> }) {
+  const colors: Record<string, string> = {
+    great: "bg-emerald-100 text-emerald-700",
+    good: "bg-blue-100 text-blue-700",
+    neutral: "bg-gray-100 text-gray-700",
+    bad: "bg-orange-100 text-orange-700",
+    terrible: "bg-red-100 text-red-700",
+  };
+  const color = colors[mood] ?? colors.neutral;
+  const label = labels[mood] ?? mood;
   return (
-    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${m.color}`}>
-      {m.label}
+    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${color}`}>
+      {label}
     </span>
   );
 }
@@ -57,6 +58,27 @@ const defaultForm = (): FormState => ({
 });
 
 export default function DiaryPage() {
+  const t = useTranslations("Diary");
+  const tCommon = useTranslations("Common");
+  const locale = useLocale();
+  const dateLocale = locale === "ko" ? ko : enUS;
+
+  const moodLabels: Record<string, string> = {
+    great: t("great"),
+    good: t("good"),
+    neutral: t("neutral"),
+    bad: t("bad"),
+    terrible: t("terrible"),
+  };
+
+  const MOODS: { value: Mood; color: string }[] = [
+    { value: "great", color: "bg-emerald-100 text-emerald-700" },
+    { value: "good", color: "bg-blue-100 text-blue-700" },
+    { value: "neutral", color: "bg-gray-100 text-gray-700" },
+    { value: "bad", color: "bg-orange-100 text-orange-700" },
+    { value: "terrible", color: "bg-red-100 text-red-700" },
+  ];
+
   const [search, setSearch] = useState("");
   const [formOpen, setFormOpen] = useState(false);
   const [form, setForm] = useState<FormState>(defaultForm());
@@ -105,7 +127,7 @@ export default function DiaryPage() {
   };
 
   const handleDelete = async (id: number) => {
-    if (!confirm("일기를 삭제하시겠습니까?")) return;
+    if (!confirm(t("deleteConfirm"))) return;
     await fetch(`/api/diary?id=${id}`, { method: "DELETE" });
     await mutate();
   };
@@ -113,7 +135,7 @@ export default function DiaryPage() {
   const tagList = (tags: string) =>
     tags
       .split(",")
-      .map((t) => t.trim())
+      .map((tag) => tag.trim())
       .filter(Boolean);
 
   return (
@@ -122,38 +144,37 @@ export default function DiaryPage() {
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2">
             <BookOpen className="h-6 w-6" />
-            투자 일기
+            {t("title")}
           </h1>
           <p className="text-muted-foreground text-sm mt-1">
-            투자 결정, 시장 상황, 감정 등을 기록하세요.
+            {t("description")}
           </p>
         </div>
         <Button onClick={openNew} className="gap-2">
           <Plus className="h-4 w-4" />
-          새 일기
+          {t("newEntry")}
         </Button>
       </div>
 
-      {/* 검색 */}
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input
           className="pl-9"
-          placeholder="제목, 내용, 태그 검색..."
+          placeholder={t("searchPlaceholder")}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
       </div>
 
-      {/* 통계 */}
       <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
         {MOODS.map((m) => {
           const count = entries.filter((e) => e.mood === m.value).length;
+          const label = moodLabels[m.value];
           return (
             <Card key={m.value} className="text-center">
               <CardContent className="pt-4 pb-3">
-                <div className="text-2xl">{m.label.split(" ")[0]}</div>
-                <div className="text-xs text-muted-foreground mt-1">{m.label.split(" ")[1]}</div>
+                <div className="text-2xl">{label.split(" ")[0]}</div>
+                <div className="text-xs text-muted-foreground mt-1">{label.split(" ")[1]}</div>
                 <div className="text-xl font-bold mt-1">{count}</div>
               </CardContent>
             </Card>
@@ -161,10 +182,9 @@ export default function DiaryPage() {
         })}
       </div>
 
-      {/* 목록 */}
       {filtered.length === 0 ? (
         <div className="py-20 text-center text-muted-foreground">
-          {search ? "검색 결과가 없습니다." : "아직 작성한 일기가 없습니다. 첫 일기를 작성해보세요!"}
+          {search ? t("noResults") : t("empty")}
         </div>
       ) : (
         <div className="space-y-3">
@@ -180,9 +200,9 @@ export default function DiaryPage() {
                       onClick={() => setExpandedId(isExpanded ? null : entry.id)}
                     >
                       <div className="flex items-center gap-2 flex-wrap">
-                        <MoodBadge mood={entry.mood} />
+                        <MoodBadge mood={entry.mood} labels={moodLabels} />
                         <span className="text-xs text-muted-foreground">
-                          {format(new Date(entry.date), "yyyy년 M월 d일 (eee)", { locale: ko })}
+                          {format(new Date(entry.date), locale === "ko" ? "yyyy년 M월 d일 (eee)" : "MMM d, yyyy (eee)", { locale: dateLocale })}
                         </span>
                       </div>
                       <h3 className="font-semibold mt-1 truncate">{entry.title}</h3>
@@ -241,16 +261,15 @@ export default function DiaryPage() {
         </div>
       )}
 
-      {/* 작성/수정 다이얼로그 */}
       <Dialog open={formOpen} onOpenChange={setFormOpen}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>{form.id ? "일기 수정" : "새 일기 작성"}</DialogTitle>
+            <DialogTitle>{form.id ? t("editTitle") : t("newTitle")}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <Label htmlFor="diary-date">날짜</Label>
+                <Label htmlFor="diary-date">{t("date")}</Label>
                 <Input
                   id="diary-date"
                   type="date"
@@ -260,7 +279,7 @@ export default function DiaryPage() {
                 />
               </div>
               <div className="space-y-1.5">
-                <Label>오늘의 기분</Label>
+                <Label>{t("mood")}</Label>
                 <div className="flex gap-1 flex-wrap">
                   {MOODS.map((m) => (
                     <button
@@ -273,7 +292,7 @@ export default function DiaryPage() {
                           : "bg-muted text-muted-foreground hover:bg-accent"
                       }`}
                     >
-                      {m.label}
+                      {moodLabels[m.value]}
                     </button>
                   ))}
                 </div>
@@ -281,44 +300,44 @@ export default function DiaryPage() {
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="diary-title">제목</Label>
+              <Label htmlFor="diary-title">{t("titleLabel")}</Label>
               <Input
                 id="diary-title"
                 value={form.title}
                 onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
-                placeholder="오늘의 투자 요약..."
+                placeholder={t("titlePlaceholder")}
                 required
               />
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="diary-content">내용</Label>
+              <Label htmlFor="diary-content">{t("content")}</Label>
               <textarea
                 id="diary-content"
                 value={form.content}
                 onChange={(e) => setForm((f) => ({ ...f, content: e.target.value }))}
-                placeholder="시장 상황, 투자 결정 이유, 느낀 점 등을 자유롭게 작성하세요..."
+                placeholder={t("contentPlaceholder")}
                 rows={8}
                 className="w-full rounded-md border bg-background px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-y"
               />
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="diary-tags">태그 (선택, 쉼표로 구분)</Label>
+              <Label htmlFor="diary-tags">{t("tagsLabel")}</Label>
               <Input
                 id="diary-tags"
                 value={form.tags}
                 onChange={(e) => setForm((f) => ({ ...f, tags: e.target.value }))}
-                placeholder="예: 삼성전자, 매수, 분할매수"
+                placeholder={t("tagsPlaceholder")}
               />
             </div>
 
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={() => setFormOpen(false)}>
-                취소
+                {tCommon("cancel")}
               </Button>
               <Button onClick={handleSave} disabled={saving || !form.title || !form.date}>
-                {saving ? "저장 중..." : "저장"}
+                {saving ? tCommon("saving") : tCommon("save")}
               </Button>
             </div>
           </div>

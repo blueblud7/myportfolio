@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -29,6 +30,8 @@ interface Props {
 }
 
 export function BankBalanceForm({ accounts, open, onClose, onSave }: Props) {
+  const t = useTranslations("BankBalanceForm");
+  const tCommon = useTranslations("Common");
   const bankAccounts = accounts.filter((a) => a.type === "bank");
   const [accountId, setAccountId] = useState(bankAccounts[0]?.id?.toString() ?? "");
   const [balance, setBalance] = useState("");
@@ -62,15 +65,15 @@ export function BankBalanceForm({ accounts, open, onClose, onSave }: Props) {
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>잔고 입력</DialogTitle>
-          <DialogDescription>은행 잔고를 입력해주세요.</DialogDescription>
+          <DialogTitle>{t("title")}</DialogTitle>
+          <DialogDescription>{t("description")}</DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label>계좌</Label>
+            <Label>{t("account")}</Label>
             <Select value={accountId} onValueChange={setAccountId}>
               <SelectTrigger>
-                <SelectValue placeholder="계좌 선택" />
+                <SelectValue placeholder={t("selectAccount")} />
               </SelectTrigger>
               <SelectContent>
                 {bankAccounts.map((a) => (
@@ -83,7 +86,7 @@ export function BankBalanceForm({ accounts, open, onClose, onSave }: Props) {
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="balance">잔고</Label>
+              <Label htmlFor="balance">{t("balance")}</Label>
               <Input
                 id="balance"
                 type="number"
@@ -94,7 +97,7 @@ export function BankBalanceForm({ accounts, open, onClose, onSave }: Props) {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="date">날짜</Label>
+              <Label htmlFor="date">{t("date")}</Label>
               <Input
                 id="date"
                 type="date"
@@ -105,20 +108,20 @@ export function BankBalanceForm({ accounts, open, onClose, onSave }: Props) {
             </div>
           </div>
           <div className="space-y-2">
-            <Label htmlFor="note">메모</Label>
+            <Label htmlFor="note">{t("note")}</Label>
             <Input
               id="note"
               value={note}
               onChange={(e) => setNote(e.target.value)}
-              placeholder="옵션"
+              placeholder={t("notePlaceholder")}
             />
           </div>
           <div className="flex justify-end gap-2">
             <Button type="button" variant="outline" onClick={onClose}>
-              취소
+              {tCommon("cancel")}
             </Button>
             <Button type="submit" disabled={saving || !accountId}>
-              {saving ? "저장 중..." : "저장"}
+              {saving ? tCommon("saving") : tCommon("save")}
             </Button>
           </div>
         </form>

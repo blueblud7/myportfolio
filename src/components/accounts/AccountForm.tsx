@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -28,11 +29,22 @@ interface Props {
 }
 
 export function AccountForm({ account, open, onClose, onSave }: Props) {
+  const t = useTranslations("AccountForm");
+  const tCommon = useTranslations("Common");
   const [name, setName] = useState(account?.name ?? "");
   const [type, setType] = useState(account?.type ?? "stock");
   const [currency, setCurrency] = useState(account?.currency ?? "KRW");
   const [broker, setBroker] = useState(account?.broker ?? "");
   const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (open) {
+      setName(account?.name ?? "");
+      setType(account?.type ?? "stock");
+      setCurrency(account?.currency ?? "KRW");
+      setBroker(account?.broker ?? "");
+    }
+  }, [open, account]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -54,12 +66,12 @@ export function AccountForm({ account, open, onClose, onSave }: Props) {
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{account ? "계좌 수정" : "새 계좌"}</DialogTitle>
-          <DialogDescription>계좌 정보를 입력해주세요.</DialogDescription>
+          <DialogTitle>{account ? t("editTitle") : t("newTitle")}</DialogTitle>
+          <DialogDescription>{t("description")}</DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="name">계좌명</Label>
+            <Label htmlFor="name">{t("name")}</Label>
             <Input
               id="name"
               value={name}
@@ -70,45 +82,45 @@ export function AccountForm({ account, open, onClose, onSave }: Props) {
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label>유형</Label>
+              <Label>{t("type")}</Label>
               <Select value={type} onValueChange={(v: "stock" | "bank") => setType(v)}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="stock">주식</SelectItem>
-                  <SelectItem value="bank">은행</SelectItem>
+                  <SelectItem value="stock">{t("stock")}</SelectItem>
+                  <SelectItem value="bank">{t("bank")}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-2">
-              <Label>통화</Label>
+              <Label>{t("currency")}</Label>
               <Select value={currency} onValueChange={(v: "KRW" | "USD") => setCurrency(v)}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="KRW">KRW (원)</SelectItem>
-                  <SelectItem value="USD">USD ($)</SelectItem>
+                  <SelectItem value="KRW">{t("krw")}</SelectItem>
+                  <SelectItem value="USD">{t("usd")}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
           </div>
           <div className="space-y-2">
-            <Label htmlFor="broker">증권사/은행</Label>
+            <Label htmlFor="broker">{t("broker")}</Label>
             <Input
               id="broker"
               value={broker}
               onChange={(e) => setBroker(e.target.value)}
-              placeholder="예: 한국투자증권, 토스뱅크"
+              placeholder={t("brokerPlaceholder")}
             />
           </div>
           <div className="flex justify-end gap-2">
             <Button type="button" variant="outline" onClick={onClose}>
-              취소
+              {tCommon("cancel")}
             </Button>
             <Button type="submit" disabled={saving}>
-              {saving ? "저장 중..." : "저장"}
+              {saving ? tCommon("saving") : tCommon("save")}
             </Button>
           </div>
         </form>

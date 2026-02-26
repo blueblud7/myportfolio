@@ -72,6 +72,59 @@ export async function getQuotes(tickers: string[]): Promise<QuoteResult[]> {
     .filter((r): r is QuoteResult => r !== null);
 }
 
+const SECTOR_MAP: Record<string, string> = {
+  Technology: "기술",
+  Financials: "금융",
+  "Health Care": "헬스케어",
+  Energy: "에너지",
+  Materials: "소재",
+  Industrials: "산업재",
+  Utilities: "유틸리티",
+  "Real Estate": "부동산",
+  "Consumer Staples": "필수소비재",
+  "Consumer Discretionary": "자유소비재",
+  "Communication Services": "통신서비스",
+};
+
+export async function getStockMetadataFromYahoo(ticker: string): Promise<{
+  sector: string;
+  annual_dividend: number;
+  dividend_yield: number;
+} | null> {
+  if (ticker === "CASH") return null;
+
+  const trySymbol = async (symbol: string) => {
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const result: any = await yf.quoteSummary(symbol, {
+        modules: ["assetProfile", "summaryDetail"],
+      });
+      if (!result) return null;
+      const sectorEn: string = result.assetProfile?.sector ?? "";
+      const sector = SECTOR_MAP[sectorEn] ?? sectorEn;
+      const annualDividend: number =
+        result.summaryDetail?.trailingAnnualDividendRate ?? 0;
+      const dividendYieldRaw: number =
+        result.summaryDetail?.dividendYield ?? 0;
+      const dividendYield = dividendYieldRaw < 1 ? dividendYieldRaw * 100 : dividendYieldRaw;
+      return { sector, annual_dividend: annualDividend, dividend_yield: dividendYield };
+    } catch {
+      return null;
+    }
+  };
+
+  if (/^\d[A-Z0-9]{5}$/i.test(ticker)) {
+    for (const suffix of [".KS", ".KQ"]) {
+      const result = await trySymbol(`${ticker}${suffix}`);
+      if (result) return result;
+    }
+    return null;
+  }
+
+  const symbol = resolveYahooSymbol(ticker);
+  return trySymbol(symbol);
+}
+
 export async function getExchangeRate(): Promise<number> {
   try {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
