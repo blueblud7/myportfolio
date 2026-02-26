@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -24,6 +25,7 @@ interface HoldingData {
   currency: string;
   note?: string;
   manual_price?: number | null;
+  date?: string;
 }
 
 interface Props {
@@ -43,6 +45,7 @@ export function HoldingForm({ holding, accountId, currency, open, onClose, onSav
   const [note, setNote] = useState(holding?.note ?? "");
   const [useManualPrice, setUseManualPrice] = useState(holding?.manual_price != null);
   const [manualPrice, setManualPrice] = useState(holding?.manual_price?.toString() ?? "");
+  const [date, setDate] = useState(holding?.date ?? format(new Date(), "yyyy-MM-dd"));
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -54,6 +57,7 @@ export function HoldingForm({ holding, accountId, currency, open, onClose, onSav
       setNote(holding?.note ?? "");
       setUseManualPrice(holding?.manual_price != null);
       setManualPrice(holding?.manual_price?.toString() ?? "");
+      setDate(holding?.date ?? format(new Date(), "yyyy-MM-dd"));
     }
   }, [open, holding]);
 
@@ -76,6 +80,7 @@ export function HoldingForm({ holding, accountId, currency, open, onClose, onSav
       currency,
       note: note.trim(),
       manual_price: useManualPrice && manualPrice ? parseFloat(manualPrice) : null,
+      date,
     };
 
     await fetch("/api/holdings", {
@@ -190,15 +195,27 @@ export function HoldingForm({ holding, accountId, currency, open, onClose, onSav
             )}
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="note">메모 (선택)</Label>
-            <Input
-              id="note"
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-              placeholder="예: 분할매수 예정, 비상장 스타트업 등"
-              maxLength={100}
-            />
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="date">날짜</Label>
+              <Input
+                id="date"
+                type="date"
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="note">메모 (선택)</Label>
+              <Input
+                id="note"
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                placeholder="예: 분할매수 예정, 비상장 스타트업 등"
+                maxLength={100}
+              />
+            </div>
           </div>
 
           <div className="flex justify-end gap-2">

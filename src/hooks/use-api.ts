@@ -1,5 +1,5 @@
 import useSWR from "swr";
-import type { Account, Snapshot, ReportData, BankBalance } from "@/types";
+import type { Account, Snapshot, ReportData, BankBalance, DiaryEntry } from "@/types";
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 const arrayFetcher = (url: string) => fetch(url).then((r) => r.json()).then((d) => Array.isArray(d) ? d : []);
@@ -37,6 +37,14 @@ export function useBankBalances(accountId?: number) {
     ? `/api/bank-balances?account_id=${accountId}`
     : "/api/bank-balances";
   return useSWR<BankBalance[]>(key, fetcher);
+}
+
+export function useDiary(year?: string, month?: string) {
+  const params = new URLSearchParams();
+  if (year) params.set("year", year);
+  if (month) params.set("month", month);
+  const key = `/api/diary${params.toString() ? `?${params}` : ""}`;
+  return useSWR<DiaryEntry[]>(key, arrayFetcher);
 }
 
 export async function refreshPrices(tickers: string[]) {

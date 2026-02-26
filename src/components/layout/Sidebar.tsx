@@ -8,20 +8,25 @@ import {
   Wallet,
   Landmark,
   BarChart3,
+  TrendingUp,
+  BookOpen,
 } from "lucide-react";
+import { InvestorQuote } from "./InvestorQuote";
 
 const navItems = [
   { href: "/", label: "대시보드", icon: LayoutDashboard },
   { href: "/accounts", label: "계좌 관리", icon: Wallet },
   { href: "/bank", label: "은행 계좌", icon: Landmark },
   { href: "/reports", label: "리포트", icon: BarChart3 },
+  { href: "/calculator", label: "미래 예측", icon: TrendingUp },
+  { href: "/diary", label: "투자 일기", icon: BookOpen },
 ];
 
 export function Sidebar() {
   const pathname = usePathname();
 
   return (
-    <aside className="fixed left-0 top-0 z-30 h-screen w-60 border-r bg-card">
+    <aside className="fixed left-0 top-0 z-30 flex h-screen w-60 flex-col border-r bg-card">
       <div className="flex h-14 items-center border-b px-6">
         <Link href="/" className="flex items-center gap-2 font-semibold">
           <Wallet className="h-5 w-5" />
@@ -51,6 +56,9 @@ export function Sidebar() {
           );
         })}
       </nav>
+      <div className="mt-auto">
+        <InvestorQuote />
+      </div>
     </aside>
   );
 }

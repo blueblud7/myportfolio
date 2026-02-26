@@ -16,6 +16,7 @@ export interface Holding {
   avg_cost: number;
   currency: "KRW" | "USD";
   note: string;
+  date: string;
 }
 
 export interface HoldingWithPrice extends Holding {
@@ -63,6 +64,17 @@ export interface BrokerCredential {
   secret_key: string;
   account_number: string;
   last_synced_at: string | null;
+}
+
+export interface DiaryEntry {
+  id: number;
+  title: string;
+  content: string;
+  date: string;
+  mood: "great" | "good" | "neutral" | "bad" | "terrible";
+  tags: string;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface KiwoomHolding {

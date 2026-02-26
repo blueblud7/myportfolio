@@ -90,6 +90,17 @@ function initSchema(db: Database.Database) {
       last_synced_at TEXT,
       FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE CASCADE
     );
+
+    CREATE TABLE IF NOT EXISTS diary (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      title TEXT NOT NULL,
+      content TEXT NOT NULL DEFAULT '',
+      date TEXT NOT NULL,
+      mood TEXT NOT NULL DEFAULT 'neutral',
+      tags TEXT NOT NULL DEFAULT '',
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
   `);
 
   // 기존 DB 마이그레이션: holdings.note 컬럼
@@ -102,6 +113,13 @@ function initSchema(db: Database.Database) {
   // 기존 DB 마이그레이션: holdings.manual_price 컬럼
   try {
     db.exec(`ALTER TABLE holdings ADD COLUMN manual_price REAL`);
+  } catch {
+    // 이미 존재하면 무시
+  }
+
+  // 기존 DB 마이그레이션: holdings.date 컬럼
+  try {
+    db.exec(`ALTER TABLE holdings ADD COLUMN date TEXT NOT NULL DEFAULT (date('now'))`);
   } catch {
     // 이미 존재하면 무시
   }

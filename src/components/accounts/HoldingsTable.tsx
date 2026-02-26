@@ -25,6 +25,7 @@ interface HoldingRow {
   change_pct: number;
   note: string;
   manual_price: number | null;
+  date: string;
 }
 
 interface Props {

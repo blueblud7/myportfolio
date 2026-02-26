@@ -42,17 +42,37 @@ export default function AccountDetailPage() {
   const [kiwoomOpen, setKiwoomOpen] = useState(false);
   const autoRefreshed = useRef(false);
 
+  const getRefreshTickers = useCallback(() => {
+    if (!holdings) return [];
+    return holdings
+      .filter((h: { ticker: string; manual_price: number | null }) => h.ticker !== "CASH" && !h.manual_price)
+      .map((h: { ticker: string }) => h.ticker);
+  }, [holdings]);
+
   // holdings 로드 후 현재가 없으면 자동 새로고침
   useEffect(() => {
     if (!holdings || holdings.length === 0 || autoRefreshed.current) return;
     const hasNoPrice = holdings.some((h: { current_price: number; ticker: string; manual_price: number | null }) => !h.current_price && h.ticker !== "CASH" && !h.manual_price);
     if (hasNoPrice) {
       autoRefreshed.current = true;
-      const tickers = holdings.map((h: { ticker: string; manual_price: number | null }) => h).filter((h) => h.ticker !== "CASH" && !h.manual_price).map((h) => h.ticker);
+      const tickers = getRefreshTickers();
       setRefreshing(true);
       refreshPrices(tickers).then(() => mutateHoldings()).finally(() => setRefreshing(false));
     }
-  }, [holdings, mutateHoldings]);
+  }, [holdings, mutateHoldings, getRefreshTickers]);
+
+  // 5분마다 자동 주가 새로고침
+  useEffect(() => {
+    const id = setInterval(async () => {
+      const tickers = getRefreshTickers();
+      if (tickers.length === 0) return;
+      setRefreshing(true);
+      await refreshPrices(tickers);
+      await mutateHoldings();
+      setRefreshing(false);
+    }, 5 * 60 * 1000);
+    return () => clearInterval(id);
+  }, [getRefreshTickers, mutateHoldings]);
 
   const handleRefresh = useCallback(async () => {
     if (!holdings || holdings.length === 0) return;
