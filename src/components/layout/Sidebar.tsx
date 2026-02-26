@@ -31,11 +31,14 @@ export function Sidebar() {
   ];
 
   return (
-    <aside className="fixed left-0 top-0 z-30 flex h-screen w-60 flex-col border-r bg-card">
-      <div className="flex h-14 items-center justify-between border-b px-4">
-        <Link href="/" className="flex items-center gap-2 font-semibold">
-          <Wallet className="h-5 w-5" />
-          <span>My Portfolio</span>
+    <aside className="fixed left-0 top-0 z-30 flex h-screen w-60 flex-col bg-zinc-950">
+      {/* Logo */}
+      <div className="flex h-14 items-center justify-between px-4 border-b border-zinc-800">
+        <Link href="/" className="flex items-center gap-2.5">
+          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-500">
+            <TrendingUp className="h-4 w-4 text-white" />
+          </div>
+          <span className="font-semibold text-white tracking-tight">My Portfolio</span>
         </Link>
         <button
           onClick={toggle}
@@ -43,14 +46,19 @@ export function Sidebar() {
           className={cn(
             "flex h-7 w-7 items-center justify-center rounded-md transition-colors",
             isPrivate
-              ? "bg-primary text-primary-foreground"
-              : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+              ? "bg-blue-500/20 text-blue-400"
+              : "text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300"
           )}
         >
           {isPrivate ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
         </button>
       </div>
-      <nav className="flex flex-col gap-1 p-3">
+
+      {/* Nav */}
+      <nav className="flex flex-col gap-0.5 p-3 pt-4">
+        <p className="mb-2 px-3 text-[10px] font-semibold uppercase tracking-widest text-zinc-600">
+          메뉴
+        </p>
         {navItems.map((item) => {
           const isActive =
             item.href === "/"
@@ -61,18 +69,23 @@ export function Sidebar() {
               key={item.href}
               href={item.href}
               className={cn(
-                "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
+                "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all",
                 isActive
-                  ? "bg-primary text-primary-foreground"
-                  : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                  ? "bg-blue-500/15 text-blue-300 ring-1 ring-blue-500/20"
+                  : "text-zinc-400 hover:bg-zinc-800/70 hover:text-zinc-100"
               )}
             >
-              <item.icon className="h-4 w-4" />
+              <item.icon className={cn("h-4 w-4 shrink-0", isActive ? "text-blue-400" : "")} />
               {item.label}
+              {isActive && (
+                <span className="ml-auto h-1.5 w-1.5 rounded-full bg-blue-400" />
+              )}
             </Link>
           );
         })}
       </nav>
+
+      {/* Quote */}
       <div className="mt-auto">
         <InvestorQuote />
       </div>

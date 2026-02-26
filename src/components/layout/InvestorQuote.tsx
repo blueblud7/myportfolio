@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useTranslations } from "next-intl";
+import { Quote } from "lucide-react";
 
 export function InvestorQuote() {
   const t = useTranslations("InvestorQuotes");
@@ -24,13 +25,14 @@ export function InvestorQuote() {
 
   return (
     <div
-      className="px-4 py-4 border-t transition-opacity duration-400"
+      className="mx-3 mb-4 rounded-lg border border-zinc-800 bg-zinc-900/60 p-3 transition-opacity duration-400"
       style={{ opacity: fade ? 1 : 0 }}
     >
-      <p className="text-[11px] text-muted-foreground leading-relaxed italic">
-        &ldquo;{quote.text}&rdquo;
+      <Quote className="mb-1.5 h-3 w-3 text-blue-500/60" />
+      <p className="text-[11px] text-zinc-500 leading-relaxed">
+        {quote.text}
       </p>
-      <p className="mt-1.5 text-[11px] font-medium text-muted-foreground/70 text-right">
+      <p className="mt-1.5 text-[10px] font-medium text-zinc-600 text-right">
         — {quote.author}
       </p>
     </div>
