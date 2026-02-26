@@ -87,7 +87,13 @@ export async function getStockMetadataFromYahoo(ticker: string): Promise<{
       });
       if (!result) return null;
       // 영어 원문 그대로 저장 (화면에서 locale에 맞게 번역)
-      const sector: string = result.assetProfile?.sector ?? "";
+      // Yahoo Finance가 반환하는 비표준 섹터명 정규화
+      const rawSector: string = result.assetProfile?.sector ?? "";
+      const SECTOR_NORMALIZE: Record<string, string> = {
+        Healthcare: "Health Care",
+        "Financial Services": "Financials",
+      };
+      const sector = SECTOR_NORMALIZE[rawSector] ?? rawSector;
       const annualDividend: number =
         result.summaryDetail?.trailingAnnualDividendRate ?? 0;
       const dividendYieldRaw: number =
