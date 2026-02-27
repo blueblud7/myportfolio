@@ -39,16 +39,14 @@ async function fetchAndCacheBenchmark(
   start: string,
   end: string
 ): Promise<{ date: string; close: number }[]> {
-  const db = getDb();
+  const sql = getDb();
   const yesterday = format(subDays(new Date(), 1), "yyyy-MM-dd");
 
-  const cached = db
-    .prepare(
-      `SELECT date, close FROM benchmark_prices
-       WHERE symbol = ? AND date >= ? AND date <= ?
-       ORDER BY date`
-    )
-    .all(symbol, start, end) as { date: string; close: number }[];
+  const cached = await sql`
+    SELECT date, close FROM benchmark_prices
+    WHERE symbol = ${symbol} AND date >= ${start} AND date <= ${end}
+    ORDER BY date
+  ` as { date: string; close: number }[];
 
   const latestCached = cached.length > 0 ? cached[cached.length - 1].date : null;
 
@@ -57,24 +55,19 @@ async function fetchAndCacheBenchmark(
     const fresh = await getBenchmarkHistory(symbol, fetchStart, end);
 
     if (fresh.length > 0) {
-      const insert = db.prepare(
-        `INSERT OR IGNORE INTO benchmark_prices (symbol, date, close) VALUES (?, ?, ?)`
+      await sql.transaction(
+        fresh.map(p => sql`
+          INSERT INTO benchmark_prices (symbol, date, close) VALUES (${symbol}, ${p.date}, ${p.close})
+          ON CONFLICT (symbol, date) DO NOTHING
+        `)
       );
-      const tx = db.transaction(() => {
-        for (const point of fresh) {
-          insert.run(symbol, point.date, point.close);
-        }
-      });
-      tx();
     }
 
-    return db
-      .prepare(
-        `SELECT date, close FROM benchmark_prices
-         WHERE symbol = ? AND date >= ? AND date <= ?
-         ORDER BY date`
-      )
-      .all(symbol, start, end) as { date: string; close: number }[];
+    return await sql`
+      SELECT date, close FROM benchmark_prices
+      WHERE symbol = ${symbol} AND date >= ${start} AND date <= ${end}
+      ORDER BY date
+    ` as { date: string; close: number }[];
   }
 
   return cached;
@@ -88,72 +81,62 @@ export async function GET(request: NextRequest) {
   const benchmarkNames = searchParams.getAll("benchmarks");
 
   const { start, end } = getPeriodDates(period);
-  const db = getDb();
+  const sql = getDb();
 
   // --- Subject ---
   let subjectName = "포트폴리오";
   let subjectPoints: PerformancePoint[] = [];
 
   if (type === "portfolio") {
-    const snapshots = db
-      .prepare(
-        `SELECT date, total_krw as value FROM snapshots
-         WHERE date >= ? AND date <= ?
-         ORDER BY date`
-      )
-      .all(start, end) as { date: string; value: number }[];
+    const snapshots = await sql`
+      SELECT date, total_krw as value FROM snapshots
+      WHERE date >= ${start} AND date <= ${end}
+      ORDER BY date
+    ` as { date: string; value: number }[];
     subjectPoints = normalizeToReturnPct(snapshots);
     subjectName = "포트폴리오";
   } else if (type === "account" && id) {
-    const account = db
-      .prepare(`SELECT name FROM accounts WHERE id = ?`)
-      .get(Number(id)) as { name: string } | undefined;
+    const [account] = await sql`
+      SELECT name FROM accounts WHERE id = ${Number(id)}
+    ` as { name: string }[];
     subjectName = account?.name ?? "계좌";
 
-    // account daily value: holdings × price_history + bank_balances
-    // Use a simpler approach: join holdings with price_history
-    const rows = db
-      .prepare(
-        `SELECT ph.date,
-                SUM(
-                  CASE
-                    WHEN h.currency = 'USD' THEN
-                      h.quantity * ph.price * COALESCE(
-                        (SELECT er.rate FROM exchange_rates er WHERE er.date <= ph.date ORDER BY er.date DESC LIMIT 1),
-                        1350
-                      )
-                    ELSE h.quantity * ph.price
-                  END
-                ) AS value
-         FROM holdings h
-         JOIN price_history ph ON ph.ticker = h.ticker
-         WHERE h.account_id = ?
-           AND ph.date >= ?
-           AND ph.date <= ?
-           AND h.ticker != 'CASH'
-         GROUP BY ph.date
-         ORDER BY ph.date`
-      )
-      .all(Number(id), start, end) as { date: string; value: number }[];
+    const rows = await sql`
+      SELECT ph.date,
+             SUM(
+               CASE
+                 WHEN h.currency = 'USD' THEN
+                   h.quantity * ph.price * COALESCE(
+                     (SELECT er.rate FROM exchange_rates er WHERE er.date <= ph.date ORDER BY er.date DESC LIMIT 1),
+                     1350
+                   )
+                 ELSE h.quantity * ph.price
+               END
+             ) AS value
+      FROM holdings h
+      JOIN price_history ph ON ph.ticker = h.ticker
+      WHERE h.account_id = ${Number(id)}
+        AND ph.date >= ${start}
+        AND ph.date <= ${end}
+        AND h.ticker != 'CASH'
+      GROUP BY ph.date
+      ORDER BY ph.date
+    ` as { date: string; value: number }[];
 
     subjectPoints = normalizeToReturnPct(rows);
   } else if (type === "stock" && id) {
-    // id is ticker
-    const holding = db
-      .prepare(`SELECT name, currency FROM holdings WHERE ticker = ? LIMIT 1`)
-      .get(id) as { name: string; currency: string } | undefined;
+    const [holding] = await sql`
+      SELECT name, currency FROM holdings WHERE ticker = ${id} LIMIT 1
+    ` as { name: string; currency: string }[];
     subjectName = holding?.name ?? id;
 
-    const rows = db
-      .prepare(
-        `SELECT date, price AS value FROM price_history
-         WHERE ticker = ? AND date >= ? AND date <= ?
-         ORDER BY date`
-      )
-      .all(id, start, end) as { date: string; value: number }[];
+    const rows = await sql`
+      SELECT date, price AS value FROM price_history
+      WHERE ticker = ${id} AND date >= ${start} AND date <= ${end}
+      ORDER BY date
+    ` as { date: string; value: number }[];
 
     if (rows.length === 0) {
-      // Try from benchmark cache if it's an index
       const symbol = BENCHMARK_SYMBOLS[id] ?? id;
       const pts = await fetchAndCacheBenchmark(symbol, start, end);
       subjectPoints = normalizeToReturnPct(pts.map((p) => ({ date: p.date, value: p.close })));

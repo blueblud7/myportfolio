@@ -1,43 +1,68 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 import { getBenchmarkHistory } from "@/lib/yahoo-finance";
-import { format, subYears, subDays } from "date-fns";
+import { format, subYears, subDays, startOfYear } from "date-fns";
 import type { ReturnsCalendarResponse, ReturnsCalendarRow } from "@/types";
 
 async function upsertRows(symbol: string, pts: { date: string; close: number }[]) {
   if (pts.length === 0) return;
-  const db = getDb();
-  const insert = db.prepare(
-    `INSERT OR IGNORE INTO benchmark_prices (symbol, date, close) VALUES (?, ?, ?)`
+  const sql = getDb();
+  await sql.transaction(
+    pts.map(p => sql`
+      INSERT INTO benchmark_prices (symbol, date, close) VALUES (${symbol}, ${p.date}, ${p.close})
+      ON CONFLICT (symbol, date) DO NOTHING
+    `)
   );
-  const tx = db.transaction(() => {
-    for (const p of pts) insert.run(symbol, p.date, p.close);
-  });
-  tx();
+}
+
+// 대용량 요청 시 Yahoo Finance가 잘릴 수 있으므로 5년 단위로 분할 취득
+async function fetchChunked(
+  symbol: string,
+  start: string,
+  end: string
+): Promise<void> {
+  const CHUNK_YEARS = 5;
+  let chunkStart = new Date(start);
+  const endDate = new Date(end);
+
+  while (chunkStart <= endDate) {
+    const chunkEnd = new Date(chunkStart);
+    chunkEnd.setFullYear(chunkEnd.getFullYear() + CHUNK_YEARS);
+    if (chunkEnd > endDate) chunkEnd.setTime(endDate.getTime());
+
+    const pts = await getBenchmarkHistory(
+      symbol,
+      format(chunkStart, "yyyy-MM-dd"),
+      format(chunkEnd, "yyyy-MM-dd")
+    );
+    await upsertRows(symbol, pts);
+
+    // 다음 청크는 하루 뒤부터
+    chunkStart = new Date(chunkEnd);
+    chunkStart.setDate(chunkStart.getDate() + 1);
+  }
 }
 
 async function ensureBenchmarkData(symbol: string, start: string, end: string): Promise<void> {
-  const db = getDb();
+  const sql = getDb();
 
-  // 캐시의 최솟값·최댓값 확인
-  const bounds = db
-    .prepare(`SELECT MIN(date) as min_date, MAX(date) as max_date FROM benchmark_prices WHERE symbol = ?`)
-    .get(symbol) as { min_date: string | null; max_date: string | null };
+  const [bounds] = await sql`
+    SELECT MIN(date) as min_date, MAX(date) as max_date
+    FROM benchmark_prices WHERE symbol = ${symbol}
+  ` as [{ min_date: string | null; max_date: string | null }];
 
   const yesterday = format(subDays(new Date(), 1), "yyyy-MM-dd");
 
-  // 과거 방향: 캐시가 없거나 start 이후부터 시작되면 처음부터 재취득
+  // 과거 방향: 캐시가 없거나 start보다 늦게 시작되면 청크 단위로 취득
   if (!bounds.min_date || bounds.min_date > start) {
-    const fetchEnd = bounds.min_date ?? end; // 이미 있는 구간은 IGNORE로 중복 처리
-    const pts = await getBenchmarkHistory(symbol, start, fetchEnd);
-    await upsertRows(symbol, pts);
+    const fetchEnd = bounds.min_date ?? end;
+    await fetchChunked(symbol, start, fetchEnd);
   }
 
   // 최신 방향: 어제까지 채워져 있지 않으면 갭 취득
   if (!bounds.max_date || bounds.max_date < yesterday) {
     const fetchStart = bounds.max_date ?? start;
-    const pts = await getBenchmarkHistory(symbol, fetchStart, end);
-    await upsertRows(symbol, pts);
+    await fetchChunked(symbol, fetchStart, end);
   }
 }
 
@@ -46,19 +71,18 @@ export async function GET(request: NextRequest) {
   const symbol = searchParams.get("symbol") ?? "^GSPC";
   const years = Math.min(Number(searchParams.get("years") ?? 20), 50);
 
-  const start = format(subYears(new Date(), years), "yyyy-MM-dd");
+  // 해당 연도 전체가 보이도록 N년 전 1월 1일부터 시작
+  const start = format(startOfYear(subYears(new Date(), years)), "yyyy-MM-dd");
   const end = format(new Date(), "yyyy-MM-dd");
   await ensureBenchmarkData(symbol, start, end);
 
-  const db = getDb();
+  const sql = getDb();
 
-  const rows = db
-    .prepare(
-      `SELECT date, close FROM benchmark_prices
-       WHERE symbol = ? AND date >= ? AND date <= ?
-       ORDER BY date`
-    )
-    .all(symbol, start, end) as { date: string; close: number }[];
+  const rows = await sql`
+    SELECT date, close FROM benchmark_prices
+    WHERE symbol = ${symbol} AND date >= ${start} AND date <= ${end}
+    ORDER BY date
+  ` as { date: string; close: number }[];
 
   if (rows.length === 0) {
     const empty: ReturnsCalendarResponse = {

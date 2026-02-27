@@ -38,16 +38,14 @@ async function fetchAndCacheBenchmark(
   start: string,
   end: string
 ): Promise<{ date: string; close: number }[]> {
-  const db = getDb();
+  const sql = getDb();
   const yesterday = format(subDays(new Date(), 1), "yyyy-MM-dd");
 
-  const cached = db
-    .prepare(
-      `SELECT date, close FROM benchmark_prices
-       WHERE symbol = ? AND date >= ? AND date <= ?
-       ORDER BY date`
-    )
-    .all(symbol, start, end) as { date: string; close: number }[];
+  const cached = await sql`
+    SELECT date, close FROM benchmark_prices
+    WHERE symbol = ${symbol} AND date >= ${start} AND date <= ${end}
+    ORDER BY date
+  ` as { date: string; close: number }[];
 
   const latestCached = cached.length > 0 ? cached[cached.length - 1].date : null;
 
@@ -56,24 +54,19 @@ async function fetchAndCacheBenchmark(
     const fresh = await getBenchmarkHistory(symbol, fetchStart, end);
 
     if (fresh.length > 0) {
-      const insert = db.prepare(
-        `INSERT OR IGNORE INTO benchmark_prices (symbol, date, close) VALUES (?, ?, ?)`
+      await sql.transaction(
+        fresh.map(p => sql`
+          INSERT INTO benchmark_prices (symbol, date, close) VALUES (${symbol}, ${p.date}, ${p.close})
+          ON CONFLICT (symbol, date) DO NOTHING
+        `)
       );
-      const tx = db.transaction(() => {
-        for (const point of fresh) {
-          insert.run(symbol, point.date, point.close);
-        }
-      });
-      tx();
     }
 
-    return db
-      .prepare(
-        `SELECT date, close FROM benchmark_prices
-         WHERE symbol = ? AND date >= ? AND date <= ?
-         ORDER BY date`
-      )
-      .all(symbol, start, end) as { date: string; close: number }[];
+    return await sql`
+      SELECT date, close FROM benchmark_prices
+      WHERE symbol = ${symbol} AND date >= ${start} AND date <= ${end}
+      ORDER BY date
+    ` as { date: string; close: number }[];
   }
 
   return cached;

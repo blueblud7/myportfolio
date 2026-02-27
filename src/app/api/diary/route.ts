@@ -5,76 +5,51 @@ export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const year = searchParams.get("year");
   const month = searchParams.get("month");
+  const sql = getDb();
 
-  const db = getDb();
-
-  let query = "SELECT * FROM diary";
-  const params: string[] = [];
-
+  let entries;
   if (year && month) {
-    const paddedMonth = month.padStart(2, "0");
-    query += ` WHERE date LIKE '${year}-${paddedMonth}%'`;
+    const prefix = `${year}-${month.padStart(2, "0")}%`;
+    entries = await sql`SELECT * FROM diary WHERE date LIKE ${prefix} ORDER BY date DESC, created_at DESC`;
   } else if (year) {
-    query += ` WHERE date LIKE '${year}%'`;
+    const prefix = `${year}%`;
+    entries = await sql`SELECT * FROM diary WHERE date LIKE ${prefix} ORDER BY date DESC, created_at DESC`;
+  } else {
+    entries = await sql`SELECT * FROM diary ORDER BY date DESC, created_at DESC`;
   }
-
-  query += " ORDER BY date DESC, created_at DESC";
-
-  const entries = db.prepare(query).all(...params);
   return NextResponse.json(entries);
 }
 
 export async function POST(req: NextRequest) {
-  const body = await req.json();
-  const { title, content, date, mood, tags } = body;
-
-  if (!title || !date) {
-    return NextResponse.json({ error: "title and date required" }, { status: 400 });
-  }
-
-  const db = getDb();
-  const result = db
-    .prepare(
-      "INSERT INTO diary (title, content, date, mood, tags) VALUES (?, ?, ?, ?, ?)"
-    )
-    .run(
-      title.trim(),
-      content ?? "",
-      date,
-      mood ?? "neutral",
-      tags ?? ""
-    );
-
-  const entry = db.prepare("SELECT * FROM diary WHERE id = ?").get(result.lastInsertRowid);
+  const { title, content, date, mood, tags } = await req.json();
+  if (!title || !date) return NextResponse.json({ error: "title and date required" }, { status: 400 });
+  const sql = getDb();
+  const [entry] = await sql`
+    INSERT INTO diary (title, content, date, mood, tags)
+    VALUES (${title.trim()}, ${content ?? ""}, ${date}, ${mood ?? "neutral"}, ${tags ?? ""})
+    RETURNING *
+  `;
   return NextResponse.json(entry, { status: 201 });
 }
 
 export async function PUT(req: NextRequest) {
-  const body = await req.json();
-  const { id, title, content, date, mood, tags } = body;
-
-  if (!id) {
-    return NextResponse.json({ error: "id required" }, { status: 400 });
-  }
-
-  const db = getDb();
-  db.prepare(
-    "UPDATE diary SET title = ?, content = ?, date = ?, mood = ?, tags = ?, updated_at = datetime('now') WHERE id = ?"
-  ).run(title, content ?? "", date, mood ?? "neutral", tags ?? "", id);
-
-  const entry = db.prepare("SELECT * FROM diary WHERE id = ?").get(id);
+  const { id, title, content, date, mood, tags } = await req.json();
+  if (!id) return NextResponse.json({ error: "id required" }, { status: 400 });
+  const sql = getDb();
+  const [entry] = await sql`
+    UPDATE diary
+    SET title=${title}, content=${content ?? ""}, date=${date},
+        mood=${mood ?? "neutral"}, tags=${tags ?? ""},
+        updated_at=to_char(NOW(),'YYYY-MM-DD HH24:MI:SS')
+    WHERE id=${id} RETURNING *
+  `;
   return NextResponse.json(entry);
 }
 
 export async function DELETE(req: NextRequest) {
-  const { searchParams } = new URL(req.url);
-  const id = searchParams.get("id");
-
-  if (!id) {
-    return NextResponse.json({ error: "id required" }, { status: 400 });
-  }
-
-  const db = getDb();
-  db.prepare("DELETE FROM diary WHERE id = ?").run(id);
+  const id = new URL(req.url).searchParams.get("id");
+  if (!id) return NextResponse.json({ error: "id required" }, { status: 400 });
+  const sql = getDb();
+  await sql`DELETE FROM diary WHERE id=${id}`;
   return NextResponse.json({ success: true });
 }

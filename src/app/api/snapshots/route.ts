@@ -3,10 +3,7 @@ import { createDailySnapshot, getSnapshots } from "@/lib/snapshot";
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
-  const startDate = searchParams.get("start");
-  const endDate = searchParams.get("end");
-
-  const snapshots = getSnapshots(startDate ?? undefined, endDate ?? undefined);
+  const snapshots = await getSnapshots(searchParams.get("start") ?? undefined, searchParams.get("end") ?? undefined);
   return NextResponse.json(snapshots);
 }
 
