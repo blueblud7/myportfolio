@@ -11,11 +11,12 @@ import Database from "better-sqlite3";
 import { neon } from "@neondatabase/serverless";
 import path from "path";
 import fs from "fs";
+import os from "os";
 import { fileURLToPath } from "url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.join(__dirname, "..");
-const DB_PATH = process.argv[2] ?? path.join(ROOT, "data/portfolio.db");
+const DB_PATH = process.argv[2] ?? path.join(os.homedir(), ".myportfolio/portfolio.db");
 
 // .env.local 에서 DATABASE_URL 로드
 function loadEnv() {
@@ -123,51 +124,50 @@ function readAll(tableName) {
 }
 
 async function resetSequence(tableName, column) {
-  await sql`
-    SELECT setval(
-      pg_get_serial_sequence(${tableName}, ${column}),
-      COALESCE((SELECT MAX(${sql(column)}) FROM ${sql(tableName)}), 0) + 1,
-      false
-    )
-  `;
+  await sql.unsafe(
+    `SELECT setval(pg_get_serial_sequence('${tableName}', '${column}'), COALESCE((SELECT MAX(${column}) FROM ${tableName}), 0) + 1, false)`
+  );
 }
 
 async function insertRows(table, rows) {
   if (rows.length === 0) return;
 
-  const BATCH = 100;
+  const BATCH = 50;
   let inserted = 0;
+
+  const colList = table.columns.join(", ");
+  const conflictClause =
+    table.name === "benchmark_prices"
+      ? "ON CONFLICT (symbol, date) DO NOTHING"
+      : table.name === "price_history"
+      ? "ON CONFLICT (ticker, date) DO NOTHING"
+      : table.name === "stock_metadata" || table.name === "dividend_schedule"
+      ? "ON CONFLICT (ticker) DO NOTHING"
+      : table.name === "snapshots" || table.name === "exchange_rates"
+      ? "ON CONFLICT (date) DO NOTHING"
+      : table.name === "users"
+      ? "ON CONFLICT (username) DO NOTHING"
+      : "ON CONFLICT DO NOTHING";
 
   for (let i = 0; i < rows.length; i += BATCH) {
     const batch = rows.slice(i, i + BATCH);
 
-    await sql.transaction(
-      batch.map((row) => {
-        const vals = table.columns.map((c) => row[c] ?? null);
+    // 배치를 하나의 multi-row INSERT로 합침
+    const valueRows = batch.map((row) =>
+      table.columns.map((c) => row[c] ?? null)
+    );
 
-        // 동적 INSERT: Neon tagged template은 배열을 직접 지원하지 않으므로
-        // unsafe() 방식 사용
-        const placeholders = table.columns.map((_, idx) => `$${idx + 1}`).join(", ");
-        const colList = table.columns.join(", ");
+    // $1,$2,... placeholders
+    let paramIdx = 1;
+    const valueClauses = valueRows.map((vals) => {
+      const placeholders = vals.map(() => `$${paramIdx++}`).join(", ");
+      return `(${placeholders})`;
+    });
+    const flatVals = valueRows.flat();
 
-        const conflictClause =
-          table.name === "benchmark_prices"
-            ? "ON CONFLICT (symbol, date) DO NOTHING"
-            : table.name === "price_history"
-            ? "ON CONFLICT (ticker, date) DO NOTHING"
-            : table.name === "stock_metadata" || table.name === "dividend_schedule"
-            ? "ON CONFLICT (ticker) DO NOTHING"
-            : table.name === "snapshots" || table.name === "exchange_rates"
-            ? "ON CONFLICT (date) DO NOTHING"
-            : table.name === "users"
-            ? "ON CONFLICT (username) DO NOTHING"
-            : "ON CONFLICT DO NOTHING";
-
-        return sql.unsafe(
-          `INSERT INTO ${table.name} (${colList}) VALUES (${placeholders}) ${conflictClause}`,
-          vals
-        );
-      })
+    await sql.unsafe(
+      `INSERT INTO ${table.name} (${colList}) VALUES ${valueClauses.join(", ")} ${conflictClause}`,
+      flatVals
     );
 
     inserted += batch.length;
