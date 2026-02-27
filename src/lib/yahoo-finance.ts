@@ -117,6 +117,69 @@ export async function getStockMetadataFromYahoo(ticker: string): Promise<{
   return trySymbol(symbol);
 }
 
+export async function getBenchmarkHistory(
+  symbol: string,
+  startDate: string,
+  endDate: string
+): Promise<{ date: string; close: number }[]> {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const result: any = await yf.chart(symbol, {
+      period1: startDate,
+      period2: endDate,
+      interval: "1d",
+    });
+    if (!result?.quotes) return [];
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return result.quotes
+      .filter((q: { date: Date; close: number | null }) => q.close != null)
+      .map((q: { date: Date; close: number }) => ({
+        date: q.date.toISOString().split("T")[0],
+        close: q.close,
+      }));
+  } catch (e) {
+    console.error(`Failed to get benchmark history for ${symbol}:`, e);
+    return [];
+  }
+}
+
+export async function getDividendCalendarEvents(
+  ticker: string
+): Promise<{ exDividendDate: string | null; dividendDate: string | null } | null> {
+  if (ticker === "CASH") return null;
+
+  const trySymbol = async (symbol: string) => {
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const result: any = await yf.quoteSummary(symbol, {
+        modules: ["calendarEvents"],
+      });
+      if (!result?.calendarEvents) return null;
+      const cal = result.calendarEvents;
+      const exDate = cal.exDividendDate
+        ? new Date(cal.exDividendDate).toISOString().split("T")[0]
+        : null;
+      const divDate = cal.dividendDate
+        ? new Date(cal.dividendDate).toISOString().split("T")[0]
+        : null;
+      return { exDividendDate: exDate, dividendDate: divDate };
+    } catch {
+      return null;
+    }
+  };
+
+  if (/^\d[A-Z0-9]{5}$/i.test(ticker)) {
+    for (const suffix of [".KS", ".KQ"]) {
+      const result = await trySymbol(`${ticker}${suffix}`);
+      if (result) return result;
+    }
+    return null;
+  }
+
+  const symbol = resolveYahooSymbol(ticker);
+  return trySymbol(symbol);
+}
+
 export async function getExchangeRate(): Promise<number> {
   try {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

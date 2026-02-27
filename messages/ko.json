@@ -18,6 +18,7 @@
     "reports": "리포트",
     "calculator": "미래 예측",
     "diary": "투자 일기",
+    "quant": "마이퀀트",
     "showAmounts": "금액 표시",
     "hideAmounts": "금액 숨기기"
   },
@@ -46,7 +47,10 @@
     "noData": "스냅샷 데이터가 없습니다. 대시보드 접속시 자동으로 생성됩니다.",
     "totalAssets": "총자산",
     "stock": "주식",
-    "bank": "은행"
+    "bank": "은행",
+    "absolute": "자산",
+    "return": "수익률",
+    "portfolio": "내 포트폴리오"
   },
   "Accounts": {
     "title": "계좌 관리",
@@ -254,7 +258,32 @@
     "annualIncome": "연간 수입",
     "dividendYield": "배당수익률",
     "noDividendData": "배당 정보 없음",
-    "perShare": "주당 배당"
+    "perShare": "주당 배당",
+    "dividendCalendar": "배당 캘린더",
+    "monthlyDividend": "월별 예상 배당",
+    "frequency": "지급 빈도",
+    "exDividendDate": "배당락일",
+    "frequencyAnnual": "연 1회",
+    "frequencyQuarterly": "분기",
+    "frequencyMonthly": "매월",
+    "paymentMonths": "지급월",
+    "benchmarkComparison": "벤치마크 비교",
+    "subjectPortfolio": "포트폴리오",
+    "subjectAccount": "계좌",
+    "subjectStock": "종목",
+    "excessReturn": "초과성과"
+  },
+  "Quant": {
+    "title": "마이퀀트",
+    "sectorEtf": "산업 섹터 ETF 추이",
+    "returnsCalendar": "수익률 캘린더",
+    "selectSymbol": "심볼 선택",
+    "years10": "10년",
+    "years20": "20년",
+    "years30": "30년",
+    "average": "평균",
+    "median": "중앙값",
+    "annual": "연간"
   },
   "StockSearch": {
     "searching": "검색 중...",

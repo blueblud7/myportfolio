@@ -18,6 +18,7 @@
     "reports": "Reports",
     "calculator": "Calculator",
     "diary": "Diary",
+    "quant": "My Quant",
     "showAmounts": "Show amounts",
     "hideAmounts": "Hide amounts"
   },
@@ -46,7 +47,10 @@
     "noData": "No snapshot data. It will be created automatically when you visit the dashboard.",
     "totalAssets": "Total Assets",
     "stock": "Stock",
-    "bank": "Bank"
+    "bank": "Bank",
+    "absolute": "Value",
+    "return": "Return %",
+    "portfolio": "My Portfolio"
   },
   "Accounts": {
     "title": "Accounts",
@@ -254,7 +258,32 @@
     "annualIncome": "Annual Income",
     "dividendYield": "Dividend Yield",
     "noDividendData": "No dividend data",
-    "perShare": "Per Share"
+    "perShare": "Per Share",
+    "dividendCalendar": "Dividend Calendar",
+    "monthlyDividend": "Monthly Dividend",
+    "frequency": "Frequency",
+    "exDividendDate": "Ex-Dividend",
+    "frequencyAnnual": "Annual",
+    "frequencyQuarterly": "Quarterly",
+    "frequencyMonthly": "Monthly",
+    "paymentMonths": "Payment Months",
+    "benchmarkComparison": "Benchmark Comparison",
+    "subjectPortfolio": "Portfolio",
+    "subjectAccount": "Account",
+    "subjectStock": "Stock",
+    "excessReturn": "Excess Return"
+  },
+  "Quant": {
+    "title": "My Quant",
+    "sectorEtf": "US Sector ETF Performance",
+    "returnsCalendar": "Returns Calendar",
+    "selectSymbol": "Select Symbol",
+    "years10": "10Y",
+    "years20": "20Y",
+    "years30": "30Y",
+    "average": "Average",
+    "median": "Median",
+    "annual": "Annual"
   },
   "StockSearch": {
     "searching": "Searching...",

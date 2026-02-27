@@ -10,7 +10,11 @@ import { Money } from "@/components/ui/money";
 import { cn } from "@/lib/utils";
 import { TrendingUp, TrendingDown, Wallet, PiggyBank, BarChart2 } from "lucide-react";
 
-export function AccountsOverview() {
+interface AccountsOverviewProps {
+  currency?: "KRW" | "USD";
+}
+
+export function AccountsOverview({ currency = "KRW" }: AccountsOverviewProps) {
   const t = useTranslations("AccountsOverview");
   const { data: holdings } = useHoldings();
   const { data: exchangeRateData } = useExchangeRate();
@@ -51,6 +55,10 @@ export function AccountsOverview() {
   const topPerformers = reports?.top_performers ?? [];
   const worstPerformers = reports?.worst_performers ?? [];
 
+  const displayVal = (krw: number) =>
+    currency === "USD" ? krw / exchangeRate : krw;
+  const displayCurrency = currency === "USD" ? "USD" : undefined;
+
   return (
     <div className="space-y-4">
       <div className="grid gap-4 sm:grid-cols-3">
@@ -61,9 +69,11 @@ export function AccountsOverview() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold"><Money value={summary.totalKrw} /></div>
+            <div className="text-2xl font-bold">
+              <Money value={displayVal(summary.totalKrw)} currency={displayCurrency} />
+            </div>
             <div className="mt-0.5 text-xs text-muted-foreground">
-              ≈ <Money value={summary.totalKrw / exchangeRate} usd />
+              ≈ <Money value={currency === "USD" ? summary.totalKrw : summary.totalKrw / exchangeRate} currency={currency === "USD" ? undefined : "USD"} />
             </div>
           </CardContent>
         </Card>
@@ -75,7 +85,9 @@ export function AccountsOverview() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold"><Money value={summary.costKrw} /></div>
+            <div className="text-2xl font-bold">
+              <Money value={displayVal(summary.costKrw)} currency={displayCurrency} />
+            </div>
           </CardContent>
         </Card>
 
@@ -87,7 +99,7 @@ export function AccountsOverview() {
           </CardHeader>
           <CardContent>
             <div className={cn("text-2xl font-bold", gainLossColor(summary.gainLossKrw))}>
-              <Money value={summary.gainLossKrw} />
+              <Money value={displayVal(summary.gainLossKrw)} currency={displayCurrency} />
             </div>
             <div className={cn("mt-0.5 text-sm font-medium", gainLossColor(summary.gainLossPct))}>
               {formatPercent(summary.gainLossPct)}

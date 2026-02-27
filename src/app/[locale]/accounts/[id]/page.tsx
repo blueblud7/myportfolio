@@ -43,6 +43,7 @@ export default function AccountDetailPage() {
   const [editingHolding, setEditingHolding] = useState<any>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [kiwoomOpen, setKiwoomOpen] = useState(false);
+  const [currency, setCurrency] = useState<"KRW" | "USD">("KRW");
   const autoRefreshed = useRef(false);
 
   const getRefreshTickers = useCallback(() => {
@@ -106,61 +107,91 @@ export default function AccountDetailPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-4">
-        <Link href="/accounts">
-          <Button variant="ghost" size="icon">
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-        </Link>
-        <div>
-          <h1 className="text-2xl font-bold">{account?.name ?? "..."}</h1>
-          <div className="mt-1 flex gap-2">
-            {account && (
-              <>
-                <Badge variant="outline">
-                  {account.type === "stock" ? t("stock") : t("bank")}
-                </Badge>
-                <Badge variant="secondary">{account.currency}</Badge>
-                {account.broker && (
-                  <Badge variant="outline">{account.broker}</Badge>
-                )}
-              </>
-            )}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <Link href="/accounts">
+            <Button variant="ghost" size="icon">
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+          </Link>
+          <div>
+            <div className="flex items-center gap-3">
+              <h1 className="text-2xl font-bold">{account?.name ?? "..."}</h1>
+              <div className="flex rounded-md border overflow-hidden text-sm">
+                {(["KRW", "USD"] as const).map((cur) => (
+                  <button
+                    key={cur}
+                    onClick={() => setCurrency(cur)}
+                    className={cn(
+                      "px-3 py-1 font-medium transition-colors",
+                      currency === cur
+                        ? "bg-blue-500 text-white"
+                        : "bg-transparent text-muted-foreground hover:bg-muted"
+                    )}
+                  >
+                    {cur}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="mt-1 flex gap-2">
+              {account && (
+                <>
+                  <Badge variant="outline">
+                    {account.type === "stock" ? t("stock") : t("bank")}
+                  </Badge>
+                  <Badge variant="secondary">{account.currency}</Badge>
+                  {account.broker && (
+                    <Badge variant="outline">{account.broker}</Badge>
+                  )}
+                </>
+              )}
+            </div>
           </div>
         </div>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-3">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm text-muted-foreground">{t("valuation")}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-xl font-bold">
-              <Money value={totalValue} currency={account?.currency ?? "KRW"} />
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm text-muted-foreground">{t("totalGainLoss")}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className={cn("text-xl font-bold", gainLossColor(totalGainLoss))}>
-              <Money value={totalGainLoss} currency={account?.currency ?? "KRW"} />
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm text-muted-foreground">{t("returnRate")}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className={cn("text-xl font-bold", gainLossColor(totalGainLossPct))}>
-              {formatPercent(totalGainLossPct)}
-            </div>
-          </CardContent>
-        </Card>
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm text-muted-foreground">{t("valuation")}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-xl font-bold">
+                <Money
+                  value={currency === "USD"
+                    ? ((account?.currency ?? "KRW") === "KRW" ? totalValue / exchangeRate : totalValue)
+                    : ((account?.currency ?? "KRW") === "USD" ? totalValue * exchangeRate : totalValue)}
+                  currency={currency}
+                />
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm text-muted-foreground">{t("totalGainLoss")}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className={cn("text-xl font-bold", gainLossColor(totalGainLoss))}>
+                <Money
+                  value={currency === "USD"
+                    ? ((account?.currency ?? "KRW") === "KRW" ? totalGainLoss / exchangeRate : totalGainLoss)
+                    : ((account?.currency ?? "KRW") === "USD" ? totalGainLoss * exchangeRate : totalGainLoss)}
+                  currency={currency}
+                />
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm text-muted-foreground">{t("returnRate")}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className={cn("text-xl font-bold", gainLossColor(totalGainLossPct))}>
+                {formatPercent(totalGainLossPct)}
+              </div>
+            </CardContent>
+          </Card>
       </div>
 
       <Card>

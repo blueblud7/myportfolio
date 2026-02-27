@@ -6,12 +6,12 @@ import { cn } from "@/lib/utils";
 import {
   LayoutDashboard,
   Wallet,
-
   BarChart3,
   TrendingUp,
   BookOpen,
   Eye,
   EyeOff,
+  FlaskConical,
 } from "lucide-react";
 import { InvestorQuote } from "./InvestorQuote";
 import { usePrivacy } from "@/contexts/privacy-context";
@@ -27,6 +27,7 @@ export function Sidebar() {
     { href: "/reports", label: t("reports"), icon: BarChart3 },
     { href: "/calculator", label: t("calculator"), icon: TrendingUp },
     { href: "/diary", label: t("diary"), icon: BookOpen },
+    { href: "/quant", label: t("quant"), icon: FlaskConical },
   ];
 
   return (

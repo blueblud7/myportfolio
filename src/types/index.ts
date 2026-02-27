@@ -115,6 +115,55 @@ export interface PerformerRow {
   account_name: string;
 }
 
+export interface BenchmarkPoint {
+  date: string;
+  close: number;
+}
+
+export interface DividendScheduleItem {
+  ticker: string;
+  name: string;
+  frequency: string;
+  per_share_amount: number;
+  quantity: number;
+  annual_income_krw: number;
+  ex_dividend_date: string | null;
+  payment_months: number[];
+}
+
+export interface DividendScheduleResponse {
+  monthly: { month: number; amount_krw: number }[];
+  total_annual_krw: number;
+  items: DividendScheduleItem[];
+}
+
+export type PerformancePeriod = "1M" | "3M" | "6M" | "1Y";
+export type PerformanceSubjectType = "portfolio" | "account" | "stock";
+
+export interface PerformancePoint { date: string; return_pct: number; }
+
+export interface PerformanceCompareResponse {
+  subject: { name: string; points: PerformancePoint[] };
+  benchmarks: Record<string, PerformancePoint[]>;
+}
+
+export interface SectorEtfResponse {
+  [ticker: string]: { date: string; return_pct: number }[];
+}
+
+export interface ReturnsCalendarRow {
+  year: number;
+  months: (number | null)[];
+  annual: number | null;
+}
+
+export interface ReturnsCalendarResponse {
+  rows: ReturnsCalendarRow[];
+  average: (number | null)[];
+  median: (number | null)[];
+  avg_annual: number | null;
+}
+
 export interface ReportData {
   by_currency: { currency: string; value_krw: number; pct: number }[];
   by_account: { name: string; value_krw: number; pct: number }[];

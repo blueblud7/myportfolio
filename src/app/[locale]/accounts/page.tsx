@@ -23,6 +23,7 @@ export default function AccountsPage() {
   const [formOpen, setFormOpen] = useState(false);
   const [editingAccount, setEditingAccount] = useState<Account | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [currency, setCurrency] = useState<"KRW" | "USD">("KRW");
 
   const handleRefreshAll = useCallback(async () => {
     if (!holdings || holdings.length === 0) return;
@@ -67,7 +68,25 @@ export default function AccountsPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">{t("title")}</h1>
+        <div className="flex items-center gap-3">
+          <h1 className="text-2xl font-bold">{t("title")}</h1>
+          <div className="flex rounded-md border overflow-hidden text-sm">
+            {(["KRW", "USD"] as const).map((cur) => (
+              <button
+                key={cur}
+                onClick={() => setCurrency(cur)}
+                className={cn(
+                  "px-3 py-1 font-medium transition-colors",
+                  currency === cur
+                    ? "bg-blue-500 text-white"
+                    : "bg-transparent text-muted-foreground hover:bg-muted"
+                )}
+              >
+                {cur}
+              </button>
+            ))}
+          </div>
+        </div>
         <div className="flex gap-2">
           <Button variant="outline" onClick={handleRefreshAll} disabled={refreshing}>
             <RefreshCw className={cn("mr-2 h-4 w-4", refreshing && "animate-spin")} />
@@ -80,7 +99,7 @@ export default function AccountsPage() {
         </div>
       </div>
 
-      <AccountsOverview />
+      <AccountsOverview currency={currency} />
 
       {!Array.isArray(accounts) || accounts.length === 0 ? (
         <Card>
@@ -138,12 +157,20 @@ export default function AccountsPage() {
                     <div className="rounded-md bg-muted/50 px-3 py-2">
                       <div className="flex items-baseline justify-between">
                         <span className="text-xs text-muted-foreground">{t("valuation")}</span>
-                        <span className="font-semibold"><Money value={stat.totalKrw} /></span>
+                        <span className="font-semibold">
+                          <Money
+                            value={currency === "USD" ? stat.totalKrw / exchangeRate : stat.totalKrw}
+                            currency={currency === "USD" ? "USD" : undefined}
+                          />
+                        </span>
                       </div>
                       <div className="mt-1 flex items-baseline justify-between">
                         <span className="text-xs text-muted-foreground">{t("gainLoss")}</span>
                         <span className={cn("text-sm font-medium", gainLossColor(gainLoss))}>
-                          <Money value={gainLoss} />{" "}
+                          <Money
+                            value={currency === "USD" ? gainLoss / exchangeRate : gainLoss}
+                            currency={currency === "USD" ? "USD" : undefined}
+                          />{" "}
                           <span className="text-xs">{formatPercent(gainLossPct)}</span>
                         </span>
                       </div>

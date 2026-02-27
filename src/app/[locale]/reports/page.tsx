@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import { translateSector } from "@/lib/sectors";
 import { useReports, useExchangeRate } from "@/hooks/use-api";
@@ -19,7 +19,9 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { formatKRW, formatPercent, gainLossColor, formatCompact } from "@/lib/format";
 import { cn } from "@/lib/utils";
-import { RefreshCw } from "lucide-react";
+import { RefreshCw, ChevronUp, ChevronDown, ChevronsUpDown } from "lucide-react";
+import { DividendCalendar } from "@/components/reports/DividendCalendar";
+import { BenchmarkComparison } from "@/components/reports/BenchmarkComparison";
 
 const MASK = "•••••";
 
@@ -32,6 +34,17 @@ export default function ReportsPage() {
   const exchangeRate = exchangeRateData?.rate ?? 1350;
   const [perfCurrency, setPerfCurrency] = useState<"KRW" | "USD">("KRW");
   const [fetching, setFetching] = useState(false);
+
+  type PerfSortKey = "name" | "account_name" | "quantity" | "avg_cost" | "current_price" | "market_value" | "gain_loss" | "gain_loss_pct";
+  const [perfSort, setPerfSort] = useState<{ key: PerfSortKey; dir: "asc" | "desc" }>({ key: "gain_loss_pct", dir: "desc" });
+
+  const handlePerfSort = (key: PerfSortKey) => {
+    setPerfSort((prev) =>
+      prev.key === key
+        ? { key, dir: prev.dir === "asc" ? "desc" : "asc" }
+        : { key, dir: "desc" }
+    );
+  };
   const [fetchResult, setFetchResult] = useState<{ total: number; success: number; failed: number } | null>(null);
 
   const handleBulkFetch = async () => {
@@ -46,6 +59,28 @@ export default function ReportsPage() {
       setFetching(false);
     }
   };
+
+  const toKrw = (p: { currency: string }, val: number) =>
+    p.currency === "USD" ? val * exchangeRate : val;
+
+  const sortedPerformers = useMemo(() => {
+    if (!report) return [];
+    return [...report.all_performers].sort((a, b) => {
+      let diff = 0;
+      switch (perfSort.key) {
+        case "name":          diff = a.name.localeCompare(b.name, locale); break;
+        case "account_name":  diff = a.account_name.localeCompare(b.account_name, locale); break;
+        case "quantity":      diff = a.quantity - b.quantity; break;
+        case "avg_cost":      diff = toKrw(a, a.avg_cost) - toKrw(b, b.avg_cost); break;
+        case "current_price": diff = toKrw(a, a.current_price) - toKrw(b, b.current_price); break;
+        case "market_value":  diff = toKrw(a, a.market_value) - toKrw(b, b.market_value); break;
+        case "gain_loss":     diff = toKrw(a, a.gain_loss) - toKrw(b, b.gain_loss); break;
+        case "gain_loss_pct": diff = a.gain_loss_pct - b.gain_loss_pct; break;
+      }
+      return perfSort.dir === "asc" ? diff : -diff;
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [report, perfSort, exchangeRate, locale]);
 
   if (isLoading) {
     return (
@@ -68,6 +103,35 @@ export default function ReportsPage() {
       </div>
     );
   }
+
+  const SortHead = ({
+    colKey,
+    label,
+    right = false,
+  }: {
+    colKey: PerfSortKey;
+    label: string;
+    right?: boolean;
+  }) => {
+    const active = perfSort.key === colKey;
+    return (
+      <TableHead
+        className={cn("cursor-pointer select-none group", right && "text-right")}
+        onClick={() => handlePerfSort(colKey)}
+      >
+        <div className={cn("flex items-center gap-1 whitespace-nowrap", right ? "justify-end" : "justify-start")}>
+          <span>{label}</span>
+          {active ? (
+            perfSort.dir === "asc"
+              ? <ChevronUp className="h-3 w-3 shrink-0" />
+              : <ChevronDown className="h-3 w-3 shrink-0" />
+          ) : (
+            <ChevronsUpDown className="h-3 w-3 shrink-0 opacity-0 group-hover:opacity-40 transition-opacity" />
+          )}
+        </div>
+      </TableHead>
+    );
+  };
 
   const allSectorOther =
     report.by_sector.length === 1 && report.by_sector[0].sector === "Other";
@@ -244,18 +308,18 @@ export default function ReportsPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>{t("ticker")}</TableHead>
-                    <TableHead>{t("account")}</TableHead>
-                    <TableHead className="text-right">{t("quantity")}</TableHead>
-                    <TableHead className="text-right">{t("cost")}</TableHead>
-                    <TableHead className="text-right">{t("currentPrice")}</TableHead>
-                    <TableHead className="text-right">{t("valuation2")}</TableHead>
-                    <TableHead className="text-right">{t("gainLoss")}</TableHead>
-                    <TableHead className="text-right">{t("returnRate")}</TableHead>
+                    <SortHead colKey="name" label={t("ticker")} />
+                    <SortHead colKey="account_name" label={t("account")} />
+                    <SortHead colKey="quantity" label={t("quantity")} right />
+                    <SortHead colKey="avg_cost" label={t("cost")} right />
+                    <SortHead colKey="current_price" label={t("currentPrice")} right />
+                    <SortHead colKey="market_value" label={t("valuation2")} right />
+                    <SortHead colKey="gain_loss" label={t("gainLoss")} right />
+                    <SortHead colKey="gain_loss_pct" label={t("returnRate")} right />
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {report.all_performers.map((p) => {
+                  {sortedPerformers.map((p) => {
                     const toDisplay = (val: number) => {
                       if (perfCurrency === "KRW") {
                         const krw = p.currency === "USD" ? val * exchangeRate : val;
@@ -331,6 +395,10 @@ export default function ReportsPage() {
           </Table>
         </CardContent>
       </Card>
+
+      <BenchmarkComparison />
+
+      <DividendCalendar />
 
       <Card>
         <CardHeader>
