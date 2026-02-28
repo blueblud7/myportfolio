@@ -90,6 +90,7 @@ export async function GET(request: NextRequest) {
       average: Array(12).fill(null),
       median: Array(12).fill(null),
       avg_annual: null,
+      median_annual: null,
     };
     return NextResponse.json(empty);
   }
@@ -177,11 +178,21 @@ export async function GET(request: NextRequest) {
       ? annualVals.reduce((a, b) => a + b, 0) / annualVals.length
       : null;
 
+  const sortedAnnual = [...annualVals].sort((a, b) => a - b);
+  const mid = Math.floor(sortedAnnual.length / 2);
+  const median_annual =
+    sortedAnnual.length === 0
+      ? null
+      : sortedAnnual.length % 2 === 0
+      ? (sortedAnnual[mid - 1] + sortedAnnual[mid]) / 2
+      : sortedAnnual[mid];
+
   const response: ReturnsCalendarResponse = {
     rows: calendarRows,
     average,
     median,
     avg_annual,
+    median_annual,
   };
 
   return NextResponse.json(response);

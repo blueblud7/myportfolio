@@ -186,7 +186,12 @@ export function ReturnsCalendar() {
                       {v !== null ? formatPct(v) : ""}
                     </td>
                   ))}
-                  <td className="py-1.5 px-2" />
+                  <td
+                    className="py-1.5 px-2 text-center font-mono font-semibold"
+                    style={getCellStyle(data.median_annual, 30)}
+                  >
+                    {data.median_annual !== null ? formatPct(data.median_annual) : ""}
+                  </td>
                 </tr>
               </tbody>
             </table>

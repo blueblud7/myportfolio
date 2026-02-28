@@ -162,6 +162,7 @@ export interface ReturnsCalendarResponse {
   average: (number | null)[];
   median: (number | null)[];
   avg_annual: number | null;
+  median_annual: number | null;
 }
 
 export interface ReportData {
