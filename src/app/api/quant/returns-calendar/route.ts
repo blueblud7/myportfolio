@@ -7,12 +7,12 @@ import type { ReturnsCalendarResponse, ReturnsCalendarRow } from "@/types";
 async function upsertRows(symbol: string, pts: { date: string; close: number }[]) {
   if (pts.length === 0) return;
   const sql = getDb();
-  await sql.transaction(
-    pts.map(p => sql`
+  for (const p of pts) {
+    await sql`
       INSERT INTO benchmark_prices (symbol, date, close) VALUES (${symbol}, ${p.date}, ${p.close})
       ON CONFLICT (symbol, date) DO NOTHING
-    `)
-  );
+    `;
+  }
 }
 
 // 대용량 요청 시 Yahoo Finance가 잘릴 수 있으므로 5년 단위로 분할 취득

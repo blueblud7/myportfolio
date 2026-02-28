@@ -165,7 +165,7 @@ export function ReturnsCalendar() {
                     </td>
                   ))}
                   <td
-                    className="py-1.5 px-2 text-center font-mono font-semibold rounded-sm"
+                    className="py-1.5 px-2 text-center font-mono font-semibold"
                     style={getCellStyle(data.avg_annual, 30)}
                   >
                     {data.avg_annual !== null ? formatPct(data.avg_annual) : ""}

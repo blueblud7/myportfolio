@@ -55,12 +55,12 @@ async function fetchAndCacheBenchmark(
     const fresh = await getBenchmarkHistory(symbol, fetchStart, end);
 
     if (fresh.length > 0) {
-      await sql.transaction(
-        fresh.map(p => sql`
+      for (const p of fresh) {
+        await sql`
           INSERT INTO benchmark_prices (symbol, date, close) VALUES (${symbol}, ${p.date}, ${p.close})
           ON CONFLICT (symbol, date) DO NOTHING
-        `)
-      );
+        `;
+      }
     }
 
     return await sql`
