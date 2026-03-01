@@ -1,0 +1,125 @@
+import { NextRequest, NextResponse } from "next/server";
+import { getDb } from "@/lib/db";
+import { format, subMonths, subYears } from "date-fns";
+import type { RiskMetrics } from "@/types";
+
+const RISK_FREE_RATE = 0.035; // 연 3.5%
+
+function getPeriodStart(period: string): string | null {
+  const now = new Date();
+  switch (period) {
+    case "1M": return format(subMonths(now, 1), "yyyy-MM-dd");
+    case "3M": return format(subMonths(now, 3), "yyyy-MM-dd");
+    case "6M": return format(subMonths(now, 6), "yyyy-MM-dd");
+    case "1Y": return format(subYears(now, 1), "yyyy-MM-dd");
+    case "ALL": return null;
+    default:   return format(subYears(now, 1), "yyyy-MM-dd");
+  }
+}
+
+function calcMetrics(rows: { date: string; total_krw: number }[]): RiskMetrics {
+  if (rows.length < 2) {
+    return {
+      period_return: 0,
+      volatility: 0,
+      mdd: 0,
+      sharpe: 0,
+      best_day: 0,
+      worst_day: 0,
+      positive_days_pct: 0,
+      data_points: rows.length,
+      daily_returns: [],
+      drawdown_series: [],
+    };
+  }
+
+  // 일별 수익률 계산
+  const dailyReturns: { date: string; return_pct: number }[] = [];
+  for (let i = 1; i < rows.length; i++) {
+    const prev = rows[i - 1].total_krw;
+    const curr = rows[i].total_krw;
+    if (prev > 0) {
+      dailyReturns.push({
+        date: rows[i].date,
+        return_pct: ((curr - prev) / prev) * 100,
+      });
+    }
+  }
+
+  if (dailyReturns.length === 0) {
+    return {
+      period_return: 0,
+      volatility: 0,
+      mdd: 0,
+      sharpe: 0,
+      best_day: 0,
+      worst_day: 0,
+      positive_days_pct: 0,
+      data_points: rows.length,
+      daily_returns: [],
+      drawdown_series: [],
+    };
+  }
+
+  const returns = dailyReturns.map((d) => d.return_pct);
+
+  // 기간 수익률
+  const first = rows[0].total_krw;
+  const last = rows[rows.length - 1].total_krw;
+  const periodReturn = first > 0 ? ((last - first) / first) * 100 : 0;
+
+  // 변동성 (연환산 표준편차)
+  const mean = returns.reduce((a, b) => a + b, 0) / returns.length;
+  const variance = returns.reduce((a, b) => a + (b - mean) ** 2, 0) / returns.length;
+  const dailyStd = Math.sqrt(variance);
+  const volatility = dailyStd * Math.sqrt(252);
+
+  // 최대낙폭 (MDD)
+  const drawdownSeries: { date: string; drawdown_pct: number }[] = [];
+  let peak = rows[0].total_krw;
+  let mdd = 0;
+  for (const row of rows) {
+    if (row.total_krw > peak) peak = row.total_krw;
+    const dd = peak > 0 ? ((row.total_krw - peak) / peak) * 100 : 0;
+    drawdownSeries.push({ date: row.date, drawdown_pct: dd });
+    if (dd < mdd) mdd = dd;
+  }
+
+  // 샤프 비율
+  // 일별 무위험 수익률로 환산
+  const dailyRfr = (RISK_FREE_RATE / 252) * 100;
+  const excessReturns = returns.map((r) => r - dailyRfr);
+  const excessMean = excessReturns.reduce((a, b) => a + b, 0) / excessReturns.length;
+  const sharpe = dailyStd > 0 ? (excessMean / dailyStd) * Math.sqrt(252) : 0;
+
+  const bestDay = Math.max(...returns);
+  const worstDay = Math.min(...returns);
+  const positiveDays = returns.filter((r) => r > 0).length;
+  const positiveDaysPct = (positiveDays / returns.length) * 100;
+
+  return {
+    period_return: periodReturn,
+    volatility,
+    mdd,
+    sharpe,
+    best_day: bestDay,
+    worst_day: worstDay,
+    positive_days_pct: positiveDaysPct,
+    data_points: rows.length,
+    daily_returns: dailyReturns,
+    drawdown_series: drawdownSeries,
+  };
+}
+
+export async function GET(req: NextRequest) {
+  const period = new URL(req.url).searchParams.get("period") ?? "1Y";
+  const startDate = getPeriodStart(period);
+  const sql = getDb();
+
+  const rows = startDate
+    ? await sql`SELECT date, total_krw FROM snapshots WHERE date >= ${startDate} ORDER BY date ASC` as { date: string; total_krw: number }[]
+    : await sql`SELECT date, total_krw FROM snapshots ORDER BY date ASC` as { date: string; total_krw: number }[];
+
+  const metrics = calcMetrics(rows);
+  return NextResponse.json(metrics);
+}

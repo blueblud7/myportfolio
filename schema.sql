@@ -6,6 +6,7 @@ CREATE TABLE IF NOT EXISTS accounts (
   type TEXT NOT NULL CHECK(type IN ('stock', 'bank')),
   currency TEXT NOT NULL DEFAULT 'KRW' CHECK(currency IN ('KRW', 'USD')),
   broker TEXT NOT NULL DEFAULT '',
+  target_pct DOUBLE PRECISION NOT NULL DEFAULT 0,
   created_at TEXT NOT NULL DEFAULT (to_char(NOW(), 'YYYY-MM-DD HH24:MI:SS'))
 );
 
@@ -106,4 +107,21 @@ CREATE TABLE IF NOT EXISTS users (
   id SERIAL PRIMARY KEY,
   username TEXT NOT NULL UNIQUE,
   password_hash TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS transactions (
+  id SERIAL PRIMARY KEY,
+  account_id INTEGER NOT NULL,
+  type TEXT NOT NULL CHECK(type IN ('buy','sell','dividend','deposit','withdrawal')),
+  ticker TEXT NOT NULL DEFAULT '',
+  name TEXT NOT NULL DEFAULT '',
+  quantity DOUBLE PRECISION NOT NULL DEFAULT 0,
+  price DOUBLE PRECISION NOT NULL DEFAULT 0,
+  fees DOUBLE PRECISION NOT NULL DEFAULT 0,
+  total_amount DOUBLE PRECISION NOT NULL DEFAULT 0,
+  currency TEXT NOT NULL DEFAULT 'KRW' CHECK(currency IN ('KRW','USD')),
+  date TEXT NOT NULL,
+  note TEXT NOT NULL DEFAULT '',
+  created_at TEXT NOT NULL DEFAULT (to_char(NOW(),'YYYY-MM-DD HH24:MI:SS')),
+  FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE CASCADE
 );

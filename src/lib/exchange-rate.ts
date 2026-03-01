@@ -22,3 +22,13 @@ export async function getCachedExchangeRate(): Promise<number> {
   const rows = await sql`SELECT rate FROM exchange_rates ORDER BY date DESC LIMIT 1`;
   return rows.length > 0 ? (rows[0] as { rate: number }).rate : 1350;
 }
+
+/** 외부 API에서 강제로 최신 환율을 가져와 DB에 덮어씁니다. */
+export async function forceRefreshExchangeRate(): Promise<number> {
+  const sql = getDb();
+  const today = format(new Date(), "yyyy-MM-dd");
+  const rate = await fetchExchangeRate();
+  await sql`INSERT INTO exchange_rates (rate, date) VALUES (${rate}, ${today})
+            ON CONFLICT (date) DO UPDATE SET rate = ${rate}`;
+  return rate;
+}

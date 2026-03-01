@@ -1,5 +1,5 @@
 import useSWR from "swr";
-import type { Account, Snapshot, ReportData, BankBalance, DiaryEntry, BenchmarkPoint, DividendScheduleResponse, PerformanceCompareResponse, PerformancePeriod, PerformanceSubjectType, SectorEtfResponse, ReturnsCalendarResponse } from "@/types";
+import type { Account, Snapshot, ReportData, BankBalance, DiaryEntry, BenchmarkPoint, DividendScheduleResponse, PerformanceCompareResponse, PerformancePeriod, PerformanceSubjectType, SectorEtfResponse, ReturnsCalendarResponse, Transaction, RiskMetrics, RiskPeriod, CapitalGainsSummary, RebalancingSummary, DiaryMoodPattern, FxAnalysisResponse, PriceAlert } from "@/types";
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 const arrayFetcher = (url: string) => fetch(url).then((r) => r.json()).then((d) => Array.isArray(d) ? d : []);
@@ -96,6 +96,57 @@ export function useReturnsCalendar(symbol: string, years: number) {
     fetcher,
     { revalidateOnFocus: false, dedupingInterval: 300000 }
   );
+}
+
+export function useRebalancing(tolerance: number) {
+  return useSWR<RebalancingSummary>(
+    `/api/rebalancing?tolerance=${tolerance}`,
+    fetcher,
+    { revalidateOnFocus: false }
+  );
+}
+
+export function useCapitalGains(year: number) {
+  return useSWR<CapitalGainsSummary>(
+    `/api/tax/capital-gains?year=${year}`,
+    fetcher,
+    { revalidateOnFocus: false }
+  );
+}
+
+export function useRiskMetrics(period: RiskPeriod) {
+  return useSWR<RiskMetrics>(
+    `/api/risk?period=${period}`,
+    fetcher,
+    { revalidateOnFocus: false, dedupingInterval: 300000 }
+  );
+}
+
+export function useTransactions(accountId?: number) {
+  const key = accountId !== undefined
+    ? `/api/transactions?account_id=${accountId}`
+    : "/api/transactions";
+  return useSWR<Transaction[]>(key, arrayFetcher);
+}
+
+export function useDiaryAnalysis() {
+  return useSWR<DiaryMoodPattern[]>("/api/diary-analysis", arrayFetcher, {
+    revalidateOnFocus: false,
+    dedupingInterval: 300000,
+  });
+}
+
+export function useFxAnalysis() {
+  return useSWR<FxAnalysisResponse>("/api/fx-analysis", fetcher, {
+    revalidateOnFocus: false,
+    dedupingInterval: 300000,
+  });
+}
+
+export function usePriceAlerts() {
+  return useSWR<PriceAlert[]>("/api/alerts", arrayFetcher, {
+    refreshInterval: 60000,
+  });
 }
 
 export async function refreshPrices(tickers: string[]) {

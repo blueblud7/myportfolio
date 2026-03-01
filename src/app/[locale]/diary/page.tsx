@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { BookOpen, Plus, Pencil, Trash2, Search } from "lucide-react";
+import { DiaryPatternAnalysis } from "@/components/diary/DiaryPatternAnalysis";
 import type { DiaryEntry } from "@/types";
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
@@ -165,6 +166,8 @@ export default function DiaryPage() {
           onChange={(e) => setSearch(e.target.value)}
         />
       </div>
+
+      <DiaryPatternAnalysis />
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
         {MOODS.map((m) => {

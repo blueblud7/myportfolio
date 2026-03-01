@@ -1,15 +1,28 @@
 "use client";
 
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useExchangeRate } from "@/hooks/use-api";
 import { LanguageSwitcher } from "./LanguageSwitcher";
 import { RefreshCw, LogOut, Sun, Moon } from "lucide-react";
 import { useTheme } from "@/contexts/theme-context";
+import { cn } from "@/lib/utils";
 
 export function Header() {
   const router = useRouter();
   const { theme, toggle: toggleTheme } = useTheme();
   const { data, isLoading, mutate } = useExchangeRate();
+  const [refreshing, setRefreshing] = useState(false);
+
+  const handleRefreshRate = async () => {
+    setRefreshing(true);
+    try {
+      await fetch("/api/exchange-rate", { method: "POST" });
+      await mutate();
+    } finally {
+      setRefreshing(false);
+    }
+  };
 
   const handleLogout = async () => {
     await fetch("/api/auth/logout", { method: "POST" });
@@ -30,11 +43,12 @@ export function Header() {
             {isLoading ? "···" : `₩${data?.rate.toLocaleString("ko-KR", { maximumFractionDigits: 2 })}`}
           </span>
           <button
-            onClick={() => mutate()}
-            className="ml-0.5 rounded-full p-0.5 text-muted-foreground hover:text-foreground transition-colors"
+            onClick={handleRefreshRate}
+            disabled={refreshing || isLoading}
+            className="ml-0.5 rounded-full p-0.5 text-muted-foreground hover:text-foreground transition-colors disabled:opacity-40"
             title="환율 새로고침"
           >
-            <RefreshCw className="h-3 w-3" />
+            <RefreshCw className={cn("h-3 w-3", refreshing && "animate-spin")} />
           </button>
         </div>
 

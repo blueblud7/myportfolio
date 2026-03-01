@@ -8,6 +8,7 @@ import { usePrivacy } from "@/contexts/privacy-context";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { AllocationChart } from "@/components/dashboard/AllocationChart";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Table,
   TableBody,
@@ -22,11 +23,17 @@ import { cn } from "@/lib/utils";
 import { RefreshCw, ChevronUp, ChevronDown, ChevronsUpDown } from "lucide-react";
 import { DividendCalendar } from "@/components/reports/DividendCalendar";
 import { BenchmarkComparison } from "@/components/reports/BenchmarkComparison";
+import { RiskDashboard } from "@/components/reports/RiskDashboard";
+import { RebalancingDashboard } from "@/components/rebalancing/RebalancingDashboard";
+import { FxAnalysis } from "@/components/reports/FxAnalysis";
 
 const MASK = "•••••";
 
 export default function ReportsPage() {
   const t = useTranslations("Reports");
+  const tRisk = useTranslations("Risk");
+  const tReb = useTranslations("Rebalancing");
+  const tFx = useTranslations("FxAnalysis");
   const locale = useLocale();
   const { isPrivate } = usePrivacy();
   const { data: report, isLoading, mutate } = useReports();
@@ -158,6 +165,27 @@ export default function ReportsPage() {
         </div>
       </div>
 
+      <Tabs defaultValue="overview">
+        <TabsList>
+          <TabsTrigger value="overview">{t("tabOverview")}</TabsTrigger>
+          <TabsTrigger value="risk">{tRisk("title")}</TabsTrigger>
+          <TabsTrigger value="rebalancing">{tReb("title")}</TabsTrigger>
+          <TabsTrigger value="fx">{tFx("title")}</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="risk" className="mt-6">
+          <RiskDashboard />
+        </TabsContent>
+
+        <TabsContent value="rebalancing" className="mt-6">
+          <RebalancingDashboard />
+        </TabsContent>
+
+        <TabsContent value="fx" className="mt-6">
+          <FxAnalysis />
+        </TabsContent>
+
+        <TabsContent value="overview" className="mt-6">
       <div className="grid gap-4 md:grid-cols-2">
         <AllocationChart
           title={t("byCurrency")}
@@ -453,6 +481,8 @@ export default function ReportsPage() {
           )}
         </CardContent>
       </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

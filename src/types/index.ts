@@ -4,7 +4,33 @@ export interface Account {
   type: "stock" | "bank";
   currency: "KRW" | "USD";
   broker: string;
+  target_pct: number;
   created_at: string;
+}
+
+export type RebalancingAction = "buy" | "sell" | "hold";
+
+export interface RebalancingAccount {
+  id: number;
+  name: string;
+  type: string;
+  currency: string;
+  target_pct: number;
+  current_krw: number;
+  current_pct: number;
+  diff_pct: number;
+  diff_krw: number;
+  action: RebalancingAction;
+  action_krw: number;
+}
+
+export interface RebalancingSummary {
+  total_krw: number;
+  exchange_rate: number;
+  total_target_pct: number;
+  accounts: RebalancingAccount[];
+  needs_rebalancing: boolean;
+  tolerance: number;
 }
 
 export interface Holding {
@@ -163,6 +189,117 @@ export interface ReturnsCalendarResponse {
   median: (number | null)[];
   avg_annual: number | null;
   median_annual: number | null;
+}
+
+export interface CapitalGainsTx {
+  ticker: string;
+  name: string;
+  date: string;
+  quantity: number;
+  sell_price: number;
+  avg_cost: number;
+  realized_gain_usd: number;
+  realized_gain_krw: number;
+}
+
+export interface CapitalGainsHolding {
+  id: number;
+  ticker: string;
+  name: string;
+  quantity: number;
+  avg_cost: number;
+  current_price: number;
+  unrealized_gain_usd: number;
+}
+
+export interface CapitalGainsSummary {
+  year: number;
+  exchange_rate: number;
+  realized_gain_usd: number;
+  realized_gain_krw: number;
+  deduction_krw: number;
+  taxable_krw: number;
+  tax_krw: number;
+  transactions: CapitalGainsTx[];
+  usd_holdings: CapitalGainsHolding[];
+}
+
+export type RiskPeriod = "1M" | "3M" | "6M" | "1Y" | "ALL";
+
+export interface RiskMetrics {
+  period_return: number;
+  volatility: number;
+  mdd: number;
+  sharpe: number;
+  best_day: number;
+  worst_day: number;
+  positive_days_pct: number;
+  data_points: number;
+  daily_returns: { date: string; return_pct: number }[];
+  drawdown_series: { date: string; drawdown_pct: number }[];
+}
+
+export type TransactionType = "buy" | "sell" | "dividend" | "deposit" | "withdrawal";
+
+export interface Transaction {
+  id: number;
+  account_id: number;
+  type: TransactionType;
+  ticker: string;
+  name: string;
+  quantity: number;
+  price: number;
+  fees: number;
+  total_amount: number;
+  currency: "KRW" | "USD";
+  date: string;
+  note: string;
+  created_at: string;
+}
+
+export interface DiaryMoodPattern {
+  mood: string;
+  diary_count: number;
+  buy_count: number;
+  sell_count: number;
+  avg_buy_amount: number;
+  avg_sell_amount: number;
+  total_tx_count: number;
+}
+
+export interface FxAnalysisItem {
+  ticker: string;
+  name: string;
+  quantity: number;
+  avg_cost: number;
+  current_price: number;
+  purchase_fx: number;
+  current_fx: number;
+  stock_return_usd: number;
+  fx_return: number;
+  total_return_krw: number;
+  market_value_usd: number;
+  market_value_krw: number;
+  purchase_date: string;
+}
+
+export interface FxAnalysisResponse {
+  items: FxAnalysisItem[];
+  current_fx: number;
+}
+
+export interface PriceAlert {
+  id: number;
+  ticker: string;
+  name: string;
+  target_price: number;
+  alert_type: "above" | "below";
+  currency: "KRW" | "USD";
+  is_active: boolean;
+  is_triggered: boolean;
+  current_price: number | null;
+  note: string;
+  created_at: string;
 }
 
 export interface ReportData {
