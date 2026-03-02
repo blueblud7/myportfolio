@@ -21,11 +21,7 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
       <PrivacyProvider>
         <SWRConfig value={{ revalidateOnFocus: false, dedupingInterval: 5000 }}>
           <div className="flex min-h-screen">
-            {/* 데스크탑 사이드바 */}
-            <div className="hidden lg:block">
-              <Sidebar />
-            </div>
-            {/* 모바일 사이드바 (드로어) */}
+            <Sidebar />
             <div className="flex-1 lg:pl-60">
               <Header mobileSidebar={<MobileSidebar />} />
               <main className="min-h-screen bg-zinc-50 p-4 sm:p-6 dark:bg-zinc-900">{children}</main>
