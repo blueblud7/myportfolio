@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createDailySnapshot, getSnapshots } from "@/lib/snapshot";
+import { createDailySnapshot, createAccountSnapshots, getSnapshots } from "@/lib/snapshot";
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
@@ -9,5 +9,6 @@ export async function GET(req: NextRequest) {
 
 export async function POST() {
   const created = await createDailySnapshot();
+  await createAccountSnapshots();
   return NextResponse.json({ created });
 }

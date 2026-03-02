@@ -302,6 +302,15 @@ export interface PriceAlert {
   created_at: string;
 }
 
+export interface AccountSnapshot {
+  account_id: number;
+  value_krw: number;
+  date: string;
+  name: string;
+  type: "stock" | "bank";
+  currency: "KRW" | "USD";
+}
+
 export interface ReportData {
   by_currency: { currency: string; value_krw: number; pct: number }[];
   by_account: { name: string; value_krw: number; pct: number }[];

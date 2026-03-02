@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { AccountForm } from "@/components/accounts/AccountForm";
 import { AccountsOverview } from "@/components/accounts/AccountsOverview";
+import { AccountTrendChart } from "@/components/accounts/AccountTrendChart";
 import { Plus, Pencil, Trash2, ArrowRight, RefreshCw } from "lucide-react";
 import { formatPercent, gainLossColor } from "@/lib/format";
 import { Money } from "@/components/ui/money";
@@ -126,6 +127,8 @@ export default function AccountsPage() {
       </div>
 
       <AccountsOverview currency={currency} />
+
+      <AccountTrendChart currency={currency} exchangeRate={exchangeRate} />
 
       {!Array.isArray(accounts) || accounts.length === 0 ? (
         <Card>

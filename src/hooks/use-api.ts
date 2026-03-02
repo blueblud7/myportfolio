@@ -1,5 +1,5 @@
 import useSWR from "swr";
-import type { Account, Snapshot, ReportData, BankBalance, DiaryEntry, BenchmarkPoint, DividendScheduleResponse, PerformanceCompareResponse, PerformancePeriod, PerformanceSubjectType, SectorEtfResponse, ReturnsCalendarResponse, Transaction, RiskMetrics, RiskPeriod, CapitalGainsSummary, RebalancingSummary, DiaryMoodPattern, FxAnalysisResponse, PriceAlert } from "@/types";
+import type { Account, Snapshot, ReportData, BankBalance, DiaryEntry, BenchmarkPoint, DividendScheduleResponse, PerformanceCompareResponse, PerformancePeriod, PerformanceSubjectType, SectorEtfResponse, ReturnsCalendarResponse, Transaction, RiskMetrics, RiskPeriod, CapitalGainsSummary, RebalancingSummary, DiaryMoodPattern, FxAnalysisResponse, PriceAlert, AccountSnapshot } from "@/types";
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 const arrayFetcher = (url: string) => fetch(url).then((r) => r.json()).then((d) => Array.isArray(d) ? d : []);
@@ -146,6 +146,17 @@ export function useFxAnalysis() {
 export function usePriceAlerts() {
   return useSWR<PriceAlert[]>("/api/alerts", arrayFetcher, {
     refreshInterval: 60000,
+  });
+}
+
+export function useAccountSnapshots(start?: string, end?: string) {
+  const params = new URLSearchParams();
+  if (start) params.set("start", start);
+  if (end) params.set("end", end);
+  const key = `/api/account-snapshots${params.toString() ? `?${params}` : ""}`;
+  return useSWR<AccountSnapshot[]>(key, arrayFetcher, {
+    revalidateOnFocus: false,
+    dedupingInterval: 60000,
   });
 }
 
