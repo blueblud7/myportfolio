@@ -125,3 +125,23 @@ CREATE TABLE IF NOT EXISTS transactions (
   created_at TEXT NOT NULL DEFAULT (to_char(NOW(),'YYYY-MM-DD HH24:MI:SS')),
   FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE CASCADE
 );
+
+CREATE TABLE IF NOT EXISTS price_alerts (
+  id SERIAL PRIMARY KEY,
+  ticker TEXT NOT NULL,
+  name TEXT NOT NULL DEFAULT '',
+  target_price DOUBLE PRECISION NOT NULL,
+  alert_type TEXT NOT NULL CHECK(alert_type IN ('above','below')),
+  currency TEXT NOT NULL DEFAULT 'USD',
+  note TEXT NOT NULL DEFAULT '',
+  is_active BOOLEAN NOT NULL DEFAULT true,
+  created_at TEXT NOT NULL DEFAULT (to_char(NOW(),'YYYY-MM-DD HH24:MI:SS'))
+);
+
+CREATE TABLE IF NOT EXISTS account_snapshots (
+  id SERIAL PRIMARY KEY,
+  account_id INTEGER NOT NULL,
+  total_krw DOUBLE PRECISION NOT NULL DEFAULT 0,
+  date TEXT NOT NULL,
+  UNIQUE(account_id, date)
+);

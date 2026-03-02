@@ -13,6 +13,8 @@ import {
   EyeOff,
   FlaskConical,
   Bell,
+  Sparkles,
+  Activity,
 } from "lucide-react";
 import { InvestorQuote } from "./InvestorQuote";
 import { usePrivacy } from "@/contexts/privacy-context";
@@ -29,6 +31,8 @@ export function Sidebar() {
     { href: "/calculator", label: t("calculator"), icon: TrendingUp },
     { href: "/diary", label: t("diary"), icon: BookOpen },
     { href: "/quant", label: t("quant"), icon: FlaskConical },
+    { href: "/backtest", label: t("backtest"), icon: Activity },
+    { href: "/insights", label: t("insights"), icon: Sparkles },
     { href: "/alerts", label: t("alerts"), icon: Bell },
   ];
 

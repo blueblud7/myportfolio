@@ -19,6 +19,8 @@
     "calculator": "Calculator",
     "diary": "Diary",
     "quant": "My Quant",
+    "backtest": "Backtest",
+    "insights": "AI Insights",
     "alerts": "Price Alerts",
     "showAmounts": "Show amounts",
     "hideAmounts": "Hide amounts"

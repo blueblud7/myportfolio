@@ -19,6 +19,8 @@
     "calculator": "미래 예측",
     "diary": "투자 일기",
     "quant": "마이퀀트",
+    "backtest": "백테스트",
+    "insights": "AI 인사이트",
     "alerts": "가격 알림",
     "showAmounts": "금액 표시",
     "hideAmounts": "금액 숨기기"
