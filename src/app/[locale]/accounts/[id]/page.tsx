@@ -49,7 +49,15 @@ export default function AccountDetailPage() {
   const [editingHolding, setEditingHolding] = useState<any>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [kiwoomOpen, setKiwoomOpen] = useState(false);
-  const [currency, setCurrency] = useState<"KRW" | "USD">("KRW");
+  const [currency, setCurrencyState] = useState<"KRW" | "USD">(() =>
+    (typeof window !== "undefined"
+      ? (localStorage.getItem("portfolio_currency") as "KRW" | "USD") ?? "KRW"
+      : "KRW")
+  );
+  const setCurrency = useCallback((cur: "KRW" | "USD") => {
+    setCurrencyState(cur);
+    localStorage.setItem("portfolio_currency", cur);
+  }, []);
   const autoRefreshed = useRef(false);
 
   const [txFormOpen, setTxFormOpen] = useState(false);
@@ -96,6 +104,15 @@ export default function AccountDetailPage() {
     setRefreshing(false);
   }, [holdings, mutateHoldings]);
 
+  // 탭이 포커스될 때마다 자동 새로고침
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState === "visible") handleRefresh();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+  }, [handleRefresh]);
+
   const handleDelete = async (id: number) => {
     if (!confirm(t("deleteConfirm"))) return;
     await fetch(`/api/holdings?id=${id}`, { method: "DELETE" });
@@ -136,7 +153,7 @@ export default function AccountDetailPage() {
                 {(["KRW", "USD"] as const).map((cur) => (
                   <button
                     key={cur}
-                    onClick={() => setCurrency(cur)}
+                    onClick={() => setCurrency(cur as "KRW" | "USD")}
                     className={cn(
                       "px-3 py-1 font-medium transition-colors",
                       currency === cur

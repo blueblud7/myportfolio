@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { useAccounts, useHoldings, useExchangeRate, refreshPrices } from "@/hooks/use-api";
@@ -23,7 +23,15 @@ export default function AccountsPage() {
   const [formOpen, setFormOpen] = useState(false);
   const [editingAccount, setEditingAccount] = useState<Account | null>(null);
   const [refreshing, setRefreshing] = useState(false);
-  const [currency, setCurrency] = useState<"KRW" | "USD">("KRW");
+  const [currency, setCurrencyState] = useState<"KRW" | "USD">(() =>
+    (typeof window !== "undefined"
+      ? (localStorage.getItem("portfolio_currency") as "KRW" | "USD") ?? "KRW"
+      : "KRW")
+  );
+  const setCurrency = useCallback((cur: "KRW" | "USD") => {
+    setCurrencyState(cur);
+    localStorage.setItem("portfolio_currency", cur);
+  }, []);
 
   const handleRefreshAll = useCallback(async () => {
     if (!holdings || holdings.length === 0) return;
@@ -38,6 +46,24 @@ export default function AccountsPage() {
     await mutateHoldings();
     setRefreshing(false);
   }, [holdings, mutateHoldings]);
+
+  // 페이지 진입 시 자동 새로고침 (최초 1회)
+  const initialRefreshed = useRef(false);
+  useEffect(() => {
+    if (!initialRefreshed.current && holdings && holdings.length > 0) {
+      initialRefreshed.current = true;
+      handleRefreshAll();
+    }
+  }, [holdings, handleRefreshAll]);
+
+  // 탭이 포커스될 때마다 자동 새로고침
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState === "visible") handleRefreshAll();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+  }, [handleRefreshAll]);
 
   const exchangeRate = exchangeRateData?.rate ?? 1350;
 
