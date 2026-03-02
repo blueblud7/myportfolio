@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useCallback, useEffect, useRef } from "react";
+import { useState, useMemo, useCallback, useEffect, useRef, startTransition } from "react";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { useAccounts, useHoldings, useExchangeRate, refreshPrices } from "@/hooks/use-api";
@@ -24,11 +24,11 @@ export default function AccountsPage() {
   const [formOpen, setFormOpen] = useState(false);
   const [editingAccount, setEditingAccount] = useState<Account | null>(null);
   const [refreshing, setRefreshing] = useState(false);
-  const [currency, setCurrencyState] = useState<"KRW" | "USD">(() =>
-    (typeof window !== "undefined"
-      ? (localStorage.getItem("portfolio_currency") as "KRW" | "USD") ?? "KRW"
-      : "KRW")
-  );
+  const [currency, setCurrencyState] = useState<"KRW" | "USD">("KRW");
+  useEffect(() => {
+    const saved = localStorage.getItem("portfolio_currency") as "KRW" | "USD" | null;
+    if (saved === "USD") startTransition(() => setCurrencyState("USD"));
+  }, []);
   const setCurrency = useCallback((cur: "KRW" | "USD") => {
     setCurrencyState(cur);
     localStorage.setItem("portfolio_currency", cur);

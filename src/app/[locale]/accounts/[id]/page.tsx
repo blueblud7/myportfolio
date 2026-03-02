@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback, useEffect, useRef, startTransition } from "react";
 import { useParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
@@ -49,11 +49,11 @@ export default function AccountDetailPage() {
   const [editingHolding, setEditingHolding] = useState<any>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [kiwoomOpen, setKiwoomOpen] = useState(false);
-  const [currency, setCurrencyState] = useState<"KRW" | "USD">(() =>
-    (typeof window !== "undefined"
-      ? (localStorage.getItem("portfolio_currency") as "KRW" | "USD") ?? "KRW"
-      : "KRW")
-  );
+  const [currency, setCurrencyState] = useState<"KRW" | "USD">("KRW");
+  useEffect(() => {
+    const saved = localStorage.getItem("portfolio_currency") as "KRW" | "USD" | null;
+    if (saved === "USD") startTransition(() => setCurrencyState("USD"));
+  }, []);
   const setCurrency = useCallback((cur: "KRW" | "USD") => {
     setCurrencyState(cur);
     localStorage.setItem("portfolio_currency", cur);
