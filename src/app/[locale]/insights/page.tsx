@@ -169,8 +169,8 @@ export default function InsightsPage() {
       {error && (
         <Card className="border-destructive">
           <CardContent className="py-4 text-sm text-destructive">
-            {error.includes("ANTHROPIC_API_KEY") || error.includes("authentication")
-              ? "ANTHROPIC_API_KEY가 설정되지 않았습니다. .env.local에 키를 추가하세요."
+            {error.includes("OPENAI_API_KEY") || error.includes("authentication") || error.includes("Incorrect API key")
+              ? "OPENAI_API_KEY가 설정되지 않았거나 유효하지 않습니다."
               : error}
           </CardContent>
         </Card>

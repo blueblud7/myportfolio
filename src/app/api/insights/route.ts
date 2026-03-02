@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import Anthropic from "@anthropic-ai/sdk";
+import OpenAI from "openai";
 import { getDb } from "@/lib/db";
 import { getLatestExchangeRate } from "@/lib/exchange-rate";
 
-const client = new Anthropic();
+const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 export async function POST(req: NextRequest) {
   try {
@@ -117,14 +117,16 @@ ${bankBalances.map((b) => `- ${b.name}: ${b.currency === "USD" ? "$" : "₩"}${b
 4. 개선 제안 3가지 (구체적, 실행 가능)
 5. 전반적인 리스크 수준 평가`;
 
-    const message = await client.messages.create({
-      model: "claude-opus-4-6",
+    const message = await client.chat.completions.create({
+      model: "gpt-4o-mini",
       max_tokens: 1500,
-      messages: [{ role: "user", content: userMessage }],
-      system: systemPrompt,
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userMessage },
+      ],
     });
 
-    const text = message.content[0].type === "text" ? message.content[0].text : "";
+    const text = message.choices[0]?.message?.content ?? "";
 
     return NextResponse.json({
       analysis: text,
