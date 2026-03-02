@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { SummaryCards } from "@/components/dashboard/SummaryCards";
 import { TotalAssetChart } from "@/components/dashboard/TotalAssetChart";
 import { AllocationChart } from "@/components/dashboard/AllocationChart";
+import { MarketIndices } from "@/components/dashboard/MarketIndices";
 import { useAccounts, useHoldings, useExchangeRate, useBankBalances } from "@/hooks/use-api";
 
 export default function DashboardPage() {
@@ -95,6 +96,8 @@ export default function DashboardPage() {
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-bold">{t("title")}</h1>
+
+      <MarketIndices />
 
       <SummaryCards
         totalKrw={summary.totalKrw}
