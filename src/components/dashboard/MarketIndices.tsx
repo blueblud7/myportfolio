@@ -70,15 +70,16 @@ export function MarketIndices() {
             key={idx.key}
             className={cn(
               "flex shrink-0 flex-col gap-0.5 rounded-lg border px-3 py-2 min-w-[130px]",
-              up && "border-emerald-200 bg-emerald-50 dark:border-emerald-900 dark:bg-emerald-950/30",
-              down && "border-red-200 bg-red-50 dark:border-red-900 dark:bg-red-950/30",
-              neutral && "border-border bg-muted/30"
+              "bg-card",
+              up && "border-emerald-300/70 dark:border-emerald-700/50",
+              down && "border-red-300/70 dark:border-red-700/50",
+              neutral && "border-border"
             )}
           >
             <div className="flex items-center justify-between gap-2">
               <span className="text-xs font-semibold text-muted-foreground">{idx.label}</span>
-              {up && <TrendingUp className="h-3 w-3 text-emerald-600" />}
-              {down && <TrendingDown className="h-3 w-3 text-red-500" />}
+              {up && <TrendingUp className="h-3 w-3 text-emerald-500 dark:text-emerald-400" />}
+              {down && <TrendingDown className="h-3 w-3 text-red-500 dark:text-red-400" />}
               {neutral && <Minus className="h-3 w-3 text-muted-foreground" />}
             </div>
 
@@ -91,8 +92,8 @@ export function MarketIndices() {
                 <span
                   className={cn(
                     "text-xs font-mono",
-                    up && "text-emerald-600",
-                    down && "text-red-500",
+                    up && "text-emerald-600 dark:text-emerald-400",
+                    down && "text-red-500 dark:text-red-400",
                     neutral && "text-muted-foreground"
                   )}
                 >
