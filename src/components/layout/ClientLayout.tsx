@@ -22,7 +22,7 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
         <SWRConfig value={{ revalidateOnFocus: false, dedupingInterval: 5000 }}>
           <div className="flex min-h-screen">
             <Sidebar />
-            <div className="flex-1 lg:pl-60">
+            <div className="flex-1 min-w-0">
               <Header mobileSidebar={<MobileSidebar />} />
               <main className="min-h-screen bg-zinc-50 p-4 sm:p-6 dark:bg-zinc-900">{children}</main>
             </div>
