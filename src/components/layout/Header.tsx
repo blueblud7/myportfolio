@@ -4,11 +4,11 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useExchangeRate } from "@/hooks/use-api";
 import { LanguageSwitcher } from "./LanguageSwitcher";
-import { RefreshCw, LogOut, Sun, Moon } from "lucide-react";
+import { RefreshCw, LogOut, Sun, Moon, Menu } from "lucide-react";
 import { useTheme } from "@/contexts/theme-context";
 import { cn } from "@/lib/utils";
 
-export function Header({ mobileSidebar }: { mobileSidebar?: React.ReactNode }) {
+export function Header({ onMenuToggle }: { onMenuToggle?: () => void }) {
   const router = useRouter();
   const { theme, toggle: toggleTheme } = useTheme();
   const { data, isLoading, mutate } = useExchangeRate();
@@ -33,7 +33,13 @@ export function Header({ mobileSidebar }: { mobileSidebar?: React.ReactNode }) {
   return (
     <header className="sticky top-0 z-20 flex h-14 items-center justify-between border-b bg-background/80 px-4 sm:px-6 backdrop-blur-md">
       <div className="flex items-center gap-2">
-        {mobileSidebar}
+        {/* 모바일에서만 보이는 햄버거 버튼 */}
+        <button
+          onClick={onMenuToggle}
+          className="flex h-8 w-8 items-center justify-center rounded-md border text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground lg:hidden"
+        >
+          <Menu className="h-4 w-4" />
+        </button>
       </div>
       <div className="flex items-center gap-3">
         <LanguageSwitcher />
