@@ -30,7 +30,9 @@
     "stockLabel": "Stock",
     "bankLabel": "Bank",
     "byCurrency": "Allocation by Type",
-    "byAccount": "Allocation by Account"
+    "byAccount": "Allocation by Account",
+    "polymarket": "Prediction Market (Polymarket)",
+    "putCallRatio": "Put/Call Ratio"
   },
   "SummaryCards": {
     "totalAssets": "Total Assets",

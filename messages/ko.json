@@ -30,7 +30,9 @@
     "stockLabel": "주식",
     "bankLabel": "은행",
     "byCurrency": "자산 구성 (유형별)",
-    "byAccount": "자산 구성 (계좌별)"
+    "byAccount": "자산 구성 (계좌별)",
+    "polymarket": "예측 시장 (Polymarket)",
+    "putCallRatio": "풋/콜 레이시오"
   },
   "SummaryCards": {
     "totalAssets": "총 자산",
