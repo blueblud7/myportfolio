@@ -87,8 +87,10 @@ export function BenchmarkComparison() {
       .map(([date, vals]) => ({ date, ...vals }));
   })();
 
-  // Summary
+  // Summary — 기간 내 변화량 (끝 - 시작)
+  const subjectStart = data?.subject.points.at(0)?.return_pct ?? 0;
   const subjectLast = data?.subject.points.at(-1)?.return_pct ?? null;
+  const subjectPeriodChange = subjectLast !== null ? subjectLast - subjectStart : null;
 
   const uniqueHoldings = allHoldings
     ? Array.from(new Map((allHoldings as { ticker: string; name: string }[]).map((h) => [h.ticker, h])).values())
@@ -267,56 +269,55 @@ export function BenchmarkComparison() {
         )}
 
         {/* Summary */}
-        {data && validSubject && subjectLast !== null && (
-          <div className="flex flex-wrap gap-4 rounded-lg bg-muted/40 px-4 py-3 text-sm">
-            <div className="flex items-center gap-2">
-              <span
-                className="inline-block h-2.5 w-2.5 rounded-full"
-                style={{ backgroundColor: SUBJECT_COLOR }}
-              />
-              <span className="font-medium">{data.subject.name}</span>
-              <span
-                className={cn(
-                  "font-mono font-semibold",
-                  subjectLast >= 0 ? "text-emerald-500" : "text-red-500"
-                )}
-              >
-                {formatPct(subjectLast)}
-              </span>
+        {data && validSubject && subjectLast !== null && subjectPeriodChange !== null && (
+          <div className="space-y-2 rounded-lg bg-muted/40 px-4 py-3 text-sm">
+            {/* 현재 총 손익 */}
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+              <span className="text-xs text-muted-foreground">총 손익 (원가 대비)</span>
+              <div className="flex items-center gap-2">
+                <span
+                  className="inline-block h-2.5 w-2.5 rounded-full"
+                  style={{ backgroundColor: SUBJECT_COLOR }}
+                />
+                <span className="font-medium">{data.subject.name}</span>
+                <span className={cn("font-mono font-semibold", subjectLast >= 0 ? "text-emerald-500" : "text-red-500")}>
+                  {formatPct(subjectLast)}
+                </span>
+              </div>
             </div>
-            {selectedBenchmarks.map((b) => {
-              const pts = data.benchmarks[b];
-              const last = pts?.at(-1)?.return_pct ?? null;
-              if (last === null) return null;
-              const excess = subjectLast - last;
-              return (
-                <div key={b} className="flex items-center gap-2">
-                  <span
-                    className="inline-block h-2.5 w-2.5 rounded-full"
-                    style={{ backgroundColor: BENCHMARK_COLORS[b] }}
-                  />
-                  <span className="text-muted-foreground">{b}</span>
-                  <span
-                    className={cn(
-                      "font-mono",
-                      last >= 0 ? "text-emerald-500" : "text-red-500"
-                    )}
-                  >
-                    {formatPct(last)}
-                  </span>
-                  <span className="text-muted-foreground">→</span>
-                  <span className="text-xs text-muted-foreground">{t("excessReturn")}</span>
-                  <span
-                    className={cn(
-                      "font-mono font-semibold",
-                      excess >= 0 ? "text-emerald-500" : "text-red-500"
-                    )}
-                  >
-                    {formatPct(excess)}
-                  </span>
-                </div>
-              );
-            })}
+            {/* 기간 내 변화량 + 초과 수익 */}
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-dashed border-muted pt-2">
+              <span className="text-xs text-muted-foreground">기간 변화 ({period})</span>
+              <div className="flex items-center gap-2">
+                <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ backgroundColor: SUBJECT_COLOR }} />
+                <span className="font-medium">{data.subject.name}</span>
+                <span className={cn("font-mono font-semibold", subjectPeriodChange >= 0 ? "text-emerald-500" : "text-red-500")}>
+                  {formatPct(subjectPeriodChange)}
+                </span>
+              </div>
+              {selectedBenchmarks.map((b) => {
+                const pts = data.benchmarks[b];
+                const bStart = pts?.at(0)?.return_pct ?? 0;
+                const bLast = pts?.at(-1)?.return_pct ?? null;
+                if (bLast === null) return null;
+                const bPeriodChange = bLast - bStart;
+                const excess = subjectPeriodChange - bPeriodChange;
+                return (
+                  <div key={b} className="flex items-center gap-2">
+                    <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ backgroundColor: BENCHMARK_COLORS[b] }} />
+                    <span className="text-muted-foreground">{b}</span>
+                    <span className={cn("font-mono", bPeriodChange >= 0 ? "text-emerald-500" : "text-red-500")}>
+                      {formatPct(bPeriodChange)}
+                    </span>
+                    <span className="text-muted-foreground">·</span>
+                    <span className="text-xs text-muted-foreground">{t("excessReturn")}</span>
+                    <span className={cn("font-mono font-semibold", excess >= 0 ? "text-emerald-500" : "text-red-500")}>
+                      {formatPct(excess)}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         )}
       </CardContent>
