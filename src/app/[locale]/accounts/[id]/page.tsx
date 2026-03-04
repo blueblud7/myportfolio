@@ -16,6 +16,7 @@ import { HoldingForm } from "@/components/accounts/HoldingForm";
 import { KiwoomSyncDialog } from "@/components/accounts/KiwoomSyncDialog";
 import { TransactionForm } from "@/components/transactions/TransactionForm";
 import { TransactionTable } from "@/components/transactions/TransactionTable";
+import { BenchmarkComparison } from "@/components/reports/BenchmarkComparison";
 import { ArrowLeft, Plus, RefreshCw, Download } from "lucide-react";
 import { formatPercent, gainLossColor } from "@/lib/format";
 import { downloadCsv } from "@/lib/export";
@@ -230,6 +231,7 @@ export default function AccountDetailPage() {
         <TabsList>
           <TabsTrigger value="holdings">{t("holdings")}</TabsTrigger>
           <TabsTrigger value="transactions">{tTx("title")}</TabsTrigger>
+          <TabsTrigger value="benchmark">벤치마크</TabsTrigger>
         </TabsList>
 
         <TabsContent value="holdings" className="mt-4">
@@ -344,6 +346,10 @@ export default function AccountDetailPage() {
               />
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="benchmark" className="mt-4">
+          <BenchmarkComparison fixedAccountId={accountId} />
         </TabsContent>
       </Tabs>
 

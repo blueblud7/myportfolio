@@ -34,10 +34,19 @@ function formatPct(v: number) {
   return `${v >= 0 ? "+" : ""}${v.toFixed(2)}%`;
 }
 
-export function BenchmarkComparison() {
+interface BenchmarkComparisonProps {
+  /** 계좌 상세 등에서 계좌를 고정할 때 사용 — 지정 시 subject 선택 UI 숨김 */
+  fixedAccountId?: number;
+}
+
+export function BenchmarkComparison({ fixedAccountId }: BenchmarkComparisonProps = {}) {
   const t = useTranslations("Reports");
-  const [subjectType, setSubjectType] = useState<PerformanceSubjectType>("portfolio");
-  const [accountId, setAccountId] = useState<string>("");
+  const [subjectType, setSubjectType] = useState<PerformanceSubjectType>(
+    fixedAccountId ? "account" : "portfolio"
+  );
+  const [accountId, setAccountId] = useState<string>(
+    fixedAccountId ? String(fixedAccountId) : ""
+  );
   const [stockTicker, setStockTicker] = useState<string>("");
   const [period, setPeriod] = useState<PerformancePeriod>("3M");
   const [selectedBenchmarks, setSelectedBenchmarks] = useState<string[]>(["KOSPI", "S&P500"]);
@@ -102,61 +111,65 @@ export function BenchmarkComparison() {
         <CardTitle>{t("benchmarkComparison")}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        {/* Subject selector */}
+        {/* Subject selector — fixedAccountId 지정 시 숨김 */}
         <div className="flex flex-wrap items-center gap-2">
-          <div className="flex rounded-md border overflow-hidden text-sm">
-            {(["portfolio", "account", "stock"] as PerformanceSubjectType[]).map((s) => (
-              <button
-                key={s}
-                onClick={() => setSubjectType(s)}
-                className={cn(
-                  "px-3 py-1.5 font-medium transition-colors",
-                  subjectType === s
-                    ? "bg-emerald-500 text-white"
-                    : "bg-transparent text-muted-foreground hover:bg-muted"
-                )}
-              >
-                {s === "portfolio"
-                  ? t("subjectPortfolio")
-                  : s === "account"
-                  ? t("subjectAccount")
-                  : t("subjectStock")}
-              </button>
-            ))}
-          </div>
+          {!fixedAccountId && (
+            <>
+              <div className="flex rounded-md border overflow-hidden text-sm">
+                {(["portfolio", "account", "stock"] as PerformanceSubjectType[]).map((s) => (
+                  <button
+                    key={s}
+                    onClick={() => setSubjectType(s)}
+                    className={cn(
+                      "px-3 py-1.5 font-medium transition-colors",
+                      subjectType === s
+                        ? "bg-emerald-500 text-white"
+                        : "bg-transparent text-muted-foreground hover:bg-muted"
+                    )}
+                  >
+                    {s === "portfolio"
+                      ? t("subjectPortfolio")
+                      : s === "account"
+                      ? t("subjectAccount")
+                      : t("subjectStock")}
+                  </button>
+                ))}
+              </div>
 
-          {subjectType === "account" && (
-            <select
-              value={accountId}
-              onChange={(e) => setAccountId(e.target.value)}
-              className="rounded-md border bg-background px-2 py-1.5 text-sm"
-            >
-              <option value="">계좌 선택...</option>
-              {(accounts ?? []).map((a) => (
-                <option key={a.id} value={String(a.id)}>
-                  {a.name}
-                </option>
-              ))}
-            </select>
-          )}
+              {subjectType === "account" && (
+                <select
+                  value={accountId}
+                  onChange={(e) => setAccountId(e.target.value)}
+                  className="rounded-md border bg-background px-2 py-1.5 text-sm"
+                >
+                  <option value="">계좌 선택...</option>
+                  {(accounts ?? []).map((a) => (
+                    <option key={a.id} value={String(a.id)}>
+                      {a.name}
+                    </option>
+                  ))}
+                </select>
+              )}
 
-          {subjectType === "stock" && (
-            <select
-              value={stockTicker}
-              onChange={(e) => setStockTicker(e.target.value)}
-              className="rounded-md border bg-background px-2 py-1.5 text-sm"
-            >
-              <option value="">종목 선택...</option>
-              {uniqueHoldings.map((h) => (
-                <option key={h.ticker} value={h.ticker}>
-                  {h.name} ({h.ticker})
-                </option>
-              ))}
-            </select>
+              {subjectType === "stock" && (
+                <select
+                  value={stockTicker}
+                  onChange={(e) => setStockTicker(e.target.value)}
+                  className="rounded-md border bg-background px-2 py-1.5 text-sm"
+                >
+                  <option value="">종목 선택...</option>
+                  {uniqueHoldings.map((h) => (
+                    <option key={h.ticker} value={h.ticker}>
+                      {h.name} ({h.ticker})
+                    </option>
+                  ))}
+                </select>
+              )}
+            </>
           )}
 
           {/* Period selector */}
-          <div className="ml-auto flex rounded-md border overflow-hidden text-sm">
+          <div className={cn("flex rounded-md border overflow-hidden text-sm", !fixedAccountId && "ml-auto")}>
             {PERIODS.map((p) => (
               <button
                 key={p}
