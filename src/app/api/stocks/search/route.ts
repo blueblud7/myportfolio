@@ -20,7 +20,7 @@ export async function GET(req: NextRequest) {
 
   try {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const result: any = await yf.search(q.trim());
+    const result: any = await yf.search(q.trim(), {}, { validateResult: false });
     const quotes = result?.quotes ?? [];
 
     const stocks: StockSearchResult[] = quotes
