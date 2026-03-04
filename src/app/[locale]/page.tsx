@@ -6,6 +6,7 @@ import { SummaryCards } from "@/components/dashboard/SummaryCards";
 import { TotalAssetChart } from "@/components/dashboard/TotalAssetChart";
 import { AllocationChart } from "@/components/dashboard/AllocationChart";
 import { MarketIndices } from "@/components/dashboard/MarketIndices";
+import { PolymarketWidget } from "@/components/dashboard/PolymarketWidget";
 import { useAccounts, useHoldings, useExchangeRate, useBankBalances } from "@/hooks/use-api";
 
 export default function DashboardPage() {
@@ -114,6 +115,11 @@ export default function DashboardPage() {
       <div className="grid gap-4 md:grid-cols-2">
         <AllocationChart title={t("byCurrency")} data={allocationByType} />
         <AllocationChart title={t("byAccount")} data={allocationByAccount} />
+      </div>
+
+      <div className="rounded-xl border bg-card p-4">
+        <h2 className="mb-3 text-sm font-semibold">예측 시장 (Polymarket)</h2>
+        <PolymarketWidget />
       </div>
     </div>
   );
