@@ -149,6 +149,14 @@ export function usePriceAlerts() {
   });
 }
 
+export function useAccountDailyChange() {
+  return useSWR<import("@/app/api/account-snapshots/daily/route").AccountDailyChange[]>(
+    "/api/account-snapshots/daily",
+    arrayFetcher,
+    { revalidateOnFocus: false, dedupingInterval: 300_000 }
+  );
+}
+
 export function useAccountSnapshots(start?: string, end?: string) {
   const params = new URLSearchParams();
   if (start) params.set("start", start);

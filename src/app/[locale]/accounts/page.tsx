@@ -3,7 +3,7 @@
 import { useState, useMemo, useCallback, useEffect, useRef, startTransition } from "react";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
-import { useAccounts, useHoldings, useExchangeRate, refreshPrices } from "@/hooks/use-api";
+import { useAccounts, useHoldings, useExchangeRate, refreshPrices, useAccountDailyChange } from "@/hooks/use-api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -21,6 +21,7 @@ export default function AccountsPage() {
   const { data: accounts, mutate } = useAccounts();
   const { data: holdings, mutate: mutateHoldings } = useHoldings();
   const { data: exchangeRateData } = useExchangeRate();
+  const { data: dailyChanges } = useAccountDailyChange();
   const [formOpen, setFormOpen] = useState(false);
   const [editingAccount, setEditingAccount] = useState<Account | null>(null);
   const [refreshing, setRefreshing] = useState(false);
@@ -142,6 +143,7 @@ export default function AccountsPage() {
             const stat = accountStats[account.id];
             const gainLoss = stat ? stat.totalKrw - stat.costKrw : 0;
             const gainLossPct = stat?.costKrw > 0 ? (gainLoss / stat.costKrw) * 100 : 0;
+            const daily = dailyChanges?.find((d) => d.account_id === account.id);
 
             return (
               <Card key={account.id} className="relative">
@@ -203,6 +205,18 @@ export default function AccountsPage() {
                           <span className="text-xs">{formatPercent(gainLossPct)}</span>
                         </span>
                       </div>
+                      {daily && daily.prev_value !== null && (
+                        <div className="mt-1 flex items-baseline justify-between border-t border-dashed border-muted pt-1">
+                          <span className="text-xs text-muted-foreground">일간 변동</span>
+                          <span className={cn("text-sm font-medium", gainLossColor(daily.daily_change))}>
+                            <Money
+                              value={currency === "USD" ? daily.daily_change / exchangeRate : daily.daily_change}
+                              currency={currency === "USD" ? "USD" : undefined}
+                            />{" "}
+                            <span className="text-xs">{formatPercent(daily.daily_change_pct)}</span>
+                          </span>
+                        </div>
+                      )}
                     </div>
                   )}
 
