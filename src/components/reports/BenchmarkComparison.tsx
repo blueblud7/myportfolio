@@ -220,8 +220,18 @@ export function BenchmarkComparison({ fixedAccountId }: BenchmarkComparisonProps
             로딩 중...
           </div>
         ) : chartData.length === 0 ? (
-          <div className="flex h-48 items-center justify-center text-sm text-muted-foreground">
-            데이터가 없습니다
+          <div className="flex h-48 flex-col items-center justify-center gap-2 rounded-lg border border-dashed text-center text-sm text-muted-foreground">
+            <p className="font-medium">차트 데이터가 없습니다</p>
+            <p className="text-xs leading-relaxed">
+              가격 히스토리가 아직 쌓이지 않았습니다.<br />
+              보유종목 탭에서 <span className="font-semibold text-foreground">가격 갱신</span>을 실행하고,
+              며칠간 방문하면 차트가 표시됩니다.
+            </p>
+            {fixedAccountId && (
+              <p className="text-xs text-muted-foreground/70">
+                은행 계좌는 벤치마크 비교를 지원하지 않습니다.
+              </p>
+            )}
           </div>
         ) : (
           <ResponsiveContainer width="100%" height={280}>
