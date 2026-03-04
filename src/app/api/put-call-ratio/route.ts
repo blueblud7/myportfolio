@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 
 export interface PCRData {
@@ -13,6 +13,7 @@ export interface PCRHistoryPoint {
   date: string;
   SPY?: number;
   QQQ?: number;
+  estimated?: boolean; // vix 추정값 여부
 }
 
 export interface PCRResponse {
@@ -27,7 +28,6 @@ async function fetchCboePCR(symbol: string): Promise<PCRData> {
     headers: { "User-Agent": "Mozilla/5.0" },
     next: { revalidate: 900 },
   });
-
   if (!res.ok) throw new Error(`CBOE fetch failed for ${symbol}`);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -36,16 +36,16 @@ async function fetchCboePCR(symbol: string): Promise<PCRData> {
     json?.data?.options ?? [];
 
   const calls = options.filter((o) => /C\d{8}$/.test(o.option));
-  const puts = options.filter((o) => /P\d{8}$/.test(o.option));
+  const puts  = options.filter((o) => /P\d{8}$/.test(o.option));
 
   const callVol = calls.reduce((s, o) => s + (o.volume ?? 0), 0);
-  const putVol = puts.reduce((s, o) => s + (o.volume ?? 0), 0);
-  const callOI = calls.reduce((s, o) => s + (o.open_interest ?? 0), 0);
-  const putOI = puts.reduce((s, o) => s + (o.open_interest ?? 0), 0);
+  const putVol  = puts.reduce((s,  o) => s + (o.volume ?? 0), 0);
+  const callOI  = calls.reduce((s, o) => s + (o.open_interest ?? 0), 0);
+  const putOI   = puts.reduce((s,  o) => s + (o.open_interest ?? 0), 0);
 
-  const useVol = callVol + putVol > 0;
+  const useVol  = callVol + putVol > 0;
   const callVal = useVol ? callVol : callOI;
-  const putVal = useVol ? putVol : putOI;
+  const putVal  = useVol ? putVol  : putOI;
 
   return {
     symbol,
@@ -62,39 +62,61 @@ async function saveSnapshots(data: PCRData[]) {
   for (const d of data) {
     if (d.pcr === null) continue;
     await sql`
-      INSERT INTO pcr_snapshots (date, symbol, pcr, call_volume, put_volume, basis)
-      VALUES (${today}, ${d.symbol}, ${d.pcr}, ${d.callVolume}, ${d.putVolume}, ${d.basis})
+      INSERT INTO pcr_snapshots (date, symbol, pcr, call_volume, put_volume, basis, source)
+      VALUES (${today}, ${d.symbol}, ${d.pcr}, ${d.callVolume}, ${d.putVolume}, ${d.basis}, 'cboe')
       ON CONFLICT (date, symbol) DO UPDATE
         SET pcr = EXCLUDED.pcr,
             call_volume = EXCLUDED.call_volume,
-            put_volume = EXCLUDED.put_volume
+            put_volume  = EXCLUDED.put_volume,
+            source      = 'cboe'
     `;
   }
 }
 
-async function loadHistory(): Promise<PCRHistoryPoint[]> {
+function periodToStartDate(period: string): string {
+  const d = new Date();
+  switch (period) {
+    case "1w":  d.setDate(d.getDate() - 7);   break;
+    case "1m":  d.setMonth(d.getMonth() - 1); break;
+    case "3m":  d.setMonth(d.getMonth() - 3); break;
+    case "6m":  d.setMonth(d.getMonth() - 6); break;
+    case "1y":  d.setFullYear(d.getFullYear() - 1); break;
+    default:    d.setFullYear(d.getFullYear() - 1); break;
+  }
+  return d.toISOString().slice(0, 10);
+}
+
+async function loadHistory(period: string): Promise<PCRHistoryPoint[]> {
   const sql = getDb();
+  const startDate = periodToStartDate(period);
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const rows: any[] = await sql`
-    SELECT date, symbol, pcr
+    SELECT date, symbol, pcr, source
     FROM pcr_snapshots
     WHERE symbol IN ('SPY','QQQ')
+      AND date >= ${startDate}
     ORDER BY date ASC
   `;
 
-  // date 기준으로 피벗
   const map = new Map<string, PCRHistoryPoint>();
   for (const r of rows) {
-    if (!map.has(r.date)) map.set(r.date, { date: r.date });
+    if (!map.has(r.date)) {
+      map.set(r.date, { date: r.date, estimated: r.source !== "cboe" });
+    }
     const point = map.get(r.date)!;
-    if (r.symbol === "SPY") point.SPY = parseFloat(r.pcr.toFixed(3));
-    if (r.symbol === "QQQ") point.QQQ = parseFloat(r.pcr.toFixed(3));
+    // 날짜 내 cboe가 하나라도 있으면 estimated=false
+    if (r.source === "cboe") point.estimated = false;
+    if (r.symbol === "SPY") point.SPY = parseFloat(Number(r.pcr).toFixed(3));
+    if (r.symbol === "QQQ") point.QQQ = parseFloat(Number(r.pcr).toFixed(3));
   }
 
   return Array.from(map.values());
 }
 
-export async function GET() {
+export async function GET(req: NextRequest) {
+  const period = req.nextUrl.searchParams.get("period") ?? "1y";
+
   try {
     const [spyResult, qqqResult] = await Promise.allSettled([
       fetchCboePCR("SPY"),
@@ -105,13 +127,11 @@ export async function GET() {
     if (spyResult.status === "fulfilled") current.push(spyResult.value);
     if (qqqResult.status === "fulfilled") current.push(qqqResult.value);
 
-    // 오늘 데이터 DB 저장 (market hours 중에만 의미 있음)
     if (current.length > 0) {
       saveSnapshots(current).catch(() => {});
     }
 
-    const history = await loadHistory();
-
+    const history = await loadHistory(period);
     const response: PCRResponse = { current, history };
 
     return NextResponse.json(response, {

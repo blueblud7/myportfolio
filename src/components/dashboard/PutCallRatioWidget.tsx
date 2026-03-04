@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import useSWR from "swr";
 import {
   LineChart,
@@ -15,6 +16,15 @@ import { cn } from "@/lib/utils";
 import type { PCRResponse, PCRData } from "@/app/api/put-call-ratio/route";
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
+
+const PERIODS = [
+  { key: "1w", label: "1주" },
+  { key: "1m", label: "1달" },
+  { key: "3m", label: "3달" },
+  { key: "6m", label: "6달" },
+  { key: "1y", label: "1년" },
+] as const;
+type Period = (typeof PERIODS)[number]["key"];
 
 function formatVol(v: number) {
   if (v >= 1_000_000) return `${(v / 1_000_000).toFixed(1)}M`;
@@ -41,7 +51,6 @@ function PCRCard({ data }: { data: PCRData }) {
         <span className="text-sm font-bold">{data.symbol}</span>
         <span className={cn("text-xs font-medium", sent.color)}>{sent.label}</span>
       </div>
-
       <div className="flex items-end gap-2">
         <span className={cn("text-2xl font-mono font-bold", sent.color)}>
           {data.pcr !== null ? data.pcr.toFixed(2) : "—"}
@@ -50,7 +59,6 @@ function PCRCard({ data }: { data: PCRData }) {
           {data.basis === "openInterest" ? "OI 기준" : "거래량"}
         </span>
       </div>
-
       <div className="space-y-1">
         <div className="flex h-1.5 overflow-hidden rounded-full">
           <div className="bg-red-400 transition-all" style={{ width: `${putPct.toFixed(1)}%` }} />
@@ -74,6 +82,7 @@ function PCRCard({ data }: { data: PCRData }) {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function CustomTooltip({ active, payload, label }: any) {
   if (!active || !payload?.length) return null;
+  const estimated = payload[0]?.payload?.estimated;
   return (
     <div className="rounded-md border bg-popover px-2.5 py-1.5 text-xs shadow space-y-0.5">
       <p className="text-muted-foreground mb-1">{label}</p>
@@ -82,122 +91,126 @@ function CustomTooltip({ active, payload, label }: any) {
           {p.name}: {p.value?.toFixed(3)}
         </p>
       ))}
+      {estimated && (
+        <p className="text-[10px] text-muted-foreground mt-1">* VIX 추정값</p>
+      )}
     </div>
   );
 }
 
+function formatXLabel(date: string, period: Period) {
+  // date is MM-DD format
+  if (period === "1y" || period === "6m") return date.slice(0, 5); // MM-DD
+  return date; // MM-DD
+}
+
 export function PutCallRatioWidget() {
-  const { data, isLoading, error } = useSWR<PCRResponse>("/api/put-call-ratio", fetcher, {
-    refreshInterval: 15 * 60 * 1000,
-    revalidateOnFocus: false,
-    dedupingInterval: 900_000,
-  });
+  const [period, setPeriod] = useState<Period>("3m");
 
-  if (isLoading) {
-    return (
-      <div className="space-y-3">
-        <div className="grid grid-cols-2 gap-2">
-          {[0, 1].map((i) => (
-            <div key={i} className="h-24 animate-pulse rounded-lg border bg-muted/40" />
-          ))}
-        </div>
-        <div className="h-36 animate-pulse rounded-lg border bg-muted/40" />
-      </div>
-    );
-  }
+  const { data, isLoading, error } = useSWR<PCRResponse>(
+    `/api/put-call-ratio?period=${period}`,
+    fetcher,
+    { refreshInterval: 15 * 60 * 1000, revalidateOnFocus: false, dedupingInterval: 900_000 }
+  );
 
-  if (error || !data) {
-    return (
-      <p className="py-4 text-center text-xs text-muted-foreground">
-        풋/콜 데이터를 불러올 수 없습니다.
-      </p>
-    );
-  }
+  const chartData = (data?.history ?? []).map((h) => ({
+    ...h,
+    date: h.date.slice(5), // MM-DD
+  }));
 
-  const { current, history } = data;
-
-  // MM/DD 형식으로 변환
-  const chartData = history.map((h) => ({ ...h, date: h.date.slice(5) }));
-  const hasHistory = chartData.length > 0;
+  // X축 interval 자동 조정
+  const xInterval = Math.max(0, Math.floor(chartData.length / 6) - 1);
 
   return (
     <div className="space-y-3">
-      {/* 해석 가이드 */}
       <p className="text-[10px] text-muted-foreground">
         PCR &gt; 1.2 공포(역발상 매수) · &lt; 0.7 탐욕(역발상 매도) · CBOE 지연 데이터
       </p>
 
       {/* 현재 PCR 카드 */}
-      <div className="grid grid-cols-2 gap-2">
-        {current.map((d) => (
-          <PCRCard key={d.symbol} data={d} />
+      {isLoading ? (
+        <div className="grid grid-cols-2 gap-2">
+          {[0, 1].map((i) => <div key={i} className="h-24 animate-pulse rounded-lg border bg-muted/40" />)}
+        </div>
+      ) : error || !data ? (
+        <p className="py-2 text-center text-xs text-muted-foreground">데이터 없음</p>
+      ) : (
+        <div className="grid grid-cols-2 gap-2">
+          {data.current.map((d) => <PCRCard key={d.symbol} data={d} />)}
+        </div>
+      )}
+
+      {/* 기간 선택 탭 */}
+      <div className="flex gap-1">
+        {PERIODS.map(({ key, label }) => (
+          <button
+            key={key}
+            onClick={() => setPeriod(key)}
+            className={cn(
+              "rounded px-2 py-0.5 text-xs font-medium transition-colors",
+              period === key
+                ? "bg-primary text-primary-foreground"
+                : "text-muted-foreground hover:bg-muted hover:text-foreground"
+            )}
+          >
+            {label}
+          </button>
         ))}
       </div>
 
       {/* 히스토리 차트 */}
       <div>
-        <p className="mb-1.5 text-[11px] font-medium text-muted-foreground">
-          SPY / QQQ Put/Call Ratio 추이
-        </p>
-        {hasHistory ? (
-          <ResponsiveContainer width="100%" height={140}>
-            <LineChart data={chartData} margin={{ top: 4, right: 4, left: -24, bottom: 0 }}>
-              <XAxis
-                dataKey="date"
-                tick={{ fontSize: 9 }}
-                interval={Math.max(0, Math.floor(chartData.length / 5) - 1)}
-                tickLine={false}
-                axisLine={false}
-              />
-              <YAxis
-                domain={["auto", "auto"]}
-                tick={{ fontSize: 9 }}
-                tickLine={false}
-                axisLine={false}
-              />
-              <Tooltip content={<CustomTooltip />} />
-              <Legend
-                iconType="line"
-                wrapperStyle={{ fontSize: 10, paddingTop: 4 }}
-              />
-              <ReferenceLine y={1.2} stroke="#10b981" strokeDasharray="3 3" strokeWidth={1} />
-              <ReferenceLine y={0.7} stroke="#f87171" strokeDasharray="3 3" strokeWidth={1} />
-              <Line
-                type="monotone"
-                dataKey="SPY"
-                stroke="#6366f1"
-                strokeWidth={1.5}
-                dot={false}
-                isAnimationActive={false}
-                connectNulls
-              />
-              <Line
-                type="monotone"
-                dataKey="QQQ"
-                stroke="#f59e0b"
-                strokeWidth={1.5}
-                dot={false}
-                isAnimationActive={false}
-                connectNulls
-              />
-            </LineChart>
-          </ResponsiveContainer>
-        ) : (
+        {isLoading ? (
+          <div className="h-40 animate-pulse rounded-lg border bg-muted/40" />
+        ) : chartData.length === 0 ? (
           <div className="flex h-36 items-center justify-center rounded-lg border bg-muted/20">
-            <p className="text-center text-[11px] text-muted-foreground">
-              데이터 누적 중…<br />
-              <span className="text-[10px]">매일 방문 시 자동으로 쌓입니다.</span>
-            </p>
+            <p className="text-center text-[11px] text-muted-foreground">데이터가 없습니다.</p>
           </div>
+        ) : (
+          <>
+            <ResponsiveContainer width="100%" height={150}>
+              <LineChart data={chartData} margin={{ top: 4, right: 4, left: -24, bottom: 0 }}>
+                <XAxis
+                  dataKey="date"
+                  tick={{ fontSize: 9 }}
+                  interval={xInterval}
+                  tickLine={false}
+                  axisLine={false}
+                  tickFormatter={(v) => formatXLabel(v, period)}
+                />
+                <YAxis
+                  domain={["auto", "auto"]}
+                  tick={{ fontSize: 9 }}
+                  tickLine={false}
+                  axisLine={false}
+                />
+                <Tooltip content={<CustomTooltip />} />
+                <Legend iconType="line" wrapperStyle={{ fontSize: 10, paddingTop: 4 }} />
+                <ReferenceLine y={1.2} stroke="#10b981" strokeDasharray="3 3" strokeWidth={1} />
+                <ReferenceLine y={0.7} stroke="#f87171" strokeDasharray="3 3" strokeWidth={1} />
+                <Line
+                  type="monotone" dataKey="SPY" stroke="#6366f1"
+                  strokeWidth={1.5} dot={false} isAnimationActive={false} connectNulls
+                />
+                <Line
+                  type="monotone" dataKey="QQQ" stroke="#f59e0b"
+                  strokeWidth={1.5} dot={false} isAnimationActive={false} connectNulls
+                />
+              </LineChart>
+            </ResponsiveContainer>
+            <div className="mt-1 flex items-center justify-between text-[9px] text-muted-foreground px-1">
+              <div className="flex gap-3">
+                <span className="flex items-center gap-1">
+                  <span className="inline-block w-3 border-t border-dashed border-emerald-500" /> 공포 1.2
+                </span>
+                <span className="flex items-center gap-1">
+                  <span className="inline-block w-3 border-t border-dashed border-red-400" /> 탐욕 0.7
+                </span>
+              </div>
+              <span className="text-[9px] text-muted-foreground/60">점선: VIX 추정 / 실선: CBOE 실측</span>
+            </div>
+          </>
         )}
-        <div className="mt-1 flex justify-center gap-4 text-[9px] text-muted-foreground">
-          <span className="flex items-center gap-1">
-            <span className="inline-block w-3 border-t border-dashed border-emerald-500" /> 공포선 1.2
-          </span>
-          <span className="flex items-center gap-1">
-            <span className="inline-block w-3 border-t border-dashed border-red-400" /> 탐욕선 0.7
-          </span>
-        </div>
       </div>
 
       <p className="text-center text-[10px] text-muted-foreground">
