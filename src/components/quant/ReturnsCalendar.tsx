@@ -102,11 +102,11 @@ export function ReturnsCalendar() {
       <CardContent>
         {isLoading ? (
           <div className="flex h-40 items-center justify-center text-sm text-muted-foreground">
-            로딩 중...
+            {t("loading")}
           </div>
         ) : !data || data.rows.length === 0 ? (
           <div className="flex h-40 items-center justify-center text-sm text-muted-foreground">
-            데이터가 없습니다
+            {t("noData")}
           </div>
         ) : (
           <div className="overflow-x-auto">

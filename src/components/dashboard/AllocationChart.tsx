@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   PieChart,
@@ -33,6 +34,7 @@ interface Props {
 }
 
 export function AllocationChart({ title, data }: Props) {
+  const t = useTranslations("Common");
   if (data.length === 0) {
     return (
       <Card>
@@ -41,7 +43,7 @@ export function AllocationChart({ title, data }: Props) {
         </CardHeader>
         <CardContent>
           <div className="flex h-[250px] items-center justify-center text-muted-foreground">
-            데이터 없음
+            {t("noData")}
           </div>
         </CardContent>
       </Card>

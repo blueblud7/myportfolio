@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import useSWR from "swr";
 import {
   LineChart,
@@ -17,14 +18,8 @@ import type { PCRResponse, PCRData } from "@/app/api/put-call-ratio/route";
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
-const PERIODS = [
-  { key: "1w", label: "1주" },
-  { key: "1m", label: "1달" },
-  { key: "3m", label: "3달" },
-  { key: "6m", label: "6달" },
-  { key: "1y", label: "1년" },
-] as const;
-type Period = (typeof PERIODS)[number]["key"];
+const PERIOD_KEYS = ["1w", "1m", "3m", "6m", "1y"] as const;
+type Period = (typeof PERIOD_KEYS)[number];
 
 function formatVol(v: number) {
   if (v >= 1_000_000) return `${(v / 1_000_000).toFixed(1)}M`;
@@ -32,31 +27,31 @@ function formatVol(v: number) {
   return `${v}`;
 }
 
-function sentiment(pcr: number | null): { label: string; color: string } {
-  if (pcr === null) return { label: "—", color: "text-muted-foreground" };
-  if (pcr > 1.2) return { label: "공포", color: "text-emerald-500" };
-  if (pcr > 0.9) return { label: "하락심리", color: "text-yellow-500" };
-  if (pcr > 0.7) return { label: "중립", color: "text-blue-400" };
-  return { label: "탐욕", color: "text-red-400" };
+function sentimentKey(pcr: number | null): { key: "fear" | "decline" | "neutral" | "greed" | null; color: string } {
+  if (pcr === null) return { key: null, color: "text-muted-foreground" };
+  if (pcr > 1.2) return { key: "fear", color: "text-emerald-500" };
+  if (pcr > 0.9) return { key: "decline", color: "text-yellow-500" };
+  if (pcr > 0.7) return { key: "neutral", color: "text-blue-400" };
+  return { key: "greed", color: "text-red-400" };
 }
 
-function PCRCard({ data }: { data: PCRData }) {
+function PCRCard({ data, t }: { data: PCRData; t: (key: string) => string }) {
   const total = data.callVolume + data.putVolume;
   const putPct = total > 0 ? (data.putVolume / total) * 100 : 50;
-  const sent = sentiment(data.pcr);
+  const sent = sentimentKey(data.pcr);
 
   return (
     <div className="rounded-lg border bg-card p-3 space-y-2">
       <div className="flex items-center justify-between">
         <span className="text-sm font-bold">{data.symbol}</span>
-        <span className={cn("text-xs font-medium", sent.color)}>{sent.label}</span>
+        <span className={cn("text-xs font-medium", sent.color)}>{sent.key ? t(sent.key) : "—"}</span>
       </div>
       <div className="flex items-end gap-2">
         <span className={cn("text-2xl font-mono font-bold", sent.color)}>
           {data.pcr !== null ? data.pcr.toFixed(2) : "—"}
         </span>
         <span className="pb-0.5 text-[10px] text-muted-foreground">
-          {data.basis === "openInterest" ? "OI 기준" : "거래량"}
+          {data.basis === "openInterest" ? t("basisOI") : t("basisVolume")}
         </span>
       </div>
       <div className="space-y-1">
@@ -80,7 +75,7 @@ function PCRCard({ data }: { data: PCRData }) {
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function CustomTooltip({ active, payload, label }: any) {
+function CustomTooltip({ active, payload, label, vixLabel }: any) {
   if (!active || !payload?.length) return null;
   const estimated = payload[0]?.payload?.estimated;
   return (
@@ -92,7 +87,7 @@ function CustomTooltip({ active, payload, label }: any) {
         </p>
       ))}
       {estimated && (
-        <p className="text-[10px] text-muted-foreground mt-1">* VIX 추정값</p>
+        <p className="text-[10px] text-muted-foreground mt-1">{vixLabel}</p>
       )}
     </div>
   );
@@ -105,6 +100,7 @@ function formatXLabel(date: string, period: Period) {
 }
 
 export function PutCallRatioWidget() {
+  const t = useTranslations("PutCallRatio");
   const [period, setPeriod] = useState<Period>("3m");
 
   const { data, isLoading, error } = useSWR<PCRResponse>(
@@ -124,7 +120,7 @@ export function PutCallRatioWidget() {
   return (
     <div className="space-y-3">
       <p className="text-[10px] text-muted-foreground">
-        PCR &gt; 1.2 공포(역발상 매수) · &lt; 0.7 탐욕(역발상 매도) · CBOE 지연 데이터
+        {t("description")}
       </p>
 
       {/* 현재 PCR 카드 */}
@@ -133,16 +129,16 @@ export function PutCallRatioWidget() {
           {[0, 1].map((i) => <div key={i} className="h-24 animate-pulse rounded-lg border bg-muted/40" />)}
         </div>
       ) : error || !data ? (
-        <p className="py-2 text-center text-xs text-muted-foreground">데이터 없음</p>
+        <p className="py-2 text-center text-xs text-muted-foreground">{t("noData")}</p>
       ) : (
         <div className="grid grid-cols-2 gap-2">
-          {data.current.map((d) => <PCRCard key={d.symbol} data={d} />)}
+          {data.current.map((d) => <PCRCard key={d.symbol} data={d} t={t} />)}
         </div>
       )}
 
       {/* 기간 선택 탭 */}
       <div className="flex gap-1">
-        {PERIODS.map(({ key, label }) => (
+        {PERIOD_KEYS.map((key) => (
           <button
             key={key}
             onClick={() => setPeriod(key)}
@@ -153,7 +149,7 @@ export function PutCallRatioWidget() {
                 : "text-muted-foreground hover:bg-muted hover:text-foreground"
             )}
           >
-            {label}
+            {t(key)}
           </button>
         ))}
       </div>
@@ -164,7 +160,7 @@ export function PutCallRatioWidget() {
           <div className="h-40 animate-pulse rounded-lg border bg-muted/40" />
         ) : chartData.length === 0 ? (
           <div className="flex h-36 items-center justify-center rounded-lg border bg-muted/20">
-            <p className="text-center text-[11px] text-muted-foreground">데이터가 없습니다.</p>
+            <p className="text-center text-[11px] text-muted-foreground">{t("noHistory")}</p>
           </div>
         ) : (
           <>
@@ -184,7 +180,7 @@ export function PutCallRatioWidget() {
                   tickLine={false}
                   axisLine={false}
                 />
-                <Tooltip content={<CustomTooltip />} />
+                <Tooltip content={<CustomTooltip vixLabel={t("vixEstimated")} />} />
                 <Legend iconType="line" wrapperStyle={{ fontSize: 10, paddingTop: 4 }} />
                 <ReferenceLine y={1.2} stroke="#10b981" strokeDasharray="3 3" strokeWidth={1} />
                 <ReferenceLine y={0.7} stroke="#f87171" strokeDasharray="3 3" strokeWidth={1} />
@@ -201,20 +197,20 @@ export function PutCallRatioWidget() {
             <div className="mt-1 flex items-center justify-between text-[9px] text-muted-foreground px-1">
               <div className="flex gap-3">
                 <span className="flex items-center gap-1">
-                  <span className="inline-block w-3 border-t border-dashed border-emerald-500" /> 공포 1.2
+                  <span className="inline-block w-3 border-t border-dashed border-emerald-500" /> {t("fearLine")}
                 </span>
                 <span className="flex items-center gap-1">
-                  <span className="inline-block w-3 border-t border-dashed border-red-400" /> 탐욕 0.7
+                  <span className="inline-block w-3 border-t border-dashed border-red-400" /> {t("greedLine")}
                 </span>
               </div>
-              <span className="text-[9px] text-muted-foreground/60">점선: VIX 추정 / 실선: CBOE 실측</span>
+              <span className="text-[9px] text-muted-foreground/60">{t("chartLegend")}</span>
             </div>
           </>
         )}
       </div>
 
       <p className="text-center text-[10px] text-muted-foreground">
-        CBOE 지연 데이터 · 15분 갱신
+        {t("footer")}
       </p>
     </div>
   );

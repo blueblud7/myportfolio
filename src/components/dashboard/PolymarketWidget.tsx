@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { useTranslations } from "next-intl";
 import useSWR from "swr";
 import { Search, X } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -70,7 +71,7 @@ function MarketRow({ market }: { market: PolymarketEvent["markets"][number] }) {
   );
 }
 
-function EventList({ apiUrl, isSearch }: { apiUrl: string; isSearch: boolean }) {
+function EventList({ apiUrl, isSearch, noResults, noData }: { apiUrl: string; isSearch: boolean; noResults: string; noData: string }) {
   const { data, isLoading, error } = useSWR<PolymarketEvent[]>(apiUrl, fetcher, {
     refreshInterval: isSearch ? 0 : 5 * 60 * 1000,
     revalidateOnFocus: false,
@@ -90,7 +91,7 @@ function EventList({ apiUrl, isSearch }: { apiUrl: string; isSearch: boolean }) 
   if (error || !data || !Array.isArray(data) || data.length === 0) {
     return (
       <p className="py-4 text-center text-xs text-muted-foreground">
-        {isSearch ? "검색 결과가 없습니다." : "예측 데이터를 불러올 수 없습니다."}
+        {isSearch ? noResults : noData}
       </p>
     );
   }
@@ -119,6 +120,7 @@ function EventList({ apiUrl, isSearch }: { apiUrl: string; isSearch: boolean }) 
 }
 
 export function PolymarketWidget() {
+  const t = useTranslations("Polymarket");
   const [input, setInput] = useState("");
   const [query, setQuery] = useState("");
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -143,7 +145,7 @@ export function PolymarketWidget() {
           type="text"
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder="이벤트 검색... (예: bitcoin, election, fed)"
+          placeholder={t("searchPlaceholder")}
           className="w-full rounded-md border bg-background py-1.5 pl-8 pr-8 text-xs outline-none focus:ring-1 focus:ring-ring"
         />
         {input && (
@@ -156,7 +158,7 @@ export function PolymarketWidget() {
         )}
       </div>
 
-      <EventList apiUrl={apiUrl} isSearch={!!query} />
+      <EventList apiUrl={apiUrl} isSearch={!!query} noResults={t("noResults")} noData={t("noData")} />
 
       <p className="pt-1 text-center text-[10px] text-muted-foreground">
         Powered by{" "}
@@ -168,7 +170,7 @@ export function PolymarketWidget() {
         >
           Polymarket
         </a>{" "}
-        · {query ? "검색 결과" : "5분 갱신"}
+        · {query ? t("searchResults") : t("autoRefresh")}
       </p>
     </div>
   );

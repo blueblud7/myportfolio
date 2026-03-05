@@ -68,7 +68,8 @@
     "viewDetail": "View Detail",
     "deleteConfirm": "Delete this account? All holdings will also be deleted.",
     "stock": "Stock",
-    "bank": "Bank"
+    "bank": "Bank",
+    "dailyChange": "Daily Change"
   },
   "AccountDetail": {
     "valuation": "Valuation",
@@ -81,7 +82,8 @@
     "addHolding": "Add Holding",
     "deleteConfirm": "Delete this holding?",
     "stock": "Stock",
-    "bank": "Bank"
+    "bank": "Bank",
+    "benchmarkTab": "Benchmark"
   },
   "AccountForm": {
     "editTitle": "Edit Account",
@@ -160,7 +162,11 @@
     "syncing": "Syncing...",
     "syncBtn": "Sync Holdings",
     "saveKey": "Save API Key",
-    "saving": "Saving..."
+    "saving": "Saving...",
+    "syncFailed": "Sync failed",
+    "unknownError": "Unknown error",
+    "appKeyPlaceholder": "Enter Kiwoom App Key",
+    "secretKeyPlaceholder": "Enter Kiwoom Secret Key"
   },
   "Bank": {
     "title": "Bank Accounts",
@@ -277,7 +283,16 @@
     "subjectPortfolio": "Portfolio",
     "subjectAccount": "Account",
     "subjectStock": "Stock",
-    "excessReturn": "Excess Return"
+    "excessReturn": "Excess Return",
+    "selectAccount": "Select account...",
+    "selectStock": "Select stock...",
+    "selectSubject": "Please select an account or stock",
+    "noChartData": "No chart data",
+    "noChartDataHint": "Price history has not been collected yet.",
+    "noChartDataHint2": "Run price refresh in the Holdings tab, then visit for a few days to see the chart.",
+    "bankNoSupport": "Bank accounts do not support benchmark comparison.",
+    "totalGainVsCost": "Total Gain/Loss (vs Cost)",
+    "periodChange": "Period Change"
   },
   "Quant": {
     "title": "My Quant",
@@ -289,7 +304,9 @@
     "years30": "30Y",
     "average": "Average",
     "median": "Median",
-    "annual": "Annual"
+    "annual": "Annual",
+    "loading": "Loading...",
+    "noData": "No data"
   },
   "Rebalancing": {
     "title": "Rebalancing",
@@ -416,7 +433,12 @@
     "date": "Date",
     "note": "Note",
     "deleteConfirm": "Delete this transaction?",
-    "noData": "No transactions yet."
+    "noData": "No transactions yet.",
+    "currency": "Currency",
+    "notePlaceholder": "Note (optional)",
+    "stockSearchPlaceholder": "e.g. Samsung, 005930, AAPL",
+    "tickerPlaceholder": "Ticker",
+    "namePlaceholder": "Name"
   },
   "DiaryPattern": {
     "title": "Psychology × Trade Pattern",
@@ -492,6 +514,38 @@
     "searching": "Searching...",
     "placeholder": "Search by ticker or name",
     "cash": "Cash"
+  },
+  "AccountTrendChart": {
+    "title": "Account Asset Trend",
+    "noData": "No snapshot data. Visit the dashboard to record today's data."
+  },
+  "Polymarket": {
+    "noResults": "No results found.",
+    "noData": "Could not load prediction data.",
+    "searchPlaceholder": "Search events... (e.g. bitcoin, election, fed)",
+    "searchResults": "Search results",
+    "autoRefresh": "5 min refresh"
+  },
+  "PutCallRatio": {
+    "description": "PCR > 1.2 Fear (contrarian buy) · < 0.7 Greed (contrarian sell) · CBOE delayed data",
+    "fear": "Fear",
+    "decline": "Bearish",
+    "neutral": "Neutral",
+    "greed": "Greed",
+    "basisOI": "OI basis",
+    "basisVolume": "Volume",
+    "vixEstimated": "* VIX estimate",
+    "noData": "No data",
+    "noHistory": "No data available.",
+    "fearLine": "Fear 1.2",
+    "greedLine": "Greed 0.7",
+    "chartLegend": "Dashed: VIX estimate / Solid: CBOE actual",
+    "footer": "CBOE delayed data · 15 min refresh",
+    "1w": "1W",
+    "1m": "1M",
+    "3m": "3M",
+    "6m": "6M",
+    "1y": "1Y"
   },
   "InvestorQuotes": {
     "quotes": [

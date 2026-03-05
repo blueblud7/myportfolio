@@ -231,7 +231,7 @@ export default function AccountDetailPage() {
         <TabsList>
           <TabsTrigger value="holdings">{t("holdings")}</TabsTrigger>
           <TabsTrigger value="transactions">{tTx("title")}</TabsTrigger>
-          <TabsTrigger value="benchmark">벤치마크</TabsTrigger>
+          <TabsTrigger value="benchmark">{t("benchmarkTab")}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="holdings" className="mt-4">

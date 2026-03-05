@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import { useTranslations } from "next-intl";
 import { subMonths, subYears, format } from "date-fns";
 import {
   LineChart,
@@ -51,6 +52,7 @@ interface Props {
 }
 
 export function AccountTrendChart({ currency, exchangeRate }: Props) {
+  const t = useTranslations("AccountTrendChart");
   const [period, setPeriod] = useState<Period>("3M");
   const start = periodToStart(period);
   const end = format(new Date(), "yyyy-MM-dd");
@@ -82,11 +84,11 @@ export function AccountTrendChart({ currency, exchangeRate }: Props) {
     return (
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">계좌별 자산 추이</CardTitle>
+          <CardTitle className="text-base">{t("title")}</CardTitle>
         </CardHeader>
         <CardContent>
           <p className="py-8 text-center text-sm text-muted-foreground">
-            스냅샷 데이터가 없습니다. 대시보드를 방문하면 오늘 데이터가 기록됩니다.
+            {t("noData")}
           </p>
         </CardContent>
       </Card>
@@ -96,7 +98,7 @@ export function AccountTrendChart({ currency, exchangeRate }: Props) {
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between pb-2">
-        <CardTitle className="text-base">계좌별 자산 추이</CardTitle>
+        <CardTitle className="text-base">{t("title")}</CardTitle>
         <div className="flex gap-1">
           {PERIOD_BUTTONS.map((p) => (
             <Button

@@ -142,7 +142,7 @@ export function BenchmarkComparison({ fixedAccountId }: BenchmarkComparisonProps
                   onChange={(e) => setAccountId(e.target.value)}
                   className="rounded-md border bg-background px-2 py-1.5 text-sm"
                 >
-                  <option value="">계좌 선택...</option>
+                  <option value="">{t("selectAccount")}</option>
                   {(accounts ?? []).map((a) => (
                     <option key={a.id} value={String(a.id)}>
                       {a.name}
@@ -157,7 +157,7 @@ export function BenchmarkComparison({ fixedAccountId }: BenchmarkComparisonProps
                   onChange={(e) => setStockTicker(e.target.value)}
                   className="rounded-md border bg-background px-2 py-1.5 text-sm"
                 >
-                  <option value="">종목 선택...</option>
+                  <option value="">{t("selectStock")}</option>
                   {uniqueHoldings.map((h) => (
                     <option key={h.ticker} value={h.ticker}>
                       {h.name} ({h.ticker})
@@ -213,23 +213,22 @@ export function BenchmarkComparison({ fixedAccountId }: BenchmarkComparisonProps
         {/* Chart */}
         {!validSubject ? (
           <div className="flex h-48 items-center justify-center text-sm text-muted-foreground">
-            계좌 또는 종목을 선택해주세요
+            {t("selectSubject")}
           </div>
         ) : isLoading ? (
           <div className="flex h-48 items-center justify-center text-sm text-muted-foreground">
-            로딩 중...
+            {t("loading")}
           </div>
         ) : chartData.length === 0 ? (
           <div className="flex h-48 flex-col items-center justify-center gap-2 rounded-lg border border-dashed text-center text-sm text-muted-foreground">
-            <p className="font-medium">차트 데이터가 없습니다</p>
+            <p className="font-medium">{t("noChartData")}</p>
             <p className="text-xs leading-relaxed">
-              가격 히스토리가 아직 쌓이지 않았습니다.<br />
-              보유종목 탭에서 <span className="font-semibold text-foreground">가격 갱신</span>을 실행하고,
-              며칠간 방문하면 차트가 표시됩니다.
+              {t("noChartDataHint")}<br />
+              {t("noChartDataHint2")}
             </p>
             {fixedAccountId && (
               <p className="text-xs text-muted-foreground/70">
-                은행 계좌는 벤치마크 비교를 지원하지 않습니다.
+                {t("bankNoSupport")}
               </p>
             )}
           </div>
@@ -251,7 +250,7 @@ export function BenchmarkComparison({ fixedAccountId }: BenchmarkComparisonProps
               <Tooltip
                 formatter={(v: number | undefined, name: string | undefined) => [
                   v != null ? formatPct(v) : "",
-                  !name ? "" : name === "subject" ? data?.subject.name ?? "포트폴리오" : name,
+                  !name ? "" : name === "subject" ? data?.subject.name ?? t("subjectPortfolio") : name,
                 ]}
                 labelFormatter={(l) => l}
                 contentStyle={{
@@ -263,7 +262,7 @@ export function BenchmarkComparison({ fixedAccountId }: BenchmarkComparisonProps
               />
               <Legend
                 formatter={(value) =>
-                  value === "subject" ? data?.subject.name ?? "포트폴리오" : value
+                  value === "subject" ? data?.subject.name ?? t("subjectPortfolio") : value
                 }
               />
               <ReferenceLine y={0} stroke="hsl(var(--muted-foreground))" strokeDasharray="4 2" />
@@ -296,7 +295,7 @@ export function BenchmarkComparison({ fixedAccountId }: BenchmarkComparisonProps
           <div className="space-y-2 rounded-lg bg-muted/40 px-4 py-3 text-sm">
             {/* 현재 총 손익 */}
             <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
-              <span className="text-xs text-muted-foreground">총 손익 (원가 대비)</span>
+              <span className="text-xs text-muted-foreground">{t("totalGainVsCost")}</span>
               <div className="flex items-center gap-2">
                 <span
                   className="inline-block h-2.5 w-2.5 rounded-full"
@@ -310,7 +309,7 @@ export function BenchmarkComparison({ fixedAccountId }: BenchmarkComparisonProps
             </div>
             {/* 기간 내 변화량 + 초과 수익 */}
             <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-dashed border-muted pt-2">
-              <span className="text-xs text-muted-foreground">기간 변화 ({period})</span>
+              <span className="text-xs text-muted-foreground">{t("periodChange")} ({period})</span>
               <div className="flex items-center gap-2">
                 <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ backgroundColor: SUBJECT_COLOR }} />
                 <span className="font-medium">{data.subject.name}</span>

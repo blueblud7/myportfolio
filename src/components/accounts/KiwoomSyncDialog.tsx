@@ -87,13 +87,13 @@ export function KiwoomSyncDialog({ accountId, open, onClose, onSynced }: Props) 
         body: JSON.stringify({ account_id: accountId }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "동기화 실패");
+      if (!res.ok) throw new Error(data.error ?? t("syncFailed"));
       setSyncResult({ added: data.added, updated: data.updated, total: data.total });
       setSyncStatus("success");
       setSavedCreds((prev) => prev ? { ...prev, last_synced_at: new Date().toISOString() } : prev);
       onSynced();
     } catch (err) {
-      setErrorMsg(err instanceof Error ? err.message : "알 수 없는 오류");
+      setErrorMsg(err instanceof Error ? err.message : t("unknownError"));
       setSyncStatus("error");
     }
   };
@@ -167,7 +167,7 @@ export function KiwoomSyncDialog({ accountId, open, onClose, onSynced }: Props) 
                 <Input
                   id="app-key"
                   type="password"
-                  placeholder="키움 App Key 입력"
+                  placeholder={t("appKeyPlaceholder")}
                   value={appKey}
                   onChange={(e) => setAppKey(e.target.value)}
                 />
@@ -177,7 +177,7 @@ export function KiwoomSyncDialog({ accountId, open, onClose, onSynced }: Props) 
                 <Input
                   id="secret-key"
                   type="password"
-                  placeholder="키움 Secret Key 입력"
+                  placeholder={t("secretKeyPlaceholder")}
                   value={secretKey}
                   onChange={(e) => setSecretKey(e.target.value)}
                 />

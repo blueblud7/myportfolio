@@ -130,7 +130,7 @@ export function TransactionForm({ transaction, accountId, accountCurrency = "KRW
               </Select>
             </div>
             <div className="space-y-2">
-              <Label>통화</Label>
+              <Label>{t("currency")}</Label>
               <Select value={currency} onValueChange={(v) => setCurrency(v as "KRW" | "USD")} disabled={isEditing}>
                 <SelectTrigger>
                   <SelectValue />
@@ -149,7 +149,7 @@ export function TransactionForm({ transaction, accountId, accountCurrency = "KRW
               <Label>{t("ticker")} / {t("name")}</Label>
               <StockSearchInput
                 onSelect={handleStockSelect}
-                placeholder="예: 삼성전자, 005930, AAPL"
+                placeholder={t("stockSearchPlaceholder")}
               />
             </div>
           )}
@@ -162,7 +162,7 @@ export function TransactionForm({ transaction, accountId, accountCurrency = "KRW
                   id="tx-ticker"
                   value={ticker}
                   onChange={(e) => setTicker(e.target.value)}
-                  placeholder="005930"
+                  placeholder={t("tickerPlaceholder")}
                   disabled={isEditing}
                 />
               </div>
@@ -172,7 +172,7 @@ export function TransactionForm({ transaction, accountId, accountCurrency = "KRW
                   id="tx-name"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  placeholder="삼성전자"
+                  placeholder={t("namePlaceholder")}
                   disabled={isEditing}
                 />
               </div>
@@ -256,7 +256,7 @@ export function TransactionForm({ transaction, accountId, accountCurrency = "KRW
                 id="tx-note"
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
-                placeholder="메모 (선택)"
+                placeholder={t("notePlaceholder")}
                 maxLength={100}
               />
             </div>

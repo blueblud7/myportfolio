@@ -68,7 +68,8 @@
     "viewDetail": "상세 보기",
     "deleteConfirm": "이 계좌를 삭제하시겠습니까? 모든 보유종목도 함께 삭제됩니다.",
     "stock": "주식",
-    "bank": "은행"
+    "bank": "은행",
+    "dailyChange": "일간 변동"
   },
   "AccountDetail": {
     "valuation": "평가금액",
@@ -81,7 +82,8 @@
     "addHolding": "종목 추가",
     "deleteConfirm": "이 종목을 삭제하시겠습니까?",
     "stock": "주식",
-    "bank": "은행"
+    "bank": "은행",
+    "benchmarkTab": "벤치마크"
   },
   "AccountForm": {
     "editTitle": "계좌 수정",
@@ -160,7 +162,11 @@
     "syncing": "동기화 중...",
     "syncBtn": "보유종목 동기화",
     "saveKey": "API 키 저장",
-    "saving": "저장 중..."
+    "saving": "저장 중...",
+    "syncFailed": "동기화 실패",
+    "unknownError": "알 수 없는 오류",
+    "appKeyPlaceholder": "키움 App Key 입력",
+    "secretKeyPlaceholder": "키움 Secret Key 입력"
   },
   "Bank": {
     "title": "은행 계좌",
@@ -277,7 +283,16 @@
     "subjectPortfolio": "포트폴리오",
     "subjectAccount": "계좌",
     "subjectStock": "종목",
-    "excessReturn": "초과성과"
+    "excessReturn": "초과성과",
+    "selectAccount": "계좌 선택...",
+    "selectStock": "종목 선택...",
+    "selectSubject": "계좌 또는 종목을 선택해주세요",
+    "noChartData": "차트 데이터가 없습니다",
+    "noChartDataHint": "가격 히스토리가 아직 쌓이지 않았습니다.",
+    "noChartDataHint2": "보유종목 탭에서 가격 갱신을 실행하고, 며칠간 방문하면 차트가 표시됩니다.",
+    "bankNoSupport": "은행 계좌는 벤치마크 비교를 지원하지 않습니다.",
+    "totalGainVsCost": "총 손익 (원가 대비)",
+    "periodChange": "기간 변화"
   },
   "Quant": {
     "title": "마이퀀트",
@@ -289,7 +304,9 @@
     "years30": "30년",
     "average": "평균",
     "median": "중앙값",
-    "annual": "연간"
+    "annual": "연간",
+    "loading": "로딩 중...",
+    "noData": "데이터가 없습니다"
   },
   "Rebalancing": {
     "title": "리밸런싱",
@@ -416,7 +433,12 @@
     "date": "거래일",
     "note": "메모",
     "deleteConfirm": "이 거래를 삭제하시겠습니까?",
-    "noData": "거래 이력이 없습니다."
+    "noData": "거래 이력이 없습니다.",
+    "currency": "통화",
+    "notePlaceholder": "메모 (선택)",
+    "stockSearchPlaceholder": "예: 삼성전자, 005930, AAPL",
+    "tickerPlaceholder": "종목코드",
+    "namePlaceholder": "종목명"
   },
   "DiaryPattern": {
     "title": "투자 심리 × 매매 패턴",
@@ -492,6 +514,38 @@
     "searching": "검색 중...",
     "placeholder": "종목코드 또는 종목명 검색",
     "cash": "현금"
+  },
+  "AccountTrendChart": {
+    "title": "계좌별 자산 추이",
+    "noData": "스냅샷 데이터가 없습니다. 대시보드를 방문하면 오늘 데이터가 기록됩니다."
+  },
+  "Polymarket": {
+    "noResults": "검색 결과가 없습니다.",
+    "noData": "예측 데이터를 불러올 수 없습니다.",
+    "searchPlaceholder": "이벤트 검색... (예: bitcoin, election, fed)",
+    "searchResults": "검색 결과",
+    "autoRefresh": "5분 갱신"
+  },
+  "PutCallRatio": {
+    "description": "PCR > 1.2 공포(역발상 매수) · < 0.7 탐욕(역발상 매도) · CBOE 지연 데이터",
+    "fear": "공포",
+    "decline": "하락심리",
+    "neutral": "중립",
+    "greed": "탐욕",
+    "basisOI": "OI 기준",
+    "basisVolume": "거래량",
+    "vixEstimated": "* VIX 추정값",
+    "noData": "데이터 없음",
+    "noHistory": "데이터가 없습니다.",
+    "fearLine": "공포 1.2",
+    "greedLine": "탐욕 0.7",
+    "chartLegend": "점선: VIX 추정 / 실선: CBOE 실측",
+    "footer": "CBOE 지연 데이터 · 15분 갱신",
+    "1w": "1주",
+    "1m": "1달",
+    "3m": "3달",
+    "6m": "6달",
+    "1y": "1년"
   },
   "InvestorQuotes": {
     "quotes": [

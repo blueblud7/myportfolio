@@ -207,7 +207,7 @@ export default function AccountsPage() {
                       </div>
                       {daily && daily.prev_value !== null && (
                         <div className="mt-1 flex items-baseline justify-between border-t border-dashed border-muted pt-1">
-                          <span className="text-xs text-muted-foreground">일간 변동</span>
+                          <span className="text-xs text-muted-foreground">{t("dailyChange")}</span>
                           <span className={cn("text-sm font-medium", gainLossColor(daily.daily_change))}>
                             <Money
                               value={currency === "USD" ? daily.daily_change / exchangeRate : daily.daily_change}
