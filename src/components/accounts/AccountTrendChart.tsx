@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useTranslations } from "next-intl";
-import { subMonths, subYears, format } from "date-fns";
+import { subMonths, subYears } from "date-fns";
 import {
   LineChart,
   Line,
@@ -14,6 +14,7 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { useAccountSnapshots } from "@/hooks/use-api";
+import { todayPST, formatPST } from "@/lib/tz";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -29,10 +30,10 @@ const LINE_COLORS = [
 
 function periodToStart(period: Period): string | undefined {
   const now = new Date();
-  if (period === "1M") return format(subMonths(now, 1), "yyyy-MM-dd");
-  if (period === "3M") return format(subMonths(now, 3), "yyyy-MM-dd");
-  if (period === "6M") return format(subMonths(now, 6), "yyyy-MM-dd");
-  if (period === "1Y") return format(subYears(now, 1), "yyyy-MM-dd");
+  if (period === "1M") return formatPST(subMonths(now, 1));
+  if (period === "3M") return formatPST(subMonths(now, 3));
+  if (period === "6M") return formatPST(subMonths(now, 6));
+  if (period === "1Y") return formatPST(subYears(now, 1));
   return undefined;
 }
 
@@ -55,9 +56,16 @@ export function AccountTrendChart({ currency, exchangeRate }: Props) {
   const t = useTranslations("AccountTrendChart");
   const [period, setPeriod] = useState<Period>("3M");
   const start = periodToStart(period);
-  const end = format(new Date(), "yyyy-MM-dd");
+  const end = todayPST();
 
-  const { data: rawSnapshots } = useAccountSnapshots(start, end);
+  const { data: rawSnapshots, mutate } = useAccountSnapshots(start, end);
+
+  // 계좌 페이지 방문 시 오늘 스냅샷을 최신 가격으로 생성/업데이트
+  useEffect(() => {
+    fetch("/api/snapshots", { method: "POST" })
+      .then(() => mutate());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const { chartData, accountNames } = useMemo(() => {
     if (!rawSnapshots || rawSnapshots.length === 0) {
