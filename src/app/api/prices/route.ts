@@ -1,14 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 import { getQuotes } from "@/lib/yahoo-finance";
-import { format } from "date-fns";
+import { todayPST } from "@/lib/tz";
 
 export async function POST(req: NextRequest) {
   const { tickers } = await req.json() as { tickers: string[] };
   if (!tickers?.length) return NextResponse.json({ error: "tickers required" }, { status: 400 });
   const quotes = await getQuotes(tickers);
   const sql = getDb();
-  const today = format(new Date(), "yyyy-MM-dd");
+  const today = todayPST();
   for (const q of quotes) {
     await sql`
       INSERT INTO price_history (ticker, price, change_pct, date) VALUES (${q.ticker}, ${q.price}, ${q.changePct}, ${today})

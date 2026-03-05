@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 import { getBenchmarkHistory } from "@/lib/yahoo-finance";
 import { format, subYears, subDays, startOfYear } from "date-fns";
+import { todayPST, formatPST } from "@/lib/tz";
 import type { ReturnsCalendarResponse, ReturnsCalendarRow } from "@/types";
 
 async function upsertRows(symbol: string, pts: { date: string; close: number }[]) {
@@ -51,7 +52,7 @@ async function ensureBenchmarkData(symbol: string, start: string, end: string): 
     FROM benchmark_prices WHERE symbol = ${symbol}
   ` as [{ min_date: string | null; max_date: string | null }];
 
-  const yesterday = format(subDays(new Date(), 1), "yyyy-MM-dd");
+  const yesterday = formatPST(subDays(new Date(), 1));
 
   // 과거 방향: 캐시가 없거나 start보다 늦게 시작되면 청크 단위로 취득
   if (!bounds.min_date || bounds.min_date > start) {
@@ -72,8 +73,8 @@ export async function GET(request: NextRequest) {
   const years = Math.min(Number(searchParams.get("years") ?? 20), 50);
 
   // 해당 연도 전체가 보이도록 N년 전 1월 1일부터 시작
-  const start = format(startOfYear(subYears(new Date(), years)), "yyyy-MM-dd");
-  const end = format(new Date(), "yyyy-MM-dd");
+  const start = formatPST(startOfYear(subYears(new Date(), years)));
+  const end = todayPST();
   await ensureBenchmarkData(symbol, start, end);
 
   const sql = getDb();

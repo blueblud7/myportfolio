@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 import { getBenchmarkHistory } from "@/lib/yahoo-finance";
-import { format, subDays } from "date-fns";
+import { subDays } from "date-fns";
+import { todayPST, formatPST } from "@/lib/tz";
 
 const BENCHMARK_SYMBOLS: Record<string, string> = {
   KOSPI: "^KS11",
@@ -11,9 +12,9 @@ const BENCHMARK_SYMBOLS: Record<string, string> = {
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
-  const end = searchParams.get("end") ?? format(new Date(), "yyyy-MM-dd");
-  const start = searchParams.get("start") ?? format(subDays(new Date(), 90), "yyyy-MM-dd");
-  const yesterday = format(subDays(new Date(), 1), "yyyy-MM-dd");
+  const end = searchParams.get("end") ?? todayPST();
+  const start = searchParams.get("start") ?? formatPST(subDays(new Date(), 90));
+  const yesterday = formatPST(subDays(new Date(), 1));
   const sql = getDb();
   const result: Record<string, { date: string; close: number }[]> = {};
 

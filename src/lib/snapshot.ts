@@ -1,10 +1,10 @@
 import { getDb } from "./db";
 import { getLatestExchangeRate } from "./exchange-rate";
-import { format } from "date-fns";
+import { todayPST } from "./tz";
 
 export async function createDailySnapshot(): Promise<boolean> {
   const sql = getDb();
-  const today = format(new Date(), "yyyy-MM-dd");
+  const today = todayPST();
 
   const existing = await sql`SELECT id FROM snapshots WHERE date = ${today}`;
   if (existing.length > 0) return false;
@@ -57,7 +57,7 @@ export async function createDailySnapshot(): Promise<boolean> {
 
 export async function createAccountSnapshots(): Promise<void> {
   const sql = getDb();
-  const today = format(new Date(), "yyyy-MM-dd");
+  const today = todayPST();
   const exchangeRate = await getLatestExchangeRate();
 
   const accounts = await sql`SELECT id, type, currency FROM accounts` as { id: number; type: string; currency: string }[];

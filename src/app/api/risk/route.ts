@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
-import { format, subMonths, subYears } from "date-fns";
+import { subMonths, subYears } from "date-fns";
+import { formatPST } from "@/lib/tz";
 import type { RiskMetrics } from "@/types";
 
 const RISK_FREE_RATE = 0.035; // 연 3.5%
@@ -8,12 +9,12 @@ const RISK_FREE_RATE = 0.035; // 연 3.5%
 function getPeriodStart(period: string): string | null {
   const now = new Date();
   switch (period) {
-    case "1M": return format(subMonths(now, 1), "yyyy-MM-dd");
-    case "3M": return format(subMonths(now, 3), "yyyy-MM-dd");
-    case "6M": return format(subMonths(now, 6), "yyyy-MM-dd");
-    case "1Y": return format(subYears(now, 1), "yyyy-MM-dd");
+    case "1M": return formatPST(subMonths(now, 1));
+    case "3M": return formatPST(subMonths(now, 3));
+    case "6M": return formatPST(subMonths(now, 6));
+    case "1Y": return formatPST(subYears(now, 1));
     case "ALL": return null;
-    default:   return format(subYears(now, 1), "yyyy-MM-dd");
+    default:   return formatPST(subYears(now, 1));
   }
 }
 

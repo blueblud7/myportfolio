@@ -1,10 +1,10 @@
 import { getDb } from "./db";
 import { getExchangeRate as fetchExchangeRate } from "./yahoo-finance";
-import { format } from "date-fns";
+import { todayPST } from "./tz";
 
 export async function getLatestExchangeRate(): Promise<number> {
   const sql = getDb();
-  const today = format(new Date(), "yyyy-MM-dd");
+  const today = todayPST();
 
   const rows = await sql`SELECT rate FROM exchange_rates WHERE date = ${today}`;
   if (rows.length > 0) return (rows[0] as { rate: number }).rate;
@@ -26,7 +26,7 @@ export async function getCachedExchangeRate(): Promise<number> {
 /** 외부 API에서 강제로 최신 환율을 가져와 DB에 덮어씁니다. */
 export async function forceRefreshExchangeRate(): Promise<number> {
   const sql = getDb();
-  const today = format(new Date(), "yyyy-MM-dd");
+  const today = todayPST();
   const rate = await fetchExchangeRate();
   await sql`INSERT INTO exchange_rates (rate, date) VALUES (${rate}, ${today})
             ON CONFLICT (date) DO UPDATE SET rate = ${rate}`;

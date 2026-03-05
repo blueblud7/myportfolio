@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 import { getBenchmarkHistory } from "@/lib/yahoo-finance";
-import { format, subMonths, subYears, subDays } from "date-fns";
+import { subMonths, subYears, subDays } from "date-fns";
+import { todayPST, formatPST } from "@/lib/tz";
 import type { SectorEtfResponse } from "@/types";
 
 const SECTOR_ETFS: Record<string, string> = {
@@ -19,16 +20,16 @@ const SECTOR_ETFS: Record<string, string> = {
 };
 
 function getPeriodDates(period: string): { start: string; end: string } {
-  const end = format(new Date(), "yyyy-MM-dd");
+  const end = todayPST();
   let start: string;
   switch (period) {
-    case "1M": start = format(subMonths(new Date(), 1), "yyyy-MM-dd"); break;
-    case "3M": start = format(subMonths(new Date(), 3), "yyyy-MM-dd"); break;
-    case "6M": start = format(subMonths(new Date(), 6), "yyyy-MM-dd"); break;
-    case "1Y": start = format(subYears(new Date(), 1), "yyyy-MM-dd"); break;
-    case "3Y": start = format(subYears(new Date(), 3), "yyyy-MM-dd"); break;
-    case "5Y": start = format(subYears(new Date(), 5), "yyyy-MM-dd"); break;
-    default:   start = format(subMonths(new Date(), 3), "yyyy-MM-dd");
+    case "1M": start = formatPST(subMonths(new Date(), 1)); break;
+    case "3M": start = formatPST(subMonths(new Date(), 3)); break;
+    case "6M": start = formatPST(subMonths(new Date(), 6)); break;
+    case "1Y": start = formatPST(subYears(new Date(), 1)); break;
+    case "3Y": start = formatPST(subYears(new Date(), 3)); break;
+    case "5Y": start = formatPST(subYears(new Date(), 5)); break;
+    default:   start = formatPST(subMonths(new Date(), 3));
   }
   return { start, end };
 }
@@ -39,7 +40,7 @@ async function fetchAndCacheBenchmark(
   end: string
 ): Promise<{ date: string; close: number }[]> {
   const sql = getDb();
-  const yesterday = format(subDays(new Date(), 1), "yyyy-MM-dd");
+  const yesterday = formatPST(subDays(new Date(), 1));
 
   const cached = await sql`
     SELECT date, close FROM benchmark_prices

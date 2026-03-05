@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 import { getBenchmarkHistory } from "@/lib/yahoo-finance";
-import { format, subMonths, subDays } from "date-fns";
+import { subMonths, subDays } from "date-fns";
+import { todayPST, formatPST } from "@/lib/tz";
 import type { PerformancePoint, PerformanceCompareResponse } from "@/types";
 
 const BENCHMARK_SYMBOLS: Record<string, string> = {
@@ -12,14 +13,14 @@ const BENCHMARK_SYMBOLS: Record<string, string> = {
 };
 
 function getPeriodDates(period: string): { start: string; end: string } {
-  const end = format(new Date(), "yyyy-MM-dd");
+  const end = todayPST();
   let start: string;
   switch (period) {
-    case "1M": start = format(subMonths(new Date(), 1), "yyyy-MM-dd"); break;
-    case "3M": start = format(subMonths(new Date(), 3), "yyyy-MM-dd"); break;
-    case "6M": start = format(subMonths(new Date(), 6), "yyyy-MM-dd"); break;
-    case "1Y": start = format(subMonths(new Date(), 12), "yyyy-MM-dd"); break;
-    default:   start = format(subMonths(new Date(), 3), "yyyy-MM-dd");
+    case "1M": start = formatPST(subMonths(new Date(), 1)); break;
+    case "3M": start = formatPST(subMonths(new Date(), 3)); break;
+    case "6M": start = formatPST(subMonths(new Date(), 6)); break;
+    case "1Y": start = formatPST(subMonths(new Date(), 12)); break;
+    default:   start = formatPST(subMonths(new Date(), 3));
   }
   return { start, end };
 }
@@ -67,7 +68,7 @@ async function fetchAndCacheBenchmark(
   end: string
 ): Promise<{ date: string; close: number }[]> {
   const sql = getDb();
-  const yesterday = format(subDays(new Date(), 1), "yyyy-MM-dd");
+  const yesterday = formatPST(subDays(new Date(), 1));
 
   const cached = await sql`
     SELECT date, close FROM benchmark_prices
