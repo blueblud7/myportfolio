@@ -5,7 +5,7 @@ import { Link, usePathname } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
 import {
   LayoutDashboard, Wallet, BarChart3, TrendingUp, BookOpen,
-  Eye, EyeOff, FlaskConical, Bell, Sparkles, Activity, X,
+  Eye, EyeOff, FlaskConical, Bell, Sparkles, Activity, X, Filter, Layers, GitBranch,
 } from "lucide-react";
 import { InvestorQuote } from "./InvestorQuote";
 import { usePrivacy } from "@/contexts/privacy-context";
@@ -28,7 +28,10 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
     { href: "/diary", label: t("diary"), icon: BookOpen },
     { href: "/quant", label: t("quant"), icon: FlaskConical },
     { href: "/backtest", label: t("backtest"), icon: Activity },
+    { href: "/pattern", label: "패턴분석", icon: GitBranch },
     { href: "/insights", label: t("insights"), icon: Sparkles },
+    { href: "/canslim", label: "CAN SLIM", icon: Filter },
+    { href: "/etf-flow", label: "ETF 흐름", icon: Layers },
     { href: "/alerts", label: t("alerts"), icon: Bell },
   ];
 

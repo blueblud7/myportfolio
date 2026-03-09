@@ -1,11 +1,18 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Sparkles, Send, RefreshCw } from "lucide-react";
+import { Sparkles, Send, RefreshCw, History, Trash2, ChevronDown, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
+
+interface HistoryItem {
+  id: number;
+  question: string;
+  analysis: string;
+  created_at: string;
+}
 
 interface PortfolioSummary {
   totalKrw: number;
@@ -74,12 +81,21 @@ export default function InsightsPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [asked, setAsked] = useState<string>("");
+  const [history, setHistory] = useState<HistoryItem[]>([]);
+  const [expandedId, setExpandedId] = useState<number | null>(null);
+
+  useEffect(() => {
+    fetch("/api/insights/history").then((r) => r.json()).then((data) => {
+      if (Array.isArray(data)) setHistory(data);
+    });
+  }, []);
 
   const fetchInsights = async (q?: string) => {
     setLoading(true);
     setError(null);
     setAnalysis("");
-    setAsked(q ?? "종합 분석");
+    const label = q ?? "종합 분석";
+    setAsked(label);
     try {
       const res = await fetch("/api/insights", {
         method: "POST",
@@ -90,11 +106,28 @@ export default function InsightsPage() {
       if (data.error) throw new Error(data.error);
       setAnalysis(data.analysis);
       setSummary(data.portfolioSummary);
+
+      // 히스토리 저장
+      const histRes = await fetch("/api/insights/history", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ question: label, analysis: data.analysis }),
+      });
+      if (histRes.ok) {
+        const saved = await histRes.json();
+        setHistory((prev) => [{ ...saved, analysis: data.analysis }, ...prev]);
+      }
     } catch (e) {
       setError(String(e));
     } finally {
       setLoading(false);
     }
+  };
+
+  const deleteHistory = async (id: number) => {
+    await fetch(`/api/insights/history?id=${id}`, { method: "DELETE" });
+    setHistory((prev) => prev.filter((h) => h.id !== id));
+    if (expandedId === id) setExpandedId(null);
   };
 
   return (
@@ -258,6 +291,48 @@ export default function InsightsPage() {
           <p>버튼을 눌러 포트폴리오 AI 분석을 시작하세요.</p>
           <p className="text-xs">Claude AI가 보유 종목, 수익률, 분산도를 분석하고 실용적인 조언을 제공합니다.</p>
         </div>
+      )}
+
+      {/* 분석 히스토리 */}
+      {history.length > 0 && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-sm">
+              <History className="h-4 w-4 text-muted-foreground" />
+              분석 히스토리
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-1 p-2">
+            {history.map((item) => (
+              <div key={item.id} className="rounded-lg border border-border/50">
+                <div
+                  className="flex cursor-pointer items-center gap-3 px-3 py-2 hover:bg-muted/30"
+                  onClick={() => setExpandedId(expandedId === item.id ? null : item.id)}
+                >
+                  {expandedId === item.id
+                    ? <ChevronDown className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                    : <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                  }
+                  <span className="flex-1 truncate text-sm">{item.question}</span>
+                  <span className="shrink-0 text-xs text-muted-foreground">{item.created_at}</span>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); deleteHistory(item.id); }}
+                    className="ml-1 shrink-0 rounded p-1 text-muted-foreground hover:text-destructive"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+                {expandedId === item.id && (
+                  <div className="border-t border-border/50 px-4 py-3">
+                    <div className="prose-sm max-w-none rounded-lg bg-muted/20 p-3">
+                      <MarkdownRenderer text={item.analysis} />
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))}
+          </CardContent>
+        </Card>
       )}
     </div>
   );
