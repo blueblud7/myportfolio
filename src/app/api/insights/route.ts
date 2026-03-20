@@ -118,7 +118,7 @@ ${bankBalances.map((b) => `- ${b.name}: ${b.currency === "USD" ? "$" : "₩"}${b
 5. 전반적인 리스크 수준 평가`;
 
     const message = await client.chat.completions.create({
-      model: "gpt-4o-mini",
+      model: "gpt-5-nano",
       max_tokens: 1500,
       messages: [
         { role: "system", content: systemPrompt },

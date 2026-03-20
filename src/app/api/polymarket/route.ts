@@ -58,7 +58,7 @@ export async function GET(req: NextRequest) {
       url = `https://gamma-api.polymarket.com/events?q=${encodeURIComponent(q)}&limit=20&active=true&closed=false&order=volume&ascending=false`;
     } else {
       // 기본 모드: 금융 키워드 필터
-      url = "https://gamma-api.polymarket.com/events?limit=100&active=true&closed=false&order=volume&ascending=false";
+      url = "https://gamma-api.polymarket.com/events?limit=40&active=true&closed=false&order=volume&ascending=false";
     }
 
     const res = await fetch(url, { next: { revalidate: q ? 60 : 300 } });

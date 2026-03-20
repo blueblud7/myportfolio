@@ -3,7 +3,9 @@ import { getDb } from "@/lib/db";
 
 export async function GET() {
   const sql = getDb();
-  const accounts = await sql`SELECT * FROM accounts ORDER BY id`;
+  await sql`ALTER TABLE accounts ADD COLUMN IF NOT EXISTS sort_order INTEGER`;
+  await sql`UPDATE accounts SET sort_order = id WHERE sort_order IS NULL`;
+  const accounts = await sql`SELECT * FROM accounts ORDER BY sort_order ASC, id ASC`;
   return NextResponse.json(accounts);
 }
 
@@ -29,6 +31,17 @@ export async function PUT(req: NextRequest) {
     WHERE id=${id} RETURNING *
   `;
   return NextResponse.json(account);
+}
+
+export async function PATCH(req: NextRequest) {
+  const items: { id: number; sort_order: number }[] = await req.json();
+  const sql = getDb();
+  await Promise.all(
+    items.map(({ id, sort_order }) =>
+      sql`UPDATE accounts SET sort_order = ${sort_order} WHERE id = ${id}`
+    )
+  );
+  return NextResponse.json({ success: true });
 }
 
 export async function DELETE(req: NextRequest) {

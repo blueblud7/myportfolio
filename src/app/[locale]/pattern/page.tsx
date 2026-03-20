@@ -236,6 +236,150 @@ function MddTab({ data }: { data: StockAnalysisResult }) {
   );
 }
 
+// ─── 정규분포 벨 커브 시각화 ───────────────────────────────────────────────
+function NormalDistChart({
+  mean, std, currentReturn, currentPercentile,
+}: {
+  mean: number; std: number; currentReturn: number; currentPercentile: number;
+}) {
+  const W = 600, H = 200;
+  const PAD = { top: 28, bottom: 44, left: 44, right: 20 };
+  const innerW = W - PAD.left - PAD.right;
+  const innerH = H - PAD.top - PAD.bottom;
+
+  const xMin = mean - 4 * std;
+  const xMax = mean + 4 * std;
+  const sx = (x: number) => PAD.left + ((x - xMin) / (xMax - xMin)) * innerW;
+  const pdf = (x: number) => (1 / (std * Math.sqrt(2 * Math.PI))) * Math.exp(-0.5 * ((x - mean) / std) ** 2);
+  const maxY = pdf(mean);
+  const sy = (y: number) => PAD.top + (1 - y / maxY) * innerH;
+  const baseline = sy(0);
+
+  // 커브 포인트 200개
+  const N = 200;
+  const pts = Array.from({ length: N }, (_, i) => {
+    const x = xMin + (i / (N - 1)) * (xMax - xMin);
+    return { x, y: pdf(x) };
+  });
+  const curvePath = pts.map((p, i) => `${i === 0 ? "M" : "L"}${sx(p.x).toFixed(1)},${sy(p.y).toFixed(1)}`).join(" ");
+
+  // σ 구간별 색상 채우기
+  const sigmaRegions = [
+    { from: -4, to: -3, color: "#dc2626", alpha: 0.45 },
+    { from: -3, to: -2, color: "#ea580c", alpha: 0.40 },
+    { from: -2, to: -1, color: "#ca8a04", alpha: 0.35 },
+    { from: -1, to:  1, color: "#16a34a", alpha: 0.25 },
+    { from:  1, to:  2, color: "#ca8a04", alpha: 0.35 },
+    { from:  2, to:  3, color: "#ea580c", alpha: 0.40 },
+    { from:  3, to:  4, color: "#dc2626", alpha: 0.45 },
+  ];
+
+  const regionPath = (fromSigma: number, toSigma: number) => {
+    const x0 = mean + fromSigma * std;
+    const x1 = mean + toSigma * std;
+    const subPts = pts.filter(p => p.x >= x0 && p.x <= x1);
+    if (subPts.length < 2) return "";
+    const line = subPts.map((p, i) => `${i === 0 ? "M" : "L"}${sx(p.x).toFixed(1)},${sy(p.y).toFixed(1)}`).join(" ");
+    return `${line} L${sx(x1).toFixed(1)},${baseline.toFixed(1)} L${sx(x0).toFixed(1)},${baseline.toFixed(1)} Z`;
+  };
+
+  const curX = Math.max(PAD.left, Math.min(W - PAD.right, sx(currentReturn)));
+  const curY = sy(pdf(currentReturn));
+  const isUp = currentReturn >= mean;
+  const sigmaPos = std > 0 ? ((currentReturn - mean) / std) : 0;
+
+  return (
+    <div className="rounded-xl border border-zinc-800 bg-zinc-900/60 p-4">
+      <div className="mb-1 flex items-center justify-between">
+        <p className="text-sm font-semibold text-zinc-300">정규분포 상의 현재 위치</p>
+        <span className={cn(
+          "rounded-full px-2.5 py-0.5 text-xs font-semibold",
+          currentReturn >= 0 ? "bg-emerald-500/20 text-emerald-400" : "bg-red-500/20 text-red-400"
+        )}>
+          {currentReturn >= 0 ? "+" : ""}{currentReturn.toFixed(2)}% · {currentPercentile}번째 백분위
+        </span>
+      </div>
+      <p className="mb-3 text-xs text-zinc-600">
+        녹색=±1σ(68%) · 노란=±2σ(95%) · 주황=±3σ(99.7%) · 빨강=극단값
+      </p>
+      <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ height: H }}>
+        {/* σ 구간 채우기 */}
+        {sigmaRegions.map((r, i) => {
+          const d = regionPath(r.from, r.to);
+          return d ? <path key={i} d={d} fill={r.color} fillOpacity={r.alpha} /> : null;
+        })}
+
+        {/* 현재 위치 아래 영역 강조 (현재값까지 음영) */}
+        {(() => {
+          const subPts = isUp
+            ? pts.filter(p => p.x >= xMin && p.x <= currentReturn)
+            : pts.filter(p => p.x >= xMin && p.x <= currentReturn);
+          if (subPts.length < 2) return null;
+          const line = subPts.map((p, i) => `${i === 0 ? "M" : "L"}${sx(p.x).toFixed(1)},${sy(p.y).toFixed(1)}`).join(" ");
+          const d = `${line} L${curX.toFixed(1)},${baseline.toFixed(1)} L${sx(xMin).toFixed(1)},${baseline.toFixed(1)} Z`;
+          return <path d={d} fill={isUp ? "#10b981" : "#ef4444"} fillOpacity={0.12} />;
+        })()}
+
+        {/* 메인 커브 */}
+        <path d={curvePath} fill="none" stroke="#60a5fa" strokeWidth={2} strokeLinejoin="round" />
+
+        {/* 현재 위치 수직선 */}
+        <line x1={curX} y1={PAD.top - 8} x2={curX} y2={baseline}
+          stroke="#facc15" strokeWidth={1.5} strokeDasharray="4,3" />
+
+        {/* 현재 위치 점 */}
+        <circle cx={curX} cy={curY} r={5} fill="#facc15" stroke="#18181b" strokeWidth={1.5} />
+
+        {/* 현재값 레이블 */}
+        <rect x={curX - 34} y={PAD.top - 24} width={68} height={17} rx={4}
+          fill="#facc15" fillOpacity={0.15} stroke="#facc15" strokeWidth={0.8} strokeOpacity={0.6} />
+        <text x={curX} y={PAD.top - 12} textAnchor="middle" fill="#facc15" fontSize={10} fontWeight="bold">
+          {currentReturn >= 0 ? "+" : ""}{currentReturn.toFixed(2)}%
+        </text>
+
+        {/* 기준선 */}
+        <line x1={PAD.left} y1={baseline} x2={W - PAD.right} y2={baseline} stroke="#3f3f46" strokeWidth={1} />
+
+        {/* σ 눈금 */}
+        {([-3, -2, -1, 0, 1, 2, 3] as const).map(n => {
+          const lx = sx(mean + n * std);
+          const val = (mean + n * std).toFixed(1);
+          return (
+            <g key={n}>
+              <line x1={lx} y1={baseline} x2={lx} y2={baseline + 4} stroke="#52525b" strokeWidth={1} />
+              <text x={lx} y={baseline + 13} textAnchor="middle" fill="#71717a" fontSize={9}>
+                {n === 0 ? "μ" : `${n > 0 ? "+" : ""}${n}σ`}
+              </text>
+              <text x={lx} y={baseline + 24} textAnchor="middle" fill="#52525b" fontSize={8}>
+                {val}%
+              </text>
+            </g>
+          );
+        })}
+
+        {/* σ 위치 텍스트 */}
+        <text x={W / 2} y={H - 2} textAnchor="middle" fill="#52525b" fontSize={9}>
+          현재 {sigmaPos.toFixed(2)}σ 위치 ({currentPercentile}번째 백분위)
+        </text>
+      </svg>
+
+      {/* 범례 */}
+      <div className="mt-3 flex flex-wrap gap-3 text-[10px] text-zinc-500">
+        {[
+          { color: "bg-green-600/50", label: "±1σ 이내 (약 68%)" },
+          { color: "bg-yellow-600/50", label: "±2σ 이내 (약 95%)" },
+          { color: "bg-orange-600/50", label: "±3σ 이내 (약 99.7%)" },
+          { color: "bg-red-700/50",    label: "3σ 초과 (극단값)" },
+        ].map(l => (
+          <span key={l.label} className="flex items-center gap-1.5">
+            <span className={cn("h-2.5 w-2.5 rounded-sm", l.color)} />{l.label}
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // ─── 분포 바 위 "오늘" 화살표 레이블 ──────────────────────────────────────
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function TodayLabel(currentIdx: number) {
@@ -294,19 +438,13 @@ function ReturnDistTab({ data }: { data: StockAnalysisResult }) {
         />
       </div>
 
-      {/* Explanation */}
-      <div className="rounded-lg border border-zinc-800 bg-zinc-900/40 px-4 py-3 text-sm text-zinc-300">
-        오늘{" "}
-        <span className={cn("font-semibold", data.currentReturnPct >= 0 ? "text-emerald-400" : "text-red-400")}>
-          {data.currentReturnPct >= 0 ? "+" : ""}
-          {data.currentReturnPct.toFixed(2)}%
-        </span>{" "}
-        변동은 2년 일간 수익률 분포에서{" "}
-        <span className="font-semibold text-blue-400">
-          {percentileLabel(data.currentReturnPercentile)}
-        </span>
-        에 해당합니다.
-      </div>
+      {/* 정규분포 벨 커브 */}
+      <NormalDistChart
+        mean={data.returnStats.mean}
+        std={data.returnStats.std}
+        currentReturn={data.currentReturnPct}
+        currentPercentile={data.currentReturnPercentile}
+      />
 
       {/* Histogram */}
       <div className="rounded-xl border border-zinc-800 bg-zinc-900/60 p-4">
