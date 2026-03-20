@@ -81,6 +81,7 @@ const STRATEGY_COLORS: Record<string, string> = {
   bollinger: "#06b6d4",
   momentum52: "#f97316",
   turtle: "#ec4899",
+  ross: "#a855f7",
   ai_custom: "#14b8a6",
 };
 
@@ -93,6 +94,7 @@ const STRATEGY_IDS = [
   "bollinger",
   "momentum52",
   "turtle",
+  "ross",
 ];
 
 const STRATEGY_LABELS: Record<string, string> = {
@@ -104,6 +106,7 @@ const STRATEGY_LABELS: Record<string, string> = {
   bollinger: "볼린저 밴드",
   momentum52: "52주 모멘텀",
   turtle: "터틀 트레이딩",
+  ross: "ROSS",
 };
 
 const PRESET_TICKERS = ["QQQ", "VOO", "QLD", "TQQQ", "UPRO", "SOXL", "KORU", "SPY"];
@@ -166,6 +169,96 @@ function EmptyState() {
   );
 }
 
+// ─── Ranking helpers ──────────────────────────────────────────────────────────
+
+const RANK_MEDALS = ["🥇", "🥈", "🥉"];
+
+function getRankingByTicker(
+  strategies: Record<string, StrategyDef>,
+  ticker: string
+): { sid: string; cagr: number; rank: number }[] {
+  const entries = Object.entries(strategies)
+    .map(([sid, s]) => ({ sid, cagr: s.results[ticker]?.cagr ?? -Infinity }))
+    .filter((e) => e.cagr > -Infinity)
+    .sort((a, b) => b.cagr - a.cagr);
+  return entries.map((e, i) => ({ ...e, rank: i + 1 }));
+}
+
+// avg CAGR across tickers for a strategy
+function avgCagr(s: StrategyDef, tickers: string[]): number {
+  const vals = tickers.map((t) => s.results[t]?.cagr ?? null).filter((v): v is number => v !== null);
+  return vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : -Infinity;
+}
+
+// ─── Ranking Panel ────────────────────────────────────────────────────────────
+
+function RankingPanel({
+  results,
+  tickers,
+}: {
+  results: StrategyLabResults;
+  tickers: string[];
+}) {
+  const [rankTicker, setRankTicker] = useState(tickers[0] ?? "");
+
+  const ranking = useMemo(
+    () => getRankingByTicker(results.strategies, rankTicker),
+    [results, rankTicker]
+  );
+
+  return (
+    <div className="space-y-3">
+      {tickers.length > 1 && (
+        <div className="flex gap-1">
+          {tickers.map((t) => (
+            <button
+              key={t}
+              onClick={() => setRankTicker(t)}
+              className={cn(
+                "rounded-lg px-3 py-1 text-xs font-semibold transition",
+                rankTicker === t
+                  ? "bg-zinc-700 text-zinc-100"
+                  : "text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300"
+              )}
+            >
+              {t}
+            </button>
+          ))}
+        </div>
+      )}
+
+      <div className="space-y-1.5">
+        {ranking.map(({ sid, cagr, rank }) => {
+          const s = results.strategies[sid];
+          if (!s) return null;
+          const barWidth = Math.max(0, Math.min(100, ((cagr + 20) / 80) * 100));
+          const color = STRATEGY_COLORS[sid] ?? "#71717a";
+          return (
+            <div key={sid} className="flex items-center gap-3">
+              <span className="w-5 text-right text-xs font-bold text-zinc-400 shrink-0">
+                {RANK_MEDALS[rank - 1] ?? `${rank}`}
+              </span>
+              <div className="flex items-center gap-1.5 w-28 shrink-0">
+                <div className="h-2 w-2 rounded-full shrink-0" style={{ background: color }} />
+                <span className="text-xs text-zinc-300 truncate">{s.name}</span>
+              </div>
+              <div className="flex-1 h-2 rounded-full bg-zinc-800 overflow-hidden">
+                <div
+                  className="h-full rounded-full transition-all"
+                  style={{ width: `${barWidth}%`, background: color + "cc" }}
+                />
+              </div>
+              <span className={cn("w-16 text-right text-xs font-semibold tabular-nums shrink-0", cagrColor(cagr))}>
+                {fmt(cagr)}%
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 // ─── Summary Heatmap Table ────────────────────────────────────────────────────
 
 function SummaryTable({
@@ -175,19 +268,30 @@ function SummaryTable({
   results: StrategyLabResults;
   tickers: string[];
 }) {
-  const strategies = Object.entries(results.strategies);
-  const bestCagr = Math.max(
-    ...strategies.flatMap(([, s]) =>
-      tickers.map((t) => s.results[t]?.cagr ?? -Infinity)
-    )
+  // Sort strategies by average CAGR across tickers (descending)
+  const strategies = Object.entries(results.strategies).sort(
+    ([, a], [, b]) => avgCagr(b, tickers) - avgCagr(a, tickers)
   );
+
+  // Per-ticker rank map: sid -> ticker -> rank
+  const rankMap = useMemo(() => {
+    const map: Record<string, Record<string, number>> = {};
+    for (const ticker of tickers) {
+      const ranked = getRankingByTicker(results.strategies, ticker);
+      for (const { sid, rank } of ranked) {
+        if (!map[sid]) map[sid] = {};
+        map[sid][ticker] = rank;
+      }
+    }
+    return map;
+  }, [results, tickers]);
 
   return (
     <div className="overflow-x-auto">
       <table className="w-full text-xs">
         <thead>
           <tr className="border-b border-zinc-800">
-            <th className="py-2 text-left font-semibold text-zinc-400 pr-4">전략</th>
+            <th className="py-2 text-left font-semibold text-zinc-400 pr-4">전략 (CAGR 순)</th>
             {tickers.map((t) => (
               <th key={t} className="py-2 text-center font-semibold text-zinc-400 px-2">
                 {t}
@@ -196,10 +300,13 @@ function SummaryTable({
           </tr>
         </thead>
         <tbody>
-          {strategies.map(([sid, strat]) => (
+          {strategies.map(([sid, strat], rowIdx) => (
             <tr key={sid} className="border-b border-zinc-800/50 hover:bg-zinc-800/20">
               <td className="py-2 pr-4">
                 <div className="flex items-center gap-2">
+                  <span className="w-4 text-right text-[10px] text-zinc-600 shrink-0">
+                    {RANK_MEDALS[rowIdx] ?? `${rowIdx + 1}`}
+                  </span>
                   <div
                     className="h-2.5 w-2.5 rounded-full shrink-0"
                     style={{ background: STRATEGY_COLORS[sid] ?? "#71717a" }}
@@ -209,14 +316,12 @@ function SummaryTable({
               </td>
               {tickers.map((ticker) => {
                 const r = strat.results[ticker];
+                const rank = rankMap[sid]?.[ticker];
                 if (!r) {
                   return (
-                    <td key={ticker} className="py-2 px-2 text-center text-zinc-600">
-                      —
-                    </td>
+                    <td key={ticker} className="py-2 px-2 text-center text-zinc-600">—</td>
                   );
                 }
-                const isBest = Math.abs(r.cagr - bestCagr) < 0.01;
                 return (
                   <td key={ticker} className="py-2 px-2 text-center">
                     <span
@@ -225,7 +330,9 @@ function SummaryTable({
                         cagrBg(r.cagr)
                       )}
                     >
-                      {isBest && <Trophy className="h-2.5 w-2.5" />}
+                      {rank && rank <= 3 && (
+                        <span className="text-[10px]">{RANK_MEDALS[rank - 1]}</span>
+                      )}
                       {fmt(r.cagr)}%
                     </span>
                   </td>
@@ -280,25 +387,28 @@ function EquityChart({
     });
   }, [results, tickers, strategies]);
 
-  const lineKeys: { key: string; label: string; color: string }[] = [];
+  // Sort line keys by final CAGR (descending) for ranked display
+  const lineKeysRaw: { key: string; label: string; color: string; cagr: number }[] = [];
   for (const [sid, strat] of strategies) {
     for (const ticker of tickers) {
       const r = strat.results[ticker];
       if (!r) continue;
       const key = tickers.length > 1 ? `${sid}_${ticker}` : sid;
       const label = tickers.length > 1 ? `${strat.name} / ${ticker}` : strat.name;
-      lineKeys.push({ key, label, color: STRATEGY_COLORS[sid] ?? "#71717a" });
+      lineKeysRaw.push({ key, label, color: STRATEGY_COLORS[sid] ?? "#71717a", cagr: r.cagr });
     }
   }
+  const lineKeys = lineKeysRaw.sort((a, b) => b.cagr - a.cagr);
 
   const thinned = merged.length > 600 ? merged.filter((_, i) => i % 2 === 0) : merged;
 
   return (
     <div className="space-y-3">
-      {/* Toggle buttons */}
+      {/* Toggle buttons — sorted by CAGR with rank badges */}
       <div className="flex flex-wrap gap-1.5">
-        {lineKeys.map(({ key, label, color }) => {
+        {lineKeys.map(({ key, label, color, cagr }, idx) => {
           const active = visibleStrategies.has(key);
+          const medal = RANK_MEDALS[idx];
           return (
             <button
               key={key}
@@ -315,7 +425,11 @@ function EquityChart({
                 className="h-2 w-2 rounded-full"
                 style={{ background: active ? color : "#52525b" }}
               />
+              <span>{medal ?? `${idx + 1}`}</span>
               {label}
+              <span className={cn("ml-0.5 font-bold tabular-nums", active ? "opacity-90" : "opacity-50")}>
+                {fmt(cagr)}%
+              </span>
             </button>
           );
         })}
@@ -1084,11 +1198,19 @@ export default function StrategyLabPage() {
             <CardHeader className="pb-3">
               <CardTitle className="flex items-center gap-2 text-sm text-zinc-300">
                 <Trophy className="h-4 w-4 text-amber-400" />
-                전략별 CAGR 요약
+                전략별 CAGR 요약 (수익률 순)
               </CardTitle>
             </CardHeader>
-            <CardContent>
-              <SummaryTable results={results} tickers={tickers} />
+            <CardContent className="space-y-5">
+              {/* Ranking bar chart per ticker */}
+              <div>
+                <p className="mb-3 text-xs font-semibold text-zinc-500">📊 전략 순위 (티커별)</p>
+                <RankingPanel results={results} tickers={tickers} />
+              </div>
+              <div className="border-t border-zinc-800 pt-4">
+                <p className="mb-2 text-xs font-semibold text-zinc-500">🗂 전체 비교표</p>
+                <SummaryTable results={results} tickers={tickers} />
+              </div>
             </CardContent>
           </Card>
 

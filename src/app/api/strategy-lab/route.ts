@@ -630,6 +630,129 @@ function runTurtle(bars: WeeklyBar[], initialCash: number, startDate: string): S
   };
 }
 
+// ─── Ross Cameron: RSI + Bollinger + Double Bottom + Divergence + MACD ───────
+//
+// Long entry (all must be true):
+//   1. Previous bar: RSI < 35 AND close <= lowerBB  (first bottom touches/breaks band)
+//   2. Current bar:  close > lowerBB               (second bottom recovered INSIDE band)
+//   3. Current bar:  close > prev close            (bullish recovery candle)
+//   4. RSI divergence: check last 5–15 bars for a lower price low with higher RSI low
+//   5. MACD: macdLine >= signalLine (momentum turning bullish)
+//
+// Exit:
+//   • RSI > 70 (reached overbought), OR
+//   • close < lowerBB again (false signal, stop out)
+//
+// Note: weekly-bar adaptation — "쌍바닥" detected via 1-bar lag (bar i-1 = first bottom,
+//        bar i = second bottom inside band). Divergence looks back up to 15 bars.
+
+function detectBullishDivergence(
+  closes: number[],
+  rsiArr: number[],
+  currentIdx: number,
+  lookback = 15
+): boolean {
+  const currentClose = closes[currentIdx];
+  const currentRsi   = rsiArr[currentIdx];
+  if (isNaN(currentRsi)) return false;
+
+  const start = Math.max(0, currentIdx - lookback);
+  for (let j = start; j < currentIdx - 2; j++) {
+    if (isNaN(rsiArr[j])) continue;
+    // Bearish divergence: price made lower low but RSI made higher low → bullish divergence
+    if (closes[j] < currentClose && rsiArr[j] > currentRsi) return true;
+  }
+  return false;
+}
+
+function runRossCameron(
+  bars: WeeklyBar[],
+  initialCash: number,
+  startDate: string
+): StrategyResult {
+  const closes = bars.map((b) => b.close);
+  const rsiArr  = calcRsi(closes, 14);
+  const bb      = calcBollinger(closes, 20, 2);
+  const { macd: macdLine, signal: signalLine } = calcMacd(closes, 12, 26, 9);
+
+  let cash       = initialCash;
+  let shares     = 0;
+  let entryPrice = 0;
+  const trades: { pnl: number }[] = [];
+  const allEquity: { date: string; value: number }[] = [];
+
+  for (let i = 2; i < bars.length; i++) {
+    const close     = closes[i];
+    const prevClose = closes[i - 1];
+    const rsi       = rsiArr[i];
+    const prevRsi   = rsiArr[i - 1];
+    const lowerBB   = bb.lower[i];
+    const prevLower = bb.lower[i - 1];
+    const macd      = macdLine[i];
+    const sig       = signalLine[i];
+
+    const indicatorsReady =
+      !isNaN(rsi) && !isNaN(prevRsi) &&
+      !isNaN(lowerBB) && !isNaN(prevLower) &&
+      !isNaN(macd) && !isNaN(sig);
+
+    if (indicatorsReady) {
+      if (shares === 0) {
+        // ── Long entry ──────────────────────────────────────────────────────
+        const firstBottom  = prevRsi < 35 && prevClose <= prevLower;   // 1. first bottom
+        const secondBottom = close > lowerBB && close > prevClose;     // 2. recovery inside band
+        const macdBullish  = macd >= sig;                               // 3. MACD confirmation
+        const divergence   = detectBullishDivergence(closes, rsiArr, i); // 4. RSI divergence
+
+        // Core signal: first+second bottom required; divergence OR macd needed (not both)
+        if (firstBottom && secondBottom && macdBullish && (divergence || rsi > prevRsi)) {
+          shares = Math.floor(cash / close);
+          if (shares > 0) {
+            cash       -= shares * close;
+            entryPrice  = close;
+          }
+        }
+      } else {
+        // ── Long exit ───────────────────────────────────────────────────────
+        const rsiOverbought  = rsi > 70;                // target reached
+        const falseBreakdown = close < lowerBB;         // stop: price falls back below band
+
+        if (rsiOverbought || falseBreakdown) {
+          const pnl = (close - entryPrice) * shares;
+          trades.push({ pnl });
+          cash      += shares * close;
+          shares     = 0;
+          entryPrice = 0;
+        }
+      }
+    }
+
+    allEquity.push({
+      date: bars[i].date,
+      value: Math.round((cash + shares * close) * 100) / 100,
+    });
+  }
+
+  // Close any open position at last bar
+  if (shares > 0 && bars.length > 0) {
+    const lastClose = closes[bars.length - 1];
+    trades.push({ pnl: (lastClose - entryPrice) * shares });
+    cash += shares * lastClose;
+  }
+
+  const startIdx    = allEquity.findIndex((e) => e.date >= startDate);
+  const equityCurve = startIdx >= 0 ? allEquity.slice(startIdx) : allEquity;
+  const startValue  = equityCurve.length > 0 ? equityCurve[0].value : initialCash;
+  const metrics     = calcMetrics(equityCurve, startValue, trades, true);
+
+  return {
+    ...metrics,
+    totalTrades: trades.length,
+    equityCurve,
+    yearlyReturns: calcYearlyReturns(equityCurve),
+  };
+}
+
 // ─── Strategy Registry ────────────────────────────────────────────────────────
 
 const STRATEGY_META: {
@@ -694,6 +817,14 @@ const STRATEGY_META: {
     nameEn: "Turtle Trading",
     description: "52주 고가 돌파 시 매수, 26주 저가 하향 시 매도.",
     warmupWeeks: 56,
+  },
+  {
+    id: "ross",
+    name: "ROSS (RSI+BB+다이버전스)",
+    nameEn: "Ross Cameron Strategy",
+    description:
+      "RSI 과매도(35↓) + 볼린저 하단 터치 후 밴드 내 회복(쌍바닥) + RSI 다이버전스 + MACD 확정 시 매수. RSI 70↑ 또는 밴드 재이탈 시 매도.",
+    warmupWeeks: 44,
   },
 ];
 
@@ -798,6 +929,9 @@ export async function POST(req: NextRequest) {
               break;
             case "turtle":
               result = runTurtle(bars, initialCash, startDate);
+              break;
+            case "ross":
+              result = runRossCameron(bars, initialCash, startDate);
               break;
             default:
               result = runBuyHold(bars, initialCash, startDate);
