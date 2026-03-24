@@ -112,7 +112,7 @@ function EquityChart({ results, ticker }: { results: PositionResult[]; ticker: s
               style={on ? { background: STRATEGY_COLORS[r.id] + "33", borderColor: STRATEGY_COLORS[r.id], color: STRATEGY_COLORS[r.id] } : undefined}>
               <span>{RANK_MEDALS[i] ?? `${i+1}`}</span>
               {r.name}
-              <span className="ml-0.5 font-bold opacity-80">{fmt(r.cagr)}%</span>
+              <span className="ml-0.5 font-bold opacity-80">{fmt(r.totalReturn)}%</span>
             </button>
           );
         })}
@@ -136,7 +136,7 @@ function EquityChart({ results, ticker }: { results: PositionResult[]; ticker: s
           ) : null)}
         </LineChart>
       </ResponsiveContainer>
-      <p className="text-[10px] text-zinc-600 text-right">* {ticker} 수익률 정규화 (시작=100%)</p>
+      <p className="text-[10px] text-zinc-600 text-right">* {ticker} 누적 수익률 (시작=100%) · 버튼 수치는 총수익률% · CAGR은 순위표 참고</p>
     </div>
   );
 }
@@ -498,8 +498,8 @@ export default function PositionLabPage() {
             </CardHeader>
             <CardContent className="space-y-2">
               {[...currentResults].sort((a, b) => a.rank - b.rank).map(r => {
-                const maxCagr = Math.max(...currentResults.map(x => x.cagr));
-                const barW = Math.max(4, (r.cagr / (maxCagr || 1)) * 100);
+                const maxReturn = Math.max(...currentResults.map(x => x.totalReturn));
+                const barW = Math.max(4, (r.totalReturn / (maxReturn || 1)) * 100);
                 return (
                   <div key={r.id} className="flex items-center gap-3">
                     <span className="w-6 text-right text-sm shrink-0">{RANK_MEDALS[r.rank - 1] ?? `${r.rank}`}</span>
@@ -510,8 +510,11 @@ export default function PositionLabPage() {
                     <div className="flex-1 h-2 rounded-full bg-zinc-800 overflow-hidden">
                       <div className="h-full rounded-full transition-all" style={{ width: `${barW}%`, background: STRATEGY_COLORS[r.id] + "cc" }} />
                     </div>
-                    <span className={cn("w-16 text-right text-xs font-semibold tabular-nums shrink-0", cagrColor(r.cagr))}>
-                      {fmt(r.cagr)}%
+                    <span className={cn("w-20 text-right text-xs font-semibold tabular-nums shrink-0", cagrColor(r.cagr))}>
+                      {fmt(r.totalReturn)}%
+                    </span>
+                    <span className="w-20 text-right text-[10px] text-zinc-500 tabular-nums shrink-0">
+                      CAGR {fmt(r.cagr)}%
                     </span>
                     <span className="w-12 text-right text-[10px] text-zinc-600 tabular-nums shrink-0">
                       MDD {r.mdd.toFixed(0)}%
@@ -527,7 +530,7 @@ export default function PositionLabPage() {
             <CardHeader className="pb-0">
               <div className="flex flex-wrap gap-1 border-b border-zinc-800 pb-3">
                 {([
-                  { key: "chart", label: "수익률 차트" },
+                  { key: "chart", label: "누적 수익률 차트" },
                   { key: "ranking", label: "상세 순위표" },
                   { key: "yearly", label: "연도별 수익" },
                   { key: "detail", label: "매수 로그" },

@@ -42,13 +42,14 @@ interface PositionResult {
 async function fetchWeekly(ticker: string, start: string, end: string): Promise<WeeklyBar[] | null> {
   try {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const raw: any[] = await yf.historical(ticker, { period1: start, period2: end, interval: "1wk" });
-    if (!raw || raw.length < 20) return null;
-    return raw
-      .filter((r) => r.close != null)
-      .map((r) => ({
+    const result: any = await yf.chart(ticker, { period1: start, period2: end, interval: "1wk" });
+    const quotes = result?.quotes ?? result?.indicators?.quote?.[0] ?? [];
+    if (!quotes || quotes.length < 20) return null;
+    return quotes
+      .filter((r: any) => r.close != null)
+      .map((r: any) => ({
         date: typeof r.date === "string" ? r.date : r.date.toISOString().slice(0, 10),
-        close: r.adjClose ?? r.close,
+        close: r.adjclose ?? r.adjClose ?? r.close,
       }));
   } catch {
     return null;

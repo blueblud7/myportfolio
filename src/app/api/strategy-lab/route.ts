@@ -229,20 +229,18 @@ async function fetchWeekly(
 ): Promise<WeeklyBar[] | null> {
   try {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const raw: any[] = await yf.historical(ticker, {
-      period1: start,
-      period2: end,
-      interval: "1wk",
-    });
+    const result: any = await yf.chart(ticker, { period1: start, period2: end, interval: "1wk" });
+    const raw = result?.quotes ?? [];
     if (!raw || raw.length < 10) return null;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     return raw
-      .filter((r) => r.close != null)
-      .map((r) => ({
+      .filter((r: any) => r.close != null)
+      .map((r: any) => ({
         date: typeof r.date === "string" ? r.date : r.date.toISOString().slice(0, 10),
         open: r.open ?? r.close,
         high: r.high ?? r.close,
         low: r.low ?? r.close,
-        close: r.adjClose ?? r.close,
+        close: r.adjclose ?? r.adjClose ?? r.close,
         volume: r.volume ?? 0,
       }));
   } catch {
