@@ -18,6 +18,16 @@ import {
 
 type RiskLevel = "low" | "medium" | "high" | "extreme";
 
+interface HistoricalEvent {
+  id: string;
+  name: string;
+  nameEn: string;
+  type: "경제위기" | "지정학" | "팬데믹" | "시장충격";
+  start: string;
+  end: string;
+  description: string;
+}
+
 interface PortfolioResult {
   id: string;
   name: string;
@@ -36,12 +46,15 @@ interface PortfolioResult {
   rank: number;
   crisis2020: number;
   crisis2022: number;
+  eventDrawdowns: { eventId: string; drawdown: number | null }[];
+  mddPercentile: number;
   equityCurve: { date: string; value: number }[];
   yearlyReturns: { year: number; return: number }[];
 }
 
 interface MixResponse {
   portfolios: PortfolioResult[];
+  events: HistoricalEvent[];
   startDate: string;
   endDate: string;
   period: string;
@@ -423,6 +436,154 @@ function CrisisTable({ portfolios }: { portfolios: PortfolioResult[] }) {
   );
 }
 
+// ─── Event Analysis Table ─────────────────────────────────────────────────────
+
+const EVENT_TYPE_COLOR: Record<string, string> = {
+  "경제위기": "text-red-400 bg-red-400/10",
+  "지정학":  "text-orange-400 bg-orange-400/10",
+  "팬데믹":  "text-purple-400 bg-purple-400/10",
+  "시장충격": "text-yellow-400 bg-yellow-400/10",
+};
+
+function ddCell(dd: number | null) {
+  if (dd === null) return <span className="text-zinc-700 text-[10px]">N/A</span>;
+  if (dd === 0) return <span className="text-zinc-600 text-[10px]">-</span>;
+  const abs = Math.abs(dd);
+  const cls = abs < 5 ? "text-emerald-400" : abs < 15 ? "text-yellow-400" : abs < 30 ? "text-orange-400" : abs < 50 ? "text-red-400" : "text-red-500 font-bold";
+  const bg = abs < 5 ? "bg-emerald-400/10" : abs < 15 ? "bg-yellow-400/10" : abs < 30 ? "bg-orange-400/10" : "bg-red-400/10";
+  return <span className={cn("tabular-nums rounded px-1 py-0.5 text-[11px]", cls, bg)}>{dd.toFixed(1)}%</span>;
+}
+
+function EventAnalysisTable({ portfolios, events }: { portfolios: PortfolioResult[]; events: HistoricalEvent[] }) {
+  const [selectedType, setSelectedType] = useState<string | null>(null);
+  const filteredEvents = selectedType ? events.filter(e => e.type === selectedType) : events;
+
+  // 이벤트당 최소 1개 포트폴리오에 데이터 있는 것만 표시
+  const activeEvents = filteredEvents.filter(ev =>
+    portfolios.some(p => p.eventDrawdowns.find(d => d.eventId === ev.id)?.drawdown !== null)
+  );
+
+  // 포트폴리오별 위기 방어 점수 (낙폭 합산, 0=데이터없음 제외)
+  const defenseScore = (p: PortfolioResult) => {
+    const vals = p.eventDrawdowns.map(d => d.drawdown).filter((d): d is number => d !== null && d !== 0);
+    return vals.length > 0 ? vals.reduce((a, b) => a + b, 0) / vals.length : 0;
+  };
+
+  const sorted = [...portfolios].sort((a, b) => defenseScore(b) - defenseScore(a));
+
+  return (
+    <div className="space-y-3">
+      {/* 이벤트 유형 필터 */}
+      <div className="flex flex-wrap gap-1.5 items-center">
+        <span className="text-xs text-zinc-500 mr-1">필터:</span>
+        {["경제위기", "지정학", "팬데믹", "시장충격"].map(t => (
+          <button key={t} onClick={() => setSelectedType(s => s === t ? null : t)}
+            className={cn("rounded-full border px-2.5 py-0.5 text-xs font-medium transition",
+              selectedType === t ? EVENT_TYPE_COLOR[t] + " border-transparent" : "border-zinc-700 text-zinc-500 hover:border-zinc-600")}>
+            {t}
+          </button>
+        ))}
+      </div>
+
+      <div className="overflow-x-auto">
+        <table className="w-full text-xs">
+          <thead>
+            <tr className="border-b border-zinc-800">
+              <th className="py-2 pr-2 text-left text-zinc-500 font-semibold sticky left-0 bg-zinc-900/95 min-w-[120px]">포트폴리오</th>
+              {activeEvents.map(ev => (
+                <th key={ev.id} className="py-2 px-2 text-right whitespace-nowrap">
+                  <div className="flex flex-col items-end gap-0.5">
+                    <span className={cn("rounded px-1 py-0.5 text-[10px] font-medium", EVENT_TYPE_COLOR[ev.type])}>{ev.type}</span>
+                    <span className="text-zinc-300 font-semibold">{ev.name}</span>
+                    <span className="text-zinc-600 font-normal">{ev.start.slice(0,7)}</span>
+                  </div>
+                </th>
+              ))}
+              <th className="py-2 px-2 text-right text-zinc-500 font-semibold whitespace-nowrap">평균 낙폭</th>
+            </tr>
+          </thead>
+          <tbody>
+            {sorted.map((p, i) => {
+              const edMap: Record<string, number | null> = {};
+              for (const d of p.eventDrawdowns) edMap[d.eventId] = d.drawdown;
+              const avg = defenseScore(p);
+              return (
+                <tr key={p.id} className={cn("border-b border-zinc-800/40 hover:bg-zinc-800/20", i === 0 && "bg-emerald-500/5")}>
+                  <td className="py-2 pr-2 sticky left-0 bg-zinc-900/95">
+                    <div className="flex items-center gap-1.5">
+                      <div className="h-2 w-2 rounded-full shrink-0" style={{ background: RISK_COLORS[p.riskLevel] }} />
+                      <span className="font-medium text-zinc-300 whitespace-nowrap">{p.name}</span>
+                    </div>
+                  </td>
+                  {activeEvents.map(ev => (
+                    <td key={ev.id} className="py-2 px-2 text-right">{ddCell(edMap[ev.id] ?? null)}</td>
+                  ))}
+                  <td className="py-2 px-2 text-right">
+                    {avg !== 0 ? <span className={cn("font-semibold tabular-nums", Math.abs(avg) < 20 ? "text-yellow-400" : "text-red-400")}>{avg.toFixed(1)}%</span>
+                      : <span className="text-zinc-700">-</span>}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+
+      {/* 이벤트 설명 */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+        {activeEvents.map(ev => (
+          <div key={ev.id} className="flex items-start gap-2 rounded-lg bg-zinc-800/40 px-3 py-2 text-xs">
+            <span className={cn("rounded px-1 py-0.5 text-[10px] font-medium shrink-0", EVENT_TYPE_COLOR[ev.type])}>{ev.type}</span>
+            <div>
+              <span className="font-semibold text-zinc-300">{ev.name}</span>
+              <span className="text-zinc-500 ml-1">({ev.start.slice(0,7)} ~ {ev.end.slice(0,7)})</span>
+              <p className="text-zinc-500 mt-0.5">{ev.description}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ─── MDD Percentile Panel ──────────────────────────────────────────────────────
+
+function MddPercentilePanel({ portfolios }: { portfolios: PortfolioResult[] }) {
+  const sorted = [...portfolios].sort((a, b) => a.mdd - b.mdd);
+
+  return (
+    <div className="space-y-2">
+      <p className="text-xs text-zinc-500">MDD가 역대 몇 % 주간보다 더 심한 하락인지 (높을수록 극단적)</p>
+      {sorted.map(p => {
+        const pct = p.mddPercentile;
+        // 상위 X% 극단 = 100 - pct
+        const extremePct = Math.round((100 - pct) * 10) / 10;
+        const barColor = extremePct <= 3 ? "#ef4444" : extremePct <= 10 ? "#f97316" : extremePct <= 20 ? "#f59e0b" : "#10b981";
+        return (
+          <div key={p.id} className="flex items-center gap-3">
+            <div className="w-28 shrink-0 flex items-center gap-1.5">
+              <div className="h-2 w-2 rounded-full shrink-0" style={{ background: RISK_COLORS[p.riskLevel] }} />
+              <span className="text-xs text-zinc-300 truncate">{p.name}</span>
+            </div>
+            <div className="flex-1 h-2 rounded-full bg-zinc-800 overflow-hidden">
+              <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, background: barColor + "cc" }} />
+            </div>
+            <span className="w-24 text-right text-xs font-semibold tabular-nums shrink-0" style={{ color: barColor }}>
+              -{p.mdd.toFixed(1)}%
+            </span>
+            <span className="w-28 text-right text-[10px] text-zinc-500 tabular-nums shrink-0">
+              상위 {extremePct}% 극단
+            </span>
+          </div>
+        );
+      })}
+      <p className="text-[10px] text-zinc-600 pt-1">
+        * "상위 3% 극단" = 역대 전체 주간 중 3%만 이 수준 이상 하락 경험. 낮을수록 더 드문 극단적 손실.
+      </p>
+    </div>
+  );
+}
+
 // ─── Metrics Table ────────────────────────────────────────────────────────────
 
 function MetricsTable({ portfolios }: { portfolios: PortfolioResult[] }) {
@@ -655,7 +816,7 @@ function YearlyChart({ portfolios }: { portfolios: PortfolioResult[] }) {
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
-type TabKey = "chart" | "crisis" | "metrics" | "composition" | "yearly";
+type TabKey = "chart" | "events" | "mddpct" | "crisis" | "metrics" | "composition" | "yearly";
 
 export default function PortfolioMixPage() {
   const [period, setPeriod] = useState("10y");
@@ -692,7 +853,9 @@ export default function PortfolioMixPage() {
 
   const tabs: { key: TabKey; label: string }[] = [
     { key: "chart",       label: "누적 수익률 차트" },
-    { key: "crisis",      label: "위기 분석" },
+    { key: "events",      label: "이벤트별 하락률" },
+    { key: "mddpct",      label: "하락률 극단성" },
+    { key: "crisis",      label: "위기 방어 요약" },
     { key: "metrics",     label: "상세 지표" },
     { key: "composition", label: "구성 비중" },
     { key: "yearly",      label: "연도별 수익" },
@@ -831,6 +994,13 @@ export default function PortfolioMixPage() {
             </CardHeader>
             <CardContent className="pt-4">
               {activeTab === "chart" && <EquityChart portfolios={portfolios} />}
+              {activeTab === "events" && (
+                <EventAnalysisTable
+                  portfolios={portfolios}
+                  events={results?.events ?? []}
+                />
+              )}
+              {activeTab === "mddpct" && <MddPercentilePanel portfolios={portfolios} />}
               {activeTab === "crisis" && (
                 <div className="space-y-3">
                   <div className="flex flex-wrap gap-3 text-xs">

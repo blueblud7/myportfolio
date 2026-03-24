@@ -11,6 +11,31 @@ interface WeeklyBar {
   close: number;
 }
 
+export interface HistoricalEvent {
+  id: string;
+  name: string;
+  nameEn: string;
+  type: "경제위기" | "지정학" | "팬데믹" | "시장충격";
+  start: string;
+  end: string;
+  description: string;
+}
+
+export const HISTORICAL_EVENTS: HistoricalEvent[] = [
+  { id: "dotcom",    name: "닷컴 버블 붕괴",    nameEn: "Dot-com Crash",        type: "경제위기", start: "2000-03-01", end: "2002-10-31", description: "나스닥 -78% 대폭락, IT버블 붕괴" },
+  { id: "sep11",     name: "9.11 테러",         nameEn: "9/11 Terror",          type: "지정학",  start: "2001-09-07", end: "2001-09-28", description: "미국 테러공격, 시장 즉각 폐장 후 급락" },
+  { id: "gfc",       name: "글로벌 금융위기",    nameEn: "Global Financial Crisis", type: "경제위기", start: "2008-09-01", end: "2009-03-31", description: "리먼 브라더스 파산, S&P500 -57%" },
+  { id: "flash10",   name: "2010 플래시 크래시", nameEn: "Flash Crash 2010",     type: "시장충격", start: "2010-05-01", end: "2010-07-01", description: "알고리즘 트레이딩으로 20분간 급락" },
+  { id: "eudebt11",  name: "유럽 재정위기",      nameEn: "EU Debt Crisis",       type: "경제위기", start: "2011-07-01", end: "2011-10-31", description: "그리스·이탈리아 국가부채 위기" },
+  { id: "china15",   name: "중국 증시 폭락",     nameEn: "China Market Crash",   type: "시장충격", start: "2015-06-15", end: "2015-09-30", description: "상해지수 -45%, 글로벌 연쇄 하락" },
+  { id: "q418",      name: "2018 Q4 급락",      nameEn: "Q4 2018 Selloff",      type: "시장충격", start: "2018-10-01", end: "2018-12-31", description: "미중 무역전쟁·금리인상 공포로 S&P -20%" },
+  { id: "covid",     name: "코로나19 팬데믹",    nameEn: "COVID-19 Crash",       type: "팬데믹",  start: "2020-02-01", end: "2020-04-30", description: "글로벌 팬데믹 선언, 역사상 가장 빠른 -34%" },
+  { id: "ukraine",   name: "러시아-우크라이나",   nameEn: "Russia-Ukraine War",   type: "지정학",  start: "2022-02-24", end: "2022-04-30", description: "러시아 우크라이나 침공, 원자재 급등" },
+  { id: "bear22",    name: "2022 금리 베어장",   nameEn: "2022 Rate Bear",       type: "경제위기", start: "2022-01-01", end: "2022-10-31", description: "Fed 급격한 금리인상, QQQ -40%" },
+  { id: "svb23",     name: "SVB 은행 파산",      nameEn: "SVB Collapse",         type: "시장충격", start: "2023-03-08", end: "2023-04-30", description: "실리콘밸리 은행 파산, 금융시스템 우려" },
+  { id: "yencarry",  name: "2024 엔캐리 청산",   nameEn: "Yen Carry Unwind",     type: "시장충격", start: "2024-07-11", end: "2024-08-15", description: "일본 금리인상·엔캐리 청산으로 급락" },
+];
+
 export interface PortfolioResult {
   id: string;
   name: string;
@@ -29,6 +54,9 @@ export interface PortfolioResult {
   rank: number;
   crisis2020: number;
   crisis2022: number;
+  // New fields
+  eventDrawdowns: { eventId: string; drawdown: number | null }[];
+  mddPercentile: number;   // 0~100: 100이면 역대 최악 수준 하락
   equityCurve: { date: string; value: number }[];
   yearlyReturns: { year: number; return: number }[];
 }
@@ -274,6 +302,20 @@ function calcMetrics(curve: { date: string; value: number }[], initialCash: numb
   };
 }
 
+// ─── MDD percentile: "역대 주간 낙폭 중 MDD보다 낮은 비율" ────────────────────
+// 결과 해석: 90% → 역대 90%의 주간보다 더 심한 하락 = 상위 10% 극단 하락
+function calcMddPercentile(curve: { date: string; value: number }[], mdd: number): number {
+  let peak = curve[0].value;
+  const drawdowns: number[] = [];
+  for (const pt of curve) {
+    if (pt.value > peak) peak = pt.value;
+    drawdowns.push(((peak - pt.value) / peak) * 100);
+  }
+  // MDD보다 낮은 주간(덜 심한 하락)이 전체의 몇 %인지
+  const milder = drawdowns.filter(d => d < mdd).length;
+  return Math.round((milder / drawdowns.length) * 100 * 10) / 10;
+}
+
 // ─── Composite scoring ────────────────────────────────────────────────────────
 
 function computeScores(results: Omit<PortfolioResult, "score" | "rank">[]): PortfolioResult[] {
@@ -346,6 +388,17 @@ export async function POST(req: NextRequest) {
       const crisis2020 = calcCrisisDrawdown(equityCurve, "2020-01-01", "2020-05-01");
       const crisis2022 = calcCrisisDrawdown(equityCurve, "2022-01-01", "2022-12-31");
 
+      // 모든 역사적 이벤트별 낙폭
+      const eventDrawdowns = HISTORICAL_EVENTS.map(ev => {
+        const dd = calcCrisisDrawdown(equityCurve, ev.start, ev.end);
+        // 데이터가 없으면 null (이벤트 기간 데이터 2포인트 미만)
+        const window = equityCurve.filter(p => p.date >= ev.start && p.date <= ev.end);
+        return { eventId: ev.id, drawdown: window.length < 2 ? null : dd };
+      });
+
+      // MDD 퍼센타일 (역대 주간 낙폭 분포 기준)
+      const mddPercentile = calcMddPercentile(equityCurve, metrics.mdd);
+
       rawResults.push({
         id: pDef.id,
         name: pDef.name,
@@ -356,6 +409,8 @@ export async function POST(req: NextRequest) {
         ...metrics,
         crisis2020,
         crisis2022,
+        eventDrawdowns,
+        mddPercentile,
         equityCurve,
         yearlyReturns,
       });
@@ -363,7 +418,7 @@ export async function POST(req: NextRequest) {
 
     const portfolios = computeScores(rawResults);
 
-    return NextResponse.json({ portfolios, startDate, endDate, period });
+    return NextResponse.json({ portfolios, startDate, endDate, period, events: HISTORICAL_EVENTS });
   } catch (e) {
     return NextResponse.json({ error: String(e) }, { status: 500 });
   }
