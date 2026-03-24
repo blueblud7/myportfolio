@@ -5,7 +5,7 @@ import { Link, usePathname } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
 import {
   LayoutDashboard, Wallet, BarChart3, TrendingUp, BookOpen,
-  Eye, EyeOff, FlaskConical, Bell, Sparkles, Activity, X, Filter, Layers, GitBranch, GitCompare, Microscope, PiggyBank,
+  Eye, EyeOff, FlaskConical, Bell, Sparkles, Activity, X, Filter, Layers, GitBranch, GitCompare, Microscope, PiggyBank, PieChart,
 } from "lucide-react";
 import { InvestorQuote } from "./InvestorQuote";
 import { usePrivacy } from "@/contexts/privacy-context";
@@ -35,6 +35,7 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
     { href: "/compare", label: "상대강도", icon: GitCompare },
     { href: "/strategy-lab", label: "전략 연구소", icon: Microscope },
     { href: "/position-lab", label: "자금관리 연구소", icon: PiggyBank },
+    { href: "/portfolio-mix", label: "포트폴리오 믹스", icon: PieChart },
     { href: "/alerts", label: t("alerts"), icon: Bell },
   ];
 
