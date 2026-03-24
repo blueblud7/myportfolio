@@ -3,7 +3,7 @@
 import { useState, useMemo } from "react";
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
-  ResponsiveContainer, Legend, BarChart, Bar, Cell, ReferenceLine,
+  ResponsiveContainer, Legend, BarChart, Bar, Cell, ReferenceLine, Brush,
 } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -98,7 +98,8 @@ function EquityChart({ results, ticker }: { results: PositionResult[]; ticker: s
     });
   }, [results]);
 
-  const sorted = [...results].sort((a, b) => a.rank - b.rank);
+  // 총수익률 기준으로 정렬 (차트 선 순서와 일치)
+  const sorted = [...results].sort((a, b) => b.totalReturn - a.totalReturn);
 
   return (
     <div className="space-y-3">
@@ -117,26 +118,32 @@ function EquityChart({ results, ticker }: { results: PositionResult[]; ticker: s
           );
         })}
       </div>
-      <ResponsiveContainer width="100%" height={360}>
-        <LineChart data={data.length > 500 ? data.filter((_, i) => i % 2 === 0) : data} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
+      <ResponsiveContainer width="100%" height={380}>
+        <LineChart data={data.length > 500 ? data.filter((_, i) => i % 2 === 0) : data} margin={{ top: 4, right: 8, left: 0, bottom: 24 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#27272a" />
           <XAxis dataKey="date" tick={{ fill: "#71717a", fontSize: 10 }} tickFormatter={fmtDate} interval="preserveStartEnd" minTickGap={60} />
           <YAxis tick={{ fill: "#71717a", fontSize: 10 }} tickFormatter={(v: number) => `${v}%`} width={52} />
           <ReferenceLine y={100} stroke="#52525b" strokeDasharray="3 3" />
           <Tooltip
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            formatter={(v: any, name?: string) => [`${Number(v).toFixed(1)}%`, results.find(r => r.id === name)?.name ?? (name ?? "")]}
+            formatter={(v: any, name?: string) => {
+              const r = results.find(x => x.id === name);
+              return [`${Number(v).toFixed(1)}%`, r?.name ?? (name ?? "")];
+            }}
             labelFormatter={(l) => String(l)}
             contentStyle={{ fontSize: 11, borderRadius: "0.5rem", border: "1px solid #27272a", background: "#18181b", color: "#e4e4e7" }}
           />
           <Legend formatter={(v: string) => results.find(r => r.id === v)?.name ?? v} wrapperStyle={{ fontSize: 10, color: "#a1a1aa" }} />
-          {results.map(r => visible.has(r.id) ? (
+          <Brush dataKey="date" height={20} stroke="#3f3f46" fill="#18181b" travellerWidth={6}
+            tickFormatter={fmtDate}
+            style={{ fontSize: 9, color: "#71717a" }} />
+          {sorted.map((r, i) => visible.has(r.id) ? (
             <Line key={r.id} type="monotone" dataKey={r.id} stroke={STRATEGY_COLORS[r.id] ?? "#888"}
-              strokeWidth={r.rank <= 3 ? 2.5 : 1.5} dot={false} connectNulls />
+              strokeWidth={i < 3 ? 2.5 : 1.5} dot={false} connectNulls />
           ) : null)}
         </LineChart>
       </ResponsiveContainer>
-      <p className="text-[10px] text-zinc-600 text-right">* {ticker} 누적 수익률 (시작=100%) · 버튼 수치는 총수익률% · CAGR은 순위표 참고</p>
+      <p className="text-[10px] text-zinc-600 text-right">* {ticker} 누적 수익률 (시작=100%, 총수익률 순 정렬) · 하단 슬라이더로 줌 가능</p>
     </div>
   );
 }
@@ -185,6 +192,76 @@ function YearlyChart({ results }: { results: PositionResult[] }) {
           ))}
         </BarChart>
       </ResponsiveContainer>
+    </div>
+  );
+}
+
+// ─── Strategy Description Panel ───────────────────────────────────────────────
+
+const STRATEGY_DETAILS: Record<string, { pros: string[]; cons: string[]; bestFor: string }> = {
+  lumpSum:      { pros: ["최대 시장 노출로 장기 강세장에 유리", "단순하고 추가 의사결정 불필요"], cons: ["고점 매수 리스크 최대", "초기 MDD가 가장 큼"], bestFor: "장기 우상향 시장, 타이밍 고려 않는 투자자" },
+  cash20:       { pros: ["80% 수익 + 20% 안전판", "간단한 관리"], cons: ["20% 현금은 영구적 기회비용"], bestFor: "보수적 투자자, 소규모 완충 선호" },
+  cash40:       { pros: ["하락 대비 여력 40% 확보", "심리적 안정감"], cons: ["40% 현금 기회비용 큼", "강세장에서 불리"], bestFor: "변동성 큰 레버리지 ETF 투자자" },
+  split4:       { pros: ["3개월 분산으로 고점 리스크 축소"], cons: ["강세장에서 기회비용 발생", "MDD 큰 하락에는 미흡"], bestFor: "목돈 단기 분산 투자" },
+  split12:      { pros: ["1년 분산으로 가격 평균화 효과 최대"], cons: ["강세장 수익 크게 감소", "기간 중 현금 대기 비용"], bestFor: "목돈 장기 분산, 심리적 부담 최소화" },
+  mdd10:        { pros: ["낙폭에서 추가 매수로 평균단가 개선", "60%로 시장 노출 유지"], cons: ["-10% 이상 낙폭 없으면 추가 매수 미발생", "MDD 트리거 후 추가 하락 리스크"], bestFor: "시장 조정(-10~20%) 자주 발생하는 종목" },
+  mdd20:        { pros: ["-20% 폭락 시 대규모 추가 매수로 저점 공략"], cons: ["-20% 이상 낙폭 드문 경우 현금 대기 손실", "트리거 후 추가 하락 가능"], bestFor: "큰 폭 조정 노리는 공격적 투자자" },
+  mddLadder:    { pros: ["3단계 분산으로 낙폭 전구간 대응", "가장 유연한 평균단가 조절"], cons: ["초기 40% 투자로 시작이 가장 보수적", "복잡한 트리거 관리"], bestFor: "크래시 대비 최적화, 코어 ETF 장기 보유" },
+  dipDca:       { pros: ["정기 DCA + 하락 강화로 이중 효과", "하락 주에 추가 매수로 평균단가↓"], cons: ["예산 소진 가능성", "하락 이후 추가 하락 시 손실"], bestFor: "월급쟁이 정기투자 + 기회 포착 병행" },
+  momentumCash: { pros: ["모멘텀 있을 때 공격, 없을 때 방어", "자동 리밸런싱으로 하락 리스크 줄임"], cons: ["빈번한 리밸런싱", "횡보장에서 잦은 신호 오류"], bestFor: "추세추종 + 리스크 관리 병행 투자자" },
+};
+
+function StrategyDescPanel({ results }: { results: PositionResult[] }) {
+  const [selected, setSelected] = useState<string | null>(null);
+  const sorted = [...results].sort((a, b) => b.totalReturn - a.totalReturn);
+
+  return (
+    <div className="space-y-2">
+      <p className="text-xs font-semibold text-zinc-500">전략 설명</p>
+      <div className="flex flex-wrap gap-1.5">
+        {sorted.map(r => (
+          <button key={r.id} onClick={() => setSelected(s => s === r.id ? null : r.id)}
+            className={cn("flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium transition",
+              selected === r.id ? "border-transparent text-white" : "border-zinc-700 text-zinc-500 hover:border-zinc-600")}
+            style={selected === r.id ? { background: STRATEGY_COLORS[r.id] + "33", borderColor: STRATEGY_COLORS[r.id], color: STRATEGY_COLORS[r.id] } : undefined}>
+            <div className="h-2 w-2 rounded-full" style={{ background: STRATEGY_COLORS[r.id] }} />
+            {r.name}
+          </button>
+        ))}
+      </div>
+      {selected && (() => {
+        const r = results.find(x => x.id === selected);
+        const d = STRATEGY_DETAILS[selected];
+        if (!r || !d) return null;
+        return (
+          <div className="rounded-lg border border-zinc-700 bg-zinc-800/40 p-4 space-y-3 text-xs">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h3 className="font-bold text-zinc-100 text-sm">{r.name}</h3>
+                <p className="text-zinc-400 mt-0.5">{r.description}</p>
+              </div>
+              <div className="text-right shrink-0 space-y-1">
+                <p className={cn("font-bold text-base", cagrColor(r.cagr))}>{fmt(r.totalReturn)}%</p>
+                <p className="text-zinc-600 text-[10px]">CAGR {fmt(r.cagr)}%</p>
+              </div>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="space-y-1">
+                <p className="font-semibold text-emerald-400">✓ 장점</p>
+                {d.pros.map((p, i) => <p key={i} className="text-zinc-400">· {p}</p>)}
+              </div>
+              <div className="space-y-1">
+                <p className="font-semibold text-red-400">✗ 단점</p>
+                {d.cons.map((c, i) => <p key={i} className="text-zinc-400">· {c}</p>)}
+              </div>
+              <div className="space-y-1">
+                <p className="font-semibold text-blue-400">◎ 적합한 경우</p>
+                <p className="text-zinc-400">{d.bestFor}</p>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }
@@ -493,16 +570,16 @@ export default function PositionLabPage() {
             <CardHeader className="pb-2">
               <CardTitle className="flex items-center gap-2 text-sm text-zinc-300">
                 <Target className="h-4 w-4 text-amber-400" />
-                종합 순위 (CAGR 40% · 샤프 30% · MDD 30%)
+                수익률 순위 (총수익률 기준 · 차트 순서와 동일)
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
-              {[...currentResults].sort((a, b) => a.rank - b.rank).map(r => {
+              {[...currentResults].sort((a, b) => b.totalReturn - a.totalReturn).map((r, i) => {
                 const maxReturn = Math.max(...currentResults.map(x => x.totalReturn));
                 const barW = Math.max(4, (r.totalReturn / (maxReturn || 1)) * 100);
                 return (
                   <div key={r.id} className="flex items-center gap-3">
-                    <span className="w-6 text-right text-sm shrink-0">{RANK_MEDALS[r.rank - 1] ?? `${r.rank}`}</span>
+                    <span className="w-6 text-right text-sm shrink-0">{RANK_MEDALS[i] ?? `${i+1}`}</span>
                     <div className="w-32 shrink-0 flex items-center gap-1.5">
                       <div className="h-2 w-2 rounded-full shrink-0" style={{ background: STRATEGY_COLORS[r.id] }} />
                       <span className="text-xs text-zinc-300 truncate">{r.name}</span>
@@ -544,7 +621,12 @@ export default function PositionLabPage() {
               </div>
             </CardHeader>
             <CardContent className="pt-4">
-              {activeTab === "chart" && <EquityChart results={currentResults} ticker={activeTicker} />}
+              {activeTab === "chart" && (
+                <div className="space-y-6">
+                  <EquityChart results={currentResults} ticker={activeTicker} />
+                  <StrategyDescPanel results={currentResults} />
+                </div>
+              )}
               {activeTab === "ranking" && (
                 <RankingTable results={currentResults} onSelectDetail={id => { setDetailId(id); setActiveTab("detail"); }} />
               )}
