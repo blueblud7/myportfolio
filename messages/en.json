@@ -34,6 +34,20 @@
     "polymarket": "Prediction Market (Polymarket)",
     "putCallRatio": "Put/Call Ratio"
   },
+  "WatchlistWidget": {
+    "title": "Watchlist",
+    "add": "Add",
+    "addBtn": "OK",
+    "placeholder": "e.g. AAPL, 005930",
+    "empty": "Add tickers with the + Add button",
+    "noData": "No data",
+    "revenueGrowth": "Rev Growth",
+    "opMargin": "Op Margin",
+    "epsGrowth": "EPS Growth",
+    "pe": "PE(F)",
+    "peg": "PEG",
+    "marketCap": "Mkt Cap"
+  },
   "SummaryCards": {
     "totalAssets": "Total Assets",
     "totalGainLoss": "Total Gain/Loss",

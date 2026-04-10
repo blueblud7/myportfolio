@@ -34,6 +34,20 @@
     "polymarket": "예측 시장 (Polymarket)",
     "putCallRatio": "풋/콜 레이시오"
   },
+  "WatchlistWidget": {
+    "title": "관심 종목",
+    "add": "추가",
+    "addBtn": "확인",
+    "placeholder": "예: AAPL, 005930",
+    "empty": "+ 추가 버튼으로 관심 종목을 등록하세요",
+    "noData": "데이터 없음",
+    "revenueGrowth": "매출성장",
+    "opMargin": "영업이익률",
+    "epsGrowth": "EPS성장",
+    "pe": "PER(F)",
+    "peg": "PEG",
+    "marketCap": "시총"
+  },
   "SummaryCards": {
     "totalAssets": "총 자산",
     "totalGainLoss": "총 손익",

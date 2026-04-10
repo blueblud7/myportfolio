@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useRef, useCallback } from "react";
 import { useTranslations } from "next-intl";
 import { SummaryCards } from "@/components/dashboard/SummaryCards";
 import { TotalAssetChart } from "@/components/dashboard/TotalAssetChart";
@@ -8,20 +8,53 @@ import { AllocationChart } from "@/components/dashboard/AllocationChart";
 import { MarketIndices } from "@/components/dashboard/MarketIndices";
 import { PolymarketWidget } from "@/components/dashboard/PolymarketWidget";
 import { PutCallRatioWidget } from "@/components/dashboard/PutCallRatioWidget";
-import { useAccounts, useHoldings, useExchangeRate, useBankBalances } from "@/hooks/use-api";
+import { WatchlistWidget } from "@/components/dashboard/WatchlistWidget";
+import { useAccounts, useHoldings, useExchangeRate, useBankBalances, refreshPrices } from "@/hooks/use-api";
 
 export default function DashboardPage() {
   const t = useTranslations("Dashboard");
   const { data: accounts } = useAccounts();
-  const { data: holdings } = useHoldings();
+  const { data: holdings, mutate: mutateHoldings } = useHoldings();
   const { data: exchangeRateData } = useExchangeRate();
   const { data: bankBalances } = useBankBalances();
   const [snapshotCreated, setSnapshotCreated] = useState(false);
+  const initialRefreshed = useRef(false);
 
   const exchangeRate = exchangeRateData?.rate ?? 1350;
 
+  // 가격 갱신 후 holdings + snapshot 재조회
+  const handleRefreshPrices = useCallback(async (h: { ticker: string; manual_price: number | null }[]) => {
+    const tickers = [...new Set(
+      h.filter((x) => x.ticker !== "CASH" && !x.manual_price).map((x) => x.ticker)
+    )];
+    if (tickers.length === 0) return;
+    await refreshPrices(tickers);
+    await mutateHoldings();
+    fetch("/api/snapshots", { method: "POST" }).then(() => setSnapshotCreated(true));
+  }, [mutateHoldings]);
+
+  // 첫 로드 시 가격 갱신
   useEffect(() => {
-    if (!snapshotCreated) {
+    if (!initialRefreshed.current && Array.isArray(holdings) && holdings.length > 0) {
+      initialRefreshed.current = true;
+      handleRefreshPrices(holdings as { ticker: string; manual_price: number | null }[]);
+    }
+  }, [holdings, handleRefreshPrices]);
+
+  // 탭 포커스 시 가격 갱신
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState === "visible" && Array.isArray(holdings) && holdings.length > 0) {
+        handleRefreshPrices(holdings as { ticker: string; manual_price: number | null }[]);
+      }
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+  }, [holdings, handleRefreshPrices]);
+
+  // snapshot은 가격 갱신 없을 때 fallback으로만
+  useEffect(() => {
+    if (!snapshotCreated && initialRefreshed.current === false) {
       fetch("/api/snapshots", { method: "POST" }).then(() => setSnapshotCreated(true));
     }
   }, [snapshotCreated]);
@@ -128,6 +161,8 @@ export default function DashboardPage() {
           <PolymarketWidget />
         </div>
       </div>
+
+      <WatchlistWidget />
     </div>
   );
 }

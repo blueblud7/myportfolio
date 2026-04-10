@@ -1,8 +1,11 @@
-import { neon } from "@neondatabase/serverless";
+import { neon, NeonQueryFunction } from "@neondatabase/serverless";
 
-const sql = neon(process.env.DATABASE_URL!);
+let sql: NeonQueryFunction<false, false> | null = null;
 
-export function getDb() {
+export function getDb(): NeonQueryFunction<false, false> {
+  if (!sql) {
+    sql = neon(process.env.DATABASE_URL!);
+  }
   return sql;
 }
 
