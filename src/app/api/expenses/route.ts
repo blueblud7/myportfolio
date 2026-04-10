@@ -1,0 +1,120 @@
+import { NextRequest, NextResponse } from "next/server";
+import { getDb } from "@/lib/db";
+
+// Default items seeded on first load
+const DEFAULT_ITEMS = [
+  // Housing
+  { name: "임대/모기지", name_en: "Rent/Mortgage", amount: 5700, type: "expense", category: "housing", sort_order: 1 },
+  { name: "공과금", name_en: "Utilities", amount: 300, type: "expense", category: "housing", sort_order: 2 },
+  { name: "HOA", name_en: "HOA", amount: 0, type: "expense", category: "housing", sort_order: 3 },
+  { name: "집 유지보수", name_en: "Home Maintenance", amount: 0, type: "expense", category: "housing", sort_order: 4 },
+  // Food
+  { name: "식료품", name_en: "Groceries", amount: 1500, type: "expense", category: "food", sort_order: 10 },
+  { name: "외식", name_en: "Dining Out", amount: 500, type: "expense", category: "food", sort_order: 11 },
+  // Transportation
+  { name: "자동차 할부", name_en: "Car Payment", amount: 0, type: "expense", category: "transportation", sort_order: 20 },
+  { name: "자동차 보험", name_en: "Car Insurance", amount: 250, type: "expense", category: "transportation", sort_order: 21 },
+  { name: "주유비", name_en: "Gas", amount: 300, type: "expense", category: "transportation", sort_order: 22 },
+  // Healthcare
+  { name: "건강보험", name_en: "Health Insurance", amount: 600, type: "expense", category: "healthcare", sort_order: 30 },
+  { name: "의료비", name_en: "Medical Expenses", amount: 300, type: "expense", category: "healthcare", sort_order: 31 },
+  { name: "치과/시력", name_en: "Dental/Vision", amount: 0, type: "expense", category: "healthcare", sort_order: 32 },
+  { name: "생명보험", name_en: "Life Insurance", amount: 0, type: "expense", category: "healthcare", sort_order: 33 },
+  // Communication & Subscriptions
+  { name: "휴대폰 + 인터넷", name_en: "Cell Phone + Internet", amount: 170, type: "expense", category: "communication", sort_order: 40 },
+  { name: "구독 서비스", name_en: "Subscriptions", amount: 200, type: "expense", category: "communication", sort_order: 41 },
+  // Education & Personal
+  { name: "교육", name_en: "Education", amount: 0, type: "expense", category: "education", sort_order: 50 },
+  { name: "의류/쇼핑", name_en: "Clothing/Shopping", amount: 0, type: "expense", category: "personal", sort_order: 60 },
+  { name: "헬스장/피트니스", name_en: "Gym/Fitness", amount: 0, type: "expense", category: "personal", sort_order: 61 },
+  { name: "미용/개인관리", name_en: "Personal Care", amount: 0, type: "expense", category: "personal", sort_order: 62 },
+  { name: "반려동물", name_en: "Pet Expenses", amount: 0, type: "expense", category: "personal", sort_order: 63 },
+  // Entertainment & Travel
+  { name: "엔터테인먼트/취미", name_en: "Entertainment/Hobbies", amount: 0, type: "expense", category: "entertainment", sort_order: 70 },
+  { name: "여행", name_en: "Travel", amount: 0, type: "expense", category: "entertainment", sort_order: 71 },
+  // Savings & Tax
+  { name: "은퇴/401k 적립", name_en: "Retirement/401k", amount: 0, type: "expense", category: "savings", sort_order: 80 },
+  { name: "세금/회계사", name_en: "Tax/Accountant", amount: 0, type: "expense", category: "savings", sort_order: 81 },
+  { name: "선물/기부", name_en: "Gifts/Donations", amount: 0, type: "expense", category: "savings", sort_order: 82 },
+  // Misc
+  { name: "기타", name_en: "Misc", amount: 1000, type: "expense", category: "misc", sort_order: 90 },
+  // Income
+  { name: "급여", name_en: "Salary", amount: 8000, type: "income", category: "income", sort_order: 100 },
+  { name: "회사 보험 혜택", name_en: "Insurance (Company)", amount: 0, type: "income", category: "income", sort_order: 101 },
+  { name: "부업/기타 수입", name_en: "Side Income", amount: 0, type: "income", category: "income", sort_order: 102 },
+];
+
+async function ensureTable() {
+  const sql = getDb();
+  await sql`
+    CREATE TABLE IF NOT EXISTS expense_items (
+      id SERIAL PRIMARY KEY,
+      name TEXT NOT NULL,
+      name_en TEXT NOT NULL DEFAULT '',
+      amount DOUBLE PRECISION NOT NULL DEFAULT 0,
+      currency TEXT NOT NULL DEFAULT 'USD',
+      type TEXT NOT NULL DEFAULT 'expense',
+      category TEXT NOT NULL DEFAULT 'misc',
+      sort_order INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL DEFAULT (to_char(NOW(), 'YYYY-MM-DD HH24:MI:SS'))
+    )
+  `;
+}
+
+export async function GET() {
+  await ensureTable();
+  const sql = getDb();
+  const rows = await sql`SELECT * FROM expense_items ORDER BY sort_order, id`;
+
+  // Seed defaults if empty
+  if (rows.length === 0) {
+    for (const item of DEFAULT_ITEMS) {
+      await sql`
+        INSERT INTO expense_items (name, name_en, amount, currency, type, category, sort_order)
+        VALUES (${item.name}, ${item.name_en}, ${item.amount}, 'USD', ${item.type}, ${item.category}, ${item.sort_order})
+      `;
+    }
+    const seeded = await sql`SELECT * FROM expense_items ORDER BY sort_order, id`;
+    return NextResponse.json(seeded);
+  }
+
+  return NextResponse.json(rows);
+}
+
+export async function POST(req: NextRequest) {
+  await ensureTable();
+  const sql = getDb();
+  const { name, name_en, amount, currency, type, category, sort_order } = await req.json();
+  if (!name || !type) return NextResponse.json({ error: "name and type required" }, { status: 400 });
+
+  const [row] = await sql`
+    INSERT INTO expense_items (name, name_en, amount, currency, type, category, sort_order)
+    VALUES (${name}, ${name_en ?? ""}, ${amount ?? 0}, ${currency ?? "USD"}, ${type}, ${category ?? "misc"}, ${sort_order ?? 999})
+    RETURNING *
+  `;
+  return NextResponse.json(row, { status: 201 });
+}
+
+export async function PUT(req: NextRequest) {
+  const sql = getDb();
+  const { id, name, name_en, amount, currency, type, category, sort_order } = await req.json();
+  if (!id) return NextResponse.json({ error: "id required" }, { status: 400 });
+
+  const [row] = await sql`
+    UPDATE expense_items
+    SET name=${name}, name_en=${name_en ?? ""}, amount=${amount ?? 0},
+        currency=${currency ?? "USD"}, type=${type}, category=${category ?? "misc"},
+        sort_order=${sort_order ?? 999}
+    WHERE id=${id}
+    RETURNING *
+  `;
+  return NextResponse.json(row);
+}
+
+export async function DELETE(req: NextRequest) {
+  const sql = getDb();
+  const { id } = await req.json();
+  if (!id) return NextResponse.json({ error: "id required" }, { status: 400 });
+  await sql`DELETE FROM expense_items WHERE id=${id}`;
+  return NextResponse.json({ deleted: true });
+}
