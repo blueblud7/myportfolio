@@ -22,6 +22,7 @@
     "backtest": "Backtest",
     "insights": "AI Insights",
     "alerts": "Price Alerts",
+    "volatility": "Volatility Analysis",
     "budget": "Budget Tracker",
     "showAmounts": "Show amounts",
     "hideAmounts": "Hide amounts"
