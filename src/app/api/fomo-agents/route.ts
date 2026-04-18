@@ -28,48 +28,25 @@ const AGENT_PROFILES = [
 ];
 
 function buildUserPrompt(sentiment: SentimentData): string {
-  return `현재 시장 데이터:
+  return `시장: KR${sentiment.KR}(${sentiment.labels.KR}) US${sentiment.US}(${sentiment.labels.US}) Crypto${sentiment.Crypto} 종합${sentiment.Overall}(${sentiment.labels.Overall}) | VIX${sentiment.raw.vix.toFixed(1)} KOSPI${sentiment.raw.kospiChangePct >= 0 ? "+" : ""}${sentiment.raw.kospiChangePct.toFixed(2)}% SP500${sentiment.raw.sp500ChangePct >= 0 ? "+" : ""}${sentiment.raw.sp500ChangePct.toFixed(2)}%
 
-## 심리 점수 (0=극단적공포, 100=극단적탐욕)
-- KR 종합: ${sentiment.KR} (${sentiment.labels.KR})
-- US 종합: ${sentiment.US} (${sentiment.labels.US})
-- 크립토: ${sentiment.Crypto} (${sentiment.labels.Crypto})
-- 전체: ${sentiment.Overall} (${sentiment.labels.Overall})
-
-## 시장 지표
-- VIX: ${sentiment.raw.vix.toFixed(1)} (전일대비 ${sentiment.raw.vixChange >= 0 ? "+" : ""}${sentiment.raw.vixChange.toFixed(2)})
-- 크립토 공포탐욕지수: ${sentiment.raw.cryptoFG} (${sentiment.raw.cryptoLabel})
-- KOSPI 등락률: ${sentiment.raw.kospiChangePct >= 0 ? "+" : ""}${sentiment.raw.kospiChangePct.toFixed(2)}%
-- KOSDAQ 등락률: ${sentiment.raw.kosdaqChangePct >= 0 ? "+" : ""}${sentiment.raw.kosdaqChangePct.toFixed(2)}%
-- S&P500 등락률: ${sentiment.raw.sp500ChangePct >= 0 ? "+" : ""}${sentiment.raw.sp500ChangePct.toFixed(2)}%
-
-위 시장 상황에서 당신의 페르소나로서 반응하세요. 반드시 아래 JSON 형식으로만 응답하세요:
-
-{
-  "interpretation": "현재 시장 상황에 대한 당신의 해석 (2-3문장, 페르소나 말투로)",
-  "action": "Buy 또는 Hold 또는 Sell 중 하나",
-  "action_reason": "행동 이유 (1문장)",
-  "fomo_score": 0에서 10 사이 정수 (0=FOMO없음, 10=극단적FOMO),
-  "warning": "다른 투자자에게 주는 경고 (1문장)",
-  "inner_monologue": "당신의 솔직한 내면의 독백 (2-3문장)",
-  "biases_detected": ["편향1", "편향2"]
-}`;
+JSON만 반환:
+{"interpretation":"(1-2문장)","action":"Buy|Hold|Sell","action_reason":"(1문장)","fomo_score":0-10,"warning":"(1문장)","inner_monologue":"(1-2문장)","biases_detected":["편향"]}`;
 }
 
 async function runAgent(profile: typeof AGENT_PROFILES[0], prompt: string): Promise<AgentAnalysis> {
   try {
     const res = await client.chat.completions.create({
       model: "gpt-5-nano",
-      max_completion_tokens: 2000,
+      max_completion_tokens: 1000,
+      response_format: { type: "json_object" },
       messages: [
         { role: "system", content: profile.systemPrompt },
         { role: "user", content: prompt },
       ],
     });
-    const content = res.choices[0].message.content ?? "";
-    const finish = res.choices[0].finish_reason;
-    const jsonMatch = content.match(/\{[\s\S]*\}/);
-    const raw = JSON.parse(jsonMatch ? jsonMatch[0] : "{}");
+    const content = res.choices[0].message.content ?? "{}";
+    const raw = JSON.parse(content);
     return {
       id: profile.id,
       name: profile.name,
@@ -77,7 +54,7 @@ async function runAgent(profile: typeof AGENT_PROFILES[0], prompt: string): Prom
       weight: profile.weight,
       action: ["Buy", "Hold", "Sell"].includes(raw.action) ? raw.action : "Hold",
       fomoScore: Math.min(10, Math.max(0, Number(raw.fomo_score ?? 5))),
-      interpretation: raw.interpretation ?? `[finish:${finish}] ${content.slice(0, 300)}`,
+      interpretation: raw.interpretation ?? "",
       actionReason: raw.action_reason ?? "",
       warning: raw.warning ?? "",
       innerMonologue: raw.inner_monologue ?? "",
