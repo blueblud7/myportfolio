@@ -22,7 +22,7 @@ function Sparkline({
   width?: number;
 }) {
   if (data.length < 2) {
-    return <div style={{ height, width }} className="rounded bg-zinc-800/50" />;
+    return <div style={{ height, width }} className="rounded bg-muted/50 dark:bg-zinc-800/50" />;
   }
 
   const PAD = 2;
@@ -75,12 +75,12 @@ function StatCard({
   colorClass?: string;
 }) {
   return (
-    <div className="rounded-xl border border-zinc-800 bg-zinc-900/60 px-4 py-3">
-      <p className="text-xs text-zinc-500">{label}</p>
-      <p className={cn("mt-1 text-xl font-bold tabular-nums", colorClass ?? "text-zinc-100")}>
+    <div className="rounded-xl border border-border dark:border-zinc-800 bg-card/80 dark:bg-zinc-900/60 px-4 py-3">
+      <p className="text-xs text-muted-foreground">{label}</p>
+      <p className={cn("mt-1 text-xl font-bold tabular-nums", colorClass ?? "text-foreground")}>
         {value}
       </p>
-      {sub && <p className="mt-0.5 text-[11px] text-zinc-500">{sub}</p>}
+      {sub && <p className="mt-0.5 text-[11px] text-muted-foreground">{sub}</p>}
     </div>
   );
 }
@@ -91,11 +91,11 @@ function Skeleton() {
     <div className="space-y-4 animate-pulse">
       <div className="grid grid-cols-3 gap-3">
         {[0, 1, 2].map(i => (
-          <div key={i} className="h-20 rounded-xl bg-zinc-800" />
+          <div key={i} className="h-20 rounded-xl bg-muted dark:bg-zinc-800" />
         ))}
       </div>
-      <div className="h-64 rounded-xl bg-zinc-800" />
-      <div className="h-32 rounded-xl bg-zinc-800" />
+      <div className="h-64 rounded-xl bg-muted dark:bg-zinc-800" />
+      <div className="h-32 rounded-xl bg-muted dark:bg-zinc-800" />
     </div>
   );
 }
@@ -113,12 +113,12 @@ function EpisodeTable({ data }: { data: StockAnalysisResult }) {
     <div className="grid gap-4 lg:grid-cols-2">
       {/* 하락 에피소드 */}
       {data.episodes.length > 0 && (
-        <div className="rounded-xl border border-zinc-800 bg-zinc-900/60 p-4">
+        <div className="rounded-xl border border-border dark:border-zinc-800 bg-card/80 dark:bg-zinc-900/60 p-4">
           <p className="mb-3 text-sm font-semibold text-red-400">📉 주요 하락 에피소드 (≤-5%)</p>
           <div className="overflow-x-auto">
             <table className="w-full text-xs">
               <thead>
-                <tr className="border-b border-zinc-800 text-zinc-500">
+                <tr className="border-b border-border dark:border-zinc-800 text-muted-foreground">
                   <th className="py-1.5 text-left font-medium">시작</th>
                   <th className="py-1.5 text-left font-medium">저점</th>
                   <th className="py-1.5 text-right font-medium">낙폭</th>
@@ -128,14 +128,14 @@ function EpisodeTable({ data }: { data: StockAnalysisResult }) {
               </thead>
               <tbody>
                 {data.episodes.map((ep, i) => (
-                  <tr key={i} className="border-b border-zinc-800/40 hover:bg-zinc-800/20">
-                    <td className="py-1.5 text-zinc-400">{ep.startDate}</td>
-                    <td className="py-1.5 text-zinc-400">{ep.troughDate}</td>
+                  <tr key={i} className="border-b border-border/40 dark:border-zinc-800/40 hover:bg-muted/20 dark:hover:bg-zinc-800/20">
+                    <td className="py-1.5 text-muted-foreground">{ep.startDate}</td>
+                    <td className="py-1.5 text-muted-foreground">{ep.troughDate}</td>
                     <td className="py-1.5 text-right font-semibold text-red-400">{ep.drawdownPct.toFixed(1)}%</td>
-                    <td className="py-1.5 text-right text-zinc-400">{ep.durationDays}일</td>
+                    <td className="py-1.5 text-right text-muted-foreground">{ep.durationDays}일</td>
                     <td className="py-1.5 text-right">
                       {ep.recoveryDays != null
-                        ? <span className="text-zinc-400">{ep.recoveryDays}일</span>
+                        ? <span className="text-muted-foreground">{ep.recoveryDays}일</span>
                         : <span className="rounded-full bg-orange-500/20 px-1.5 py-0.5 text-[10px] text-orange-400">진행중</span>}
                     </td>
                   </tr>
@@ -148,12 +148,12 @@ function EpisodeTable({ data }: { data: StockAnalysisResult }) {
 
       {/* 상승 에피소드 */}
       {data.runupEpisodes.length > 0 && (
-        <div className="rounded-xl border border-zinc-800 bg-zinc-900/60 p-4">
+        <div className="rounded-xl border border-border dark:border-zinc-800 bg-card/80 dark:bg-zinc-900/60 p-4">
           <p className="mb-3 text-sm font-semibold text-emerald-400">📈 주요 상승 에피소드 (≥+5%)</p>
           <div className="overflow-x-auto">
             <table className="w-full text-xs">
               <thead>
-                <tr className="border-b border-zinc-800 text-zinc-500">
+                <tr className="border-b border-border dark:border-zinc-800 text-muted-foreground">
                   <th className="py-1.5 text-left font-medium">시작</th>
                   <th className="py-1.5 text-left font-medium">고점</th>
                   <th className="py-1.5 text-right font-medium">상승폭</th>
@@ -163,14 +163,14 @@ function EpisodeTable({ data }: { data: StockAnalysisResult }) {
               </thead>
               <tbody>
                 {data.runupEpisodes.map((ep, i) => (
-                  <tr key={i} className="border-b border-zinc-800/40 hover:bg-zinc-800/20">
-                    <td className="py-1.5 text-zinc-400">{ep.startDate}</td>
-                    <td className="py-1.5 text-zinc-400">{ep.peakDate}</td>
+                  <tr key={i} className="border-b border-border/40 dark:border-zinc-800/40 hover:bg-muted/20 dark:hover:bg-zinc-800/20">
+                    <td className="py-1.5 text-muted-foreground">{ep.startDate}</td>
+                    <td className="py-1.5 text-muted-foreground">{ep.peakDate}</td>
                     <td className="py-1.5 text-right font-semibold text-emerald-400">+{ep.runupPct.toFixed(1)}%</td>
-                    <td className="py-1.5 text-right text-zinc-400">{ep.durationDays}일</td>
+                    <td className="py-1.5 text-right text-muted-foreground">{ep.durationDays}일</td>
                     <td className="py-1.5 text-right">
                       {ep.declineDays != null
-                        ? <span className="text-zinc-400">{ep.declineDays}일</span>
+                        ? <span className="text-muted-foreground">{ep.declineDays}일</span>
                         : <span className="rounded-full bg-emerald-500/20 px-1.5 py-0.5 text-[10px] text-emerald-400">진행중</span>}
                     </td>
                   </tr>
@@ -193,16 +193,16 @@ function MddTab({ data }: { data: StockAnalysisResult }) {
       {/* Stats */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <StatCard label="현재 드로다운" value={`${data.currentDrawdown.toFixed(2)}%`}
-          colorClass={data.currentDrawdown < -10 ? "text-red-400" : data.currentDrawdown < -5 ? "text-orange-400" : "text-zinc-100"} />
+          colorClass={data.currentDrawdown < -10 ? "text-red-400" : data.currentDrawdown < -5 ? "text-orange-400" : "text-foreground"} />
         <StatCard label="최대 드로다운 (2년)" value={`${data.maxDrawdown.toFixed(2)}%`} colorClass="text-red-400" />
         <StatCard label="현재 런업" value={`+${data.currentRunup.toFixed(2)}%`}
-          colorClass={data.currentRunup > 20 ? "text-emerald-400" : data.currentRunup > 10 ? "text-emerald-300" : "text-zinc-100"} />
+          colorClass={data.currentRunup > 20 ? "text-emerald-400" : data.currentRunup > 10 ? "text-emerald-300" : "text-foreground"} />
         <StatCard label="최대 런업 (2년)" value={`+${data.maxRunup.toFixed(2)}%`} colorClass="text-emerald-400" />
       </div>
 
       {/* Combined Chart */}
-      <div className="rounded-xl border border-zinc-800 bg-zinc-900/60 p-4">
-        <p className="mb-1 text-sm font-semibold text-zinc-300">드로다운 / 런업 추이 (2년)</p>
+      <div className="rounded-xl border border-border dark:border-zinc-800 bg-card/80 dark:bg-zinc-900/60 p-4">
+        <p className="mb-1 text-sm font-semibold text-foreground">드로다운 / 런업 추이 (2년)</p>
         <p className="mb-3 text-xs text-zinc-600">초록=전저점 대비 상승폭 · 빨강=전고점 대비 하락폭</p>
         <ResponsiveContainer width="100%" height={260}>
           <AreaChart data={chartData} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
@@ -289,7 +289,7 @@ function NormalDistChart({
   const sigmaPos = std > 0 ? ((currentReturn - mean) / std) : 0;
 
   return (
-    <div className="rounded-xl border border-zinc-800 bg-zinc-900/60 p-4">
+    <div className="rounded-xl border border-border dark:border-zinc-800 bg-card/80 dark:bg-zinc-900/60 p-4">
       <div className="mb-1 flex items-center justify-between">
         <p className="text-sm font-semibold text-zinc-300">정규분포 상의 현재 위치</p>
         <span className={cn(
@@ -364,7 +364,7 @@ function NormalDistChart({
       </svg>
 
       {/* 범례 */}
-      <div className="mt-3 flex flex-wrap gap-3 text-[10px] text-zinc-500">
+      <div className="mt-3 flex flex-wrap gap-3 text-[10px] text-muted-foreground">
         {[
           { color: "bg-green-600/50", label: "±1σ 이내 (약 68%)" },
           { color: "bg-yellow-600/50", label: "±2σ 이내 (약 95%)" },
@@ -434,7 +434,7 @@ function ReturnDistTab({ data }: { data: StockAnalysisResult }) {
         <StatCard
           label="상승일 비율"
           value={`${data.returnStats.positive}%`}
-          colorClass={data.returnStats.positive >= 50 ? "text-emerald-400" : "text-zinc-100"}
+          colorClass={data.returnStats.positive >= 50 ? "text-emerald-400" : "text-foreground"}
         />
       </div>
 
@@ -447,8 +447,8 @@ function ReturnDistTab({ data }: { data: StockAnalysisResult }) {
       />
 
       {/* Histogram */}
-      <div className="rounded-xl border border-zinc-800 bg-zinc-900/60 p-4">
-        <p className="mb-3 text-sm font-semibold text-zinc-300">일간 수익률 분포 (2년)</p>
+      <div className="rounded-xl border border-border dark:border-zinc-800 bg-card/80 dark:bg-zinc-900/60 p-4">
+        <p className="mb-3 text-sm font-semibold text-foreground">일간 수익률 분포 (2년)</p>
         <ResponsiveContainer width="100%" height={280}>
           <BarChart data={data.histogram} margin={{ top: 4, right: 8, left: 0, bottom: 40 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#27272a" vertical={false} />
@@ -507,13 +507,13 @@ function PatternCard({ match, rank }: { match: PatternMatch; rank: number }) {
   const isPositive = match.futureReturn >= 0;
 
   return (
-    <div className="rounded-xl border border-zinc-800 bg-zinc-900/60 p-4">
+    <div className="rounded-xl border border-border dark:border-zinc-800 bg-card/80 dark:bg-zinc-900/60 p-4">
       <div className="mb-3 flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <span className="flex h-5 w-5 items-center justify-center rounded-full bg-blue-500/20 text-[11px] font-bold text-blue-400">
             {rank}
           </span>
-          <span className="text-xs text-zinc-400">
+          <span className="text-xs text-muted-foreground">
             {match.startDate} ~ {match.endDate}
           </span>
         </div>
@@ -536,7 +536,7 @@ function PatternCard({ match, rank }: { match: PatternMatch; rank: number }) {
 
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <p className="mb-1.5 text-[10px] font-medium text-zinc-500 uppercase tracking-wider">패턴</p>
+          <p className="mb-1.5 text-[10px] font-medium text-muted-foreground uppercase tracking-wider">패턴</p>
           <Sparkline
             data={match.patternPrices}
             color="#3b82f6"
@@ -545,7 +545,7 @@ function PatternCard({ match, rank }: { match: PatternMatch; rank: number }) {
           />
         </div>
         <div>
-          <p className="mb-1.5 text-[10px] font-medium text-zinc-500 uppercase tracking-wider">
+          <p className="mb-1.5 text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
             이후 {match.futureDays}일
           </p>
           <Sparkline
@@ -572,11 +572,11 @@ function PatternTab({ data }: { data: StockAnalysisResult }) {
   return (
     <div className="space-y-5">
       {/* Current pattern */}
-      <div className="rounded-xl border border-zinc-800 bg-zinc-900/60 p-4">
-        <p className="mb-1 text-sm font-semibold text-zinc-300">
+      <div className="rounded-xl border border-border dark:border-zinc-800 bg-card/80 dark:bg-zinc-900/60 p-4">
+        <p className="mb-1 text-sm font-semibold text-foreground">
           현재 패턴 (최근 {data.patternDays}일, 정규화)
         </p>
-        <p className="mb-3 text-xs text-zinc-500">
+        <p className="mb-3 text-xs text-muted-foreground">
           기준점 대비 누적 수익률(%) 기준으로 패턴 형태를 비교합니다
         </p>
         <Sparkline
@@ -614,7 +614,7 @@ function PatternTab({ data }: { data: StockAnalysisResult }) {
 
       {/* Pattern list */}
       {data.patterns.length === 0 ? (
-        <div className="flex flex-col items-center gap-3 py-16 text-center text-zinc-500">
+        <div className="flex flex-col items-center gap-3 py-16 text-center text-muted-foreground">
           <Activity className="h-10 w-10 opacity-30" />
           <p className="text-sm">충분한 데이터가 없어 유사 패턴을 찾을 수 없습니다.</p>
           <p className="text-xs">패턴 일수를 줄이거나 다른 종목을 시도해보세요.</p>
@@ -686,31 +686,31 @@ export default function PatternPage() {
         </div>
         <div>
           <h1 className="text-2xl font-bold">패턴 분석</h1>
-          <p className="text-sm text-zinc-500">
+          <p className="text-sm text-muted-foreground">
             MDD · 수익률 분포 · 과거 유사 패턴 — Yahoo Finance 2년 데이터 기반
           </p>
         </div>
       </div>
 
       {/* Input Panel */}
-      <div className="flex flex-wrap items-end gap-3 rounded-xl border border-zinc-800 bg-zinc-900/60 px-4 py-4">
+      <div className="flex flex-wrap items-end gap-3 rounded-xl border border-border dark:border-zinc-800 bg-card/80 dark:bg-zinc-900/60 px-4 py-4">
         <div className="flex-1 min-w-40">
-          <label className="mb-1 block text-xs text-zinc-500">티커 심볼</label>
+          <label className="mb-1 block text-xs text-muted-foreground">티커 심볼</label>
           <input
             type="text"
             placeholder="AAPL, NVDA, 005930 ..."
             value={ticker}
             onChange={e => setTicker(e.target.value)}
             onKeyDown={e => e.key === "Enter" && analyze()}
-            className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-600 outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500/30"
+            className="w-full rounded-lg border border-border dark:border-zinc-700 bg-muted dark:bg-zinc-800 px-3 py-2 text-sm text-foreground placeholder-zinc-600 outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500/30"
           />
         </div>
         <div>
-          <label className="mb-1 block text-xs text-zinc-500">패턴 기간</label>
+          <label className="mb-1 block text-xs text-muted-foreground">패턴 기간</label>
           <select
             value={days}
             onChange={e => setDays(Number(e.target.value))}
-            className="rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-purple-500"
+            className="rounded-lg border border-border dark:border-zinc-700 bg-muted dark:bg-zinc-800 px-3 py-2 text-sm text-foreground outline-none focus:border-purple-500"
           >
             <option value={10}>10일</option>
             <option value={20}>20일</option>
@@ -724,7 +724,7 @@ export default function PatternPage() {
           className={cn(
             "flex items-center gap-2 rounded-lg px-5 py-2 text-sm font-semibold transition-colors",
             loading || !ticker.trim()
-              ? "cursor-not-allowed bg-zinc-700 text-zinc-500"
+              ? "cursor-not-allowed bg-muted dark:bg-zinc-700 text-muted-foreground"
               : "bg-purple-600 text-white hover:bg-purple-700"
           )}
         >
@@ -744,7 +744,7 @@ export default function PatternPage() {
                 setTicker(t);
                 analyze(t, days);
               }}
-              className="rounded-full border border-zinc-700 bg-zinc-800/60 px-3 py-1 text-xs text-zinc-400 transition-colors hover:border-purple-500/50 hover:text-purple-400"
+              className="rounded-full border border-border dark:border-zinc-700 bg-muted/60 dark:bg-zinc-800/60 px-3 py-1 text-xs text-muted-foreground transition-colors hover:border-purple-500/50 hover:text-purple-400"
             >
               {t}
             </button>
@@ -766,13 +766,13 @@ export default function PatternPage() {
       {data && !loading && (
         <>
           {/* Stock info bar */}
-          <div className="flex flex-wrap items-center gap-3 rounded-xl border border-zinc-800 bg-zinc-900/40 px-4 py-3">
+          <div className="flex flex-wrap items-center gap-3 rounded-xl border border-border dark:border-zinc-800 bg-card dark:bg-zinc-900/40 px-4 py-3">
             <div>
-              <span className="text-lg font-bold text-zinc-100">{data.ticker}</span>
-              <span className="ml-2 text-sm text-zinc-500">{data.name}</span>
+              <span className="text-lg font-bold text-foreground">{data.ticker}</span>
+              <span className="ml-2 text-sm text-muted-foreground">{data.name}</span>
             </div>
             <div className="ml-auto flex items-center gap-3">
-              <span className="text-sm font-semibold text-zinc-200">
+              <span className="text-sm font-semibold text-foreground">
                 {data.currency === "KRW"
                   ? `₩${data.currentPrice.toLocaleString()}`
                   : `$${data.currentPrice.toFixed(2)}`}
@@ -796,7 +796,7 @@ export default function PatternPage() {
           </div>
 
           {/* Tabs */}
-          <div className="flex gap-1 rounded-xl border border-zinc-800 bg-zinc-900/40 p-1">
+          <div className="flex gap-1 rounded-xl border border-border dark:border-zinc-800 bg-card dark:bg-zinc-900/40 p-1">
             {tabs.map(tab => (
               <button
                 key={tab.id}
@@ -805,7 +805,7 @@ export default function PatternPage() {
                   "flex-1 rounded-lg px-3 py-2 text-sm font-medium transition-all",
                   activeTab === tab.id
                     ? "bg-purple-500/20 text-purple-300 shadow-sm"
-                    : "text-zinc-500 hover:text-zinc-300"
+                    : "text-muted-foreground hover:text-foreground"
                 )}
               >
                 {tab.label}
@@ -827,7 +827,7 @@ export default function PatternPage() {
             <BarChart2 className="h-8 w-8 text-purple-400 opacity-60" />
           </div>
           <div className="space-y-1">
-            <p className="text-base font-medium text-zinc-400">티커를 입력하고 분석을 시작하세요</p>
+            <p className="text-base font-medium text-muted-foreground">티커를 입력하고 분석을 시작하세요</p>
             <p className="text-sm text-zinc-600">
               미국 주식 (AAPL, NVDA) 및 한국 주식 (005930, 000660) 모두 지원합니다
             </p>

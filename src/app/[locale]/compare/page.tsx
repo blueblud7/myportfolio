@@ -91,12 +91,12 @@ function StatCard({
   colorClass?: string;
 }) {
   return (
-    <div className="rounded-xl border border-zinc-800 bg-zinc-900/60 px-4 py-3">
-      <p className="text-xs text-zinc-500">{label}</p>
-      <p className={cn("mt-1 text-xl font-bold tabular-nums", colorClass ?? "text-zinc-100")}>
+    <div className="rounded-xl border border-border dark:border-zinc-800 bg-card/80 dark:bg-zinc-900/60 px-4 py-3">
+      <p className="text-xs text-muted-foreground">{label}</p>
+      <p className={cn("mt-1 text-xl font-bold tabular-nums", colorClass ?? "text-foreground")}>
         {value}
       </p>
-      {sub && <p className="mt-0.5 text-[11px] text-zinc-500">{sub}</p>}
+      {sub && <p className="mt-0.5 text-[11px] text-muted-foreground">{sub}</p>}
     </div>
   );
 }
@@ -104,16 +104,16 @@ function StatCard({
 function Skeleton() {
   return (
     <div className="space-y-4 animate-pulse">
-      <div className="h-20 rounded-xl bg-zinc-800/50" />
+      <div className="h-20 rounded-xl bg-muted/50 dark:bg-zinc-800/50" />
       <div className="flex gap-2">
         {[1, 2, 3].map((i) => (
-          <div key={i} className="h-8 flex-1 rounded-lg bg-zinc-800/50" />
+          <div key={i} className="h-8 flex-1 rounded-lg bg-muted/50 dark:bg-zinc-800/50" />
         ))}
       </div>
-      <div className="h-72 rounded-xl bg-zinc-800/50" />
+      <div className="h-72 rounded-xl bg-muted/50 dark:bg-zinc-800/50" />
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
         {[1, 2, 3, 4, 5].map((i) => (
-          <div key={i} className="h-20 rounded-xl bg-zinc-800/50" />
+          <div key={i} className="h-20 rounded-xl bg-muted/50 dark:bg-zinc-800/50" />
         ))}
       </div>
     </div>
@@ -140,8 +140,8 @@ function NormalizedTooltip({
   const b = payload.find((p) => p.dataKey === "bIndexed")?.value as number | undefined;
   const diff = a != null && b != null ? a - b : null;
   return (
-    <div className="rounded-lg border border-zinc-700 bg-zinc-900 p-3 text-xs shadow-xl">
-      <p className="mb-2 font-semibold text-zinc-300">{label}</p>
+    <div className="rounded-lg border border-border dark:border-zinc-700 bg-card dark:bg-zinc-900 p-3 text-xs shadow-xl">
+      <p className="mb-2 font-semibold text-foreground">{label}</p>
       {a != null && (
         <p className="text-blue-400">
           {tickerA}: <span className="font-bold">{a.toFixed(2)}</span>
@@ -180,9 +180,9 @@ function RatioTooltip({
   const leading = ratio >= 1 ? tickerA : tickerB;
   const pct = Math.abs(ratio - 1) * 100;
   return (
-    <div className="rounded-lg border border-zinc-700 bg-zinc-900 p-3 text-xs shadow-xl">
-      <p className="mb-1 font-semibold text-zinc-300">{label}</p>
-      <p className="text-zinc-200">
+    <div className="rounded-lg border border-border dark:border-zinc-700 bg-card dark:bg-zinc-900 p-3 text-xs shadow-xl">
+      <p className="mb-1 font-semibold text-foreground">{label}</p>
+      <p className="text-foreground">
         비율: <span className="font-bold">{ratio.toFixed(3)}</span>
       </p>
       <p className={cn("mt-1 font-semibold", ratio >= 1 ? "text-emerald-400" : "text-red-400")}>
@@ -232,11 +232,11 @@ function NormalizedChart({
 
       {/* 구분선 */}
       <div className="flex items-center gap-2 py-1">
-        <div className="h-px flex-1 bg-zinc-800" />
+        <div className="h-px flex-1 bg-border dark:bg-zinc-800" />
         <span className="shrink-0 text-[10px] font-semibold tracking-widest text-zinc-600 uppercase">
           A / B 비율
         </span>
-        <div className="h-px flex-1 bg-zinc-800" />
+        <div className="h-px flex-1 bg-border dark:bg-zinc-800" />
       </div>
 
       {/* 서브: A/B 비율 차트 */}
@@ -291,7 +291,7 @@ function RatioChart({
   const thinned = data.length > 500 ? data.filter((_, i) => i % 2 === 0) : data;
   return (
     <div className="space-y-2">
-      <p className="text-xs text-zinc-500">
+      <p className="text-xs text-muted-foreground">
         1.0 위 = <span className="text-emerald-400">{tickerA} 우세</span>
         &nbsp;·&nbsp; 1.0 아래 = <span className="text-red-400">{tickerB} 우세</span>
       </p>
@@ -361,20 +361,20 @@ function PerformanceTable({
     <div className="overflow-x-auto">
       <table className="w-full text-sm">
         <thead>
-          <tr className="border-b border-zinc-800">
-            <th className="pb-2 text-left text-xs font-semibold text-zinc-500">기간</th>
+          <tr className="border-b border-border dark:border-zinc-800">
+            <th className="pb-2 text-left text-xs font-semibold text-muted-foreground">기간</th>
             <th className="pb-2 text-right text-xs font-semibold text-blue-400">{tickerA}</th>
             <th className="pb-2 text-right text-xs font-semibold text-orange-400">{tickerB}</th>
-            <th className="pb-2 text-right text-xs font-semibold text-zinc-500">차이 (A−B)</th>
-            <th className="pb-2 text-right text-xs font-semibold text-zinc-500">우세</th>
+            <th className="pb-2 text-right text-xs font-semibold text-muted-foreground">차이 (A−B)</th>
+            <th className="pb-2 text-right text-xs font-semibold text-muted-foreground">우세</th>
           </tr>
         </thead>
         <tbody>
           {orderedKeys.map((key) => {
             const stat = performance[key];
             return (
-              <tr key={key} className="border-b border-zinc-800/50 hover:bg-zinc-800/30">
-                <td className="py-2.5 pr-4 text-xs font-medium text-zinc-400">
+              <tr key={key} className="border-b border-border/50 dark:border-zinc-800/50 hover:bg-muted/30 dark:hover:bg-zinc-800/30">
+                <td className="py-2.5 pr-4 text-xs font-medium text-muted-foreground">
                   {PERF_LABELS[key] ?? key}
                 </td>
                 <td className="py-2.5 text-right">
@@ -390,7 +390,7 @@ function PerformanceTable({
                       ? "text-emerald-400"
                       : stat.diff < 0
                       ? "text-red-400"
-                      : "text-zinc-500"
+                      : "text-muted-foreground"
                   )}
                 >
                   {stat.diff >= 0 ? "+" : ""}{stat.diff.toFixed(2)}%
@@ -405,7 +405,7 @@ function PerformanceTable({
                       {tickerB}
                     </span>
                   ) : (
-                    <span className="text-[11px] text-zinc-500">동률</span>
+                    <span className="text-[11px] text-muted-foreground">동률</span>
                   )}
                 </td>
               </tr>
@@ -480,17 +480,17 @@ export default function ComparePage() {
           <GitCompare className="h-5 w-5 text-blue-400" />
         </div>
         <div>
-          <h1 className="text-xl font-bold text-zinc-100">상대강도 비교</h1>
-          <p className="text-sm text-zinc-500">두 자산의 상대적 성과를 비교합니다</p>
+          <h1 className="text-xl font-bold text-foreground">상대강도 비교</h1>
+          <p className="text-sm text-muted-foreground">두 자산의 상대적 성과를 비교합니다</p>
         </div>
       </div>
 
       {/* Control Panel */}
-      <div className="rounded-2xl border border-zinc-800 bg-zinc-900/60 p-4 space-y-4">
+      <div className="rounded-2xl border border-border dark:border-zinc-800 bg-card dark:bg-zinc-900/60 p-4 space-y-4">
         {/* Ticker inputs */}
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
           <div className="flex-1">
-            <label className="mb-1.5 block text-xs font-semibold text-zinc-500">
+            <label className="mb-1.5 block text-xs font-semibold text-muted-foreground">
               자산 A
             </label>
             <input
@@ -499,16 +499,16 @@ export default function ComparePage() {
               onChange={(e) => setInputA(e.target.value.toUpperCase())}
               onKeyDown={handleKeyDown}
               placeholder="예: QQQ, 005930"
-              className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm font-medium text-zinc-100 placeholder-zinc-600 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/30 transition"
+              className="w-full rounded-lg border border-border dark:border-zinc-700 bg-muted dark:bg-zinc-800 px-3 py-2 text-sm font-medium text-foreground placeholder-zinc-600 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/30 transition"
             />
           </div>
 
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center self-end rounded-full border border-zinc-700 bg-zinc-800 text-xs font-bold text-zinc-400">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center self-end rounded-full border border-border dark:border-zinc-700 bg-muted dark:bg-zinc-800 text-xs font-bold text-muted-foreground">
             VS
           </div>
 
           <div className="flex-1">
-            <label className="mb-1.5 block text-xs font-semibold text-zinc-500">
+            <label className="mb-1.5 block text-xs font-semibold text-muted-foreground">
               자산 B
             </label>
             <input
@@ -517,14 +517,14 @@ export default function ComparePage() {
               onChange={(e) => setInputB(e.target.value.toUpperCase())}
               onKeyDown={handleKeyDown}
               placeholder="예: VOO, 000660"
-              className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm font-medium text-zinc-100 placeholder-zinc-600 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/30 transition"
+              className="w-full rounded-lg border border-border dark:border-zinc-700 bg-muted dark:bg-zinc-800 px-3 py-2 text-sm font-medium text-foreground placeholder-zinc-600 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/30 transition"
             />
           </div>
         </div>
 
         {/* Period + button */}
         <div className="flex flex-wrap items-center gap-2">
-          <div className="flex gap-1 rounded-lg border border-zinc-700 bg-zinc-800/80 p-1">
+          <div className="flex gap-1 rounded-lg border border-border dark:border-zinc-700 bg-muted dark:bg-zinc-800/80 p-1">
             {PERIODS.map(({ value, label }) => (
               <button
                 key={value}
@@ -533,7 +533,7 @@ export default function ComparePage() {
                   "rounded px-3 py-1 text-xs font-semibold transition",
                   period === value
                     ? "bg-blue-500 text-white shadow"
-                    : "text-zinc-400 hover:bg-zinc-700 hover:text-zinc-100"
+                    : "text-muted-foreground hover:bg-zinc-700 hover:text-foreground"
                 )}
               >
                 {label}
@@ -557,7 +557,7 @@ export default function ComparePage() {
             <button
               key={preset.label}
               onClick={() => handlePreset(preset.a, preset.b)}
-              className="rounded-full border border-zinc-700 bg-zinc-800/60 px-3 py-1 text-xs font-medium text-zinc-400 transition hover:border-blue-500/50 hover:bg-blue-500/10 hover:text-blue-300"
+              className="rounded-full border border-border dark:border-zinc-700 bg-muted/60 dark:bg-zinc-800/60 px-3 py-1 text-xs font-medium text-muted-foreground transition hover:border-blue-500/50 hover:bg-blue-500/10 hover:text-blue-300"
             >
               {preset.label}
             </button>
@@ -579,7 +579,7 @@ export default function ComparePage() {
       {!loading && result && (
         <div className="space-y-4">
           {/* Hero bar */}
-          <div className="rounded-2xl border border-zinc-800 bg-zinc-900/60 p-4">
+          <div className="rounded-2xl border border-border dark:border-zinc-800 bg-card dark:bg-zinc-900/60 p-4">
             <div className="flex flex-wrap items-center gap-3">
               <div className="flex items-center gap-2">
                 <span className="text-lg font-bold text-blue-400">{result.a.ticker}</span>
@@ -600,18 +600,18 @@ export default function ComparePage() {
                 </span>
               )}
               {result.leader === "tie" && (
-                <span className="rounded-full bg-zinc-700/40 px-2.5 py-0.5 text-xs font-bold text-zinc-400">
+                <span className="rounded-full bg-muted/40 dark:bg-zinc-700/40 px-2.5 py-0.5 text-xs font-bold text-muted-foreground">
                   동률
                 </span>
               )}
 
               <div className="ml-auto flex flex-wrap items-center gap-3">
                 <div className="flex items-center gap-1.5">
-                  <span className="text-xs text-zinc-500">{result.a.ticker}</span>
+                  <span className="text-xs text-muted-foreground">{result.a.ticker}</span>
                   <ReturnBadge value={result.totalReturnA} size="lg" />
                 </div>
                 <div className="flex items-center gap-1.5">
-                  <span className="text-xs text-zinc-500">{result.b.ticker}</span>
+                  <span className="text-xs text-muted-foreground">{result.b.ticker}</span>
                   <ReturnBadge value={result.totalReturnB} size="lg" />
                 </div>
               </div>
@@ -625,8 +625,8 @@ export default function ComparePage() {
           </div>
 
           {/* Tabs */}
-          <div className="rounded-2xl border border-zinc-800 bg-zinc-900/60 p-4">
-            <div className="mb-4 flex gap-1 border-b border-zinc-800 pb-3">
+          <div className="rounded-2xl border border-border dark:border-zinc-800 bg-card dark:bg-zinc-900/60 p-4">
+            <div className="mb-4 flex gap-1 border-b border-border dark:border-zinc-800 pb-3">
               {tabs.map((tab) => (
                 <button
                   key={tab.key}
@@ -634,8 +634,8 @@ export default function ComparePage() {
                   className={cn(
                     "rounded-lg px-3 py-1.5 text-xs font-semibold transition",
                     activeTab === tab.key
-                      ? "bg-zinc-700 text-zinc-100"
-                      : "text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300"
+                      ? "bg-muted dark:bg-zinc-700 text-foreground"
+                      : "text-muted-foreground hover:bg-muted dark:hover:bg-zinc-800 hover:text-foreground"
                   )}
                 >
                   {tab.label}
@@ -677,7 +677,7 @@ export default function ComparePage() {
                   ? "text-emerald-400"
                   : Math.abs(result.correlation) > 0.5
                   ? "text-yellow-400"
-                  : "text-zinc-100"
+                  : "text-foreground"
               }
             />
             <StatCard
@@ -689,7 +689,7 @@ export default function ComparePage() {
                   ? "text-red-400"
                   : result.beta < 0.8
                   ? "text-blue-400"
-                  : "text-zinc-100"
+                  : "text-foreground"
               }
             />
             <StatCard

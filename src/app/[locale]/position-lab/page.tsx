@@ -76,7 +76,7 @@ function ScoreBadge({ rank }: { rank: number }) {
   if (rank === 1) return <span className="text-base">{RANK_MEDALS[0]}</span>;
   if (rank === 2) return <span className="text-base">{RANK_MEDALS[1]}</span>;
   if (rank === 3) return <span className="text-base">{RANK_MEDALS[2]}</span>;
-  return <span className="text-xs text-zinc-500 font-mono">{rank}위</span>;
+  return <span className="text-xs text-muted-foreground font-mono">{rank}위</span>;
 }
 
 // ─── Equity Chart ─────────────────────────────────────────────────────────────
@@ -109,7 +109,7 @@ function EquityChart({ results, ticker }: { results: PositionResult[]; ticker: s
           return (
             <button key={r.id} onClick={() => setVisible(p => { const n = new Set(p); n.has(r.id) ? n.delete(r.id) : n.add(r.id); return n; })}
               className={cn("flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-xs font-medium transition",
-                on ? "border-transparent text-white" : "border-zinc-700 text-zinc-500 hover:border-zinc-600")}
+                on ? "border-transparent text-white" : "border-border dark:border-zinc-700 text-muted-foreground hover:border-zinc-600")}
               style={on ? { background: STRATEGY_COLORS[r.id] + "33", borderColor: STRATEGY_COLORS[r.id], color: STRATEGY_COLORS[r.id] } : undefined}>
               <span>{RANK_MEDALS[i] ?? `${i+1}`}</span>
               {r.name}
@@ -169,7 +169,7 @@ function YearlyChart({ results }: { results: PositionResult[] }) {
 
   return (
     <div className="space-y-2">
-      <p className="text-xs text-zinc-500">상위 3개 전략 연도별 수익률</p>
+      <p className="text-xs text-muted-foreground">상위 3개 전략 연도별 수익률</p>
       <ResponsiveContainer width="100%" height={300}>
         <BarChart data={data} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#27272a" />
@@ -217,12 +217,12 @@ function StrategyDescPanel({ results }: { results: PositionResult[] }) {
 
   return (
     <div className="space-y-2">
-      <p className="text-xs font-semibold text-zinc-500">전략 설명</p>
+      <p className="text-xs font-semibold text-muted-foreground">전략 설명</p>
       <div className="flex flex-wrap gap-1.5">
         {sorted.map(r => (
           <button key={r.id} onClick={() => setSelected(s => s === r.id ? null : r.id)}
             className={cn("flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium transition",
-              selected === r.id ? "border-transparent text-white" : "border-zinc-700 text-zinc-500 hover:border-zinc-600")}
+              selected === r.id ? "border-transparent text-white" : "border-border dark:border-zinc-700 text-muted-foreground hover:border-zinc-600")}
             style={selected === r.id ? { background: STRATEGY_COLORS[r.id] + "33", borderColor: STRATEGY_COLORS[r.id], color: STRATEGY_COLORS[r.id] } : undefined}>
             <div className="h-2 w-2 rounded-full" style={{ background: STRATEGY_COLORS[r.id] }} />
             {r.name}
@@ -234,11 +234,11 @@ function StrategyDescPanel({ results }: { results: PositionResult[] }) {
         const d = STRATEGY_DETAILS[selected];
         if (!r || !d) return null;
         return (
-          <div className="rounded-lg border border-zinc-700 bg-zinc-800/40 p-4 space-y-3 text-xs">
+          <div className="rounded-lg border border-border dark:border-zinc-700 bg-muted/40 dark:bg-zinc-800/40 p-4 space-y-3 text-xs">
             <div className="flex items-start justify-between gap-4">
               <div>
-                <h3 className="font-bold text-zinc-100 text-sm">{r.name}</h3>
-                <p className="text-zinc-400 mt-0.5">{r.description}</p>
+                <h3 className="font-bold text-foreground text-sm">{r.name}</h3>
+                <p className="text-muted-foreground mt-0.5">{r.description}</p>
               </div>
               <div className="text-right shrink-0 space-y-1">
                 <p className={cn("font-bold text-base", cagrColor(r.cagr))}>{fmt(r.totalReturn)}%</p>
@@ -248,15 +248,15 @@ function StrategyDescPanel({ results }: { results: PositionResult[] }) {
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div className="space-y-1">
                 <p className="font-semibold text-emerald-400">✓ 장점</p>
-                {d.pros.map((p, i) => <p key={i} className="text-zinc-400">· {p}</p>)}
+                {d.pros.map((p, i) => <p key={i} className="text-muted-foreground">· {p}</p>)}
               </div>
               <div className="space-y-1">
                 <p className="font-semibold text-red-400">✗ 단점</p>
-                {d.cons.map((c, i) => <p key={i} className="text-zinc-400">· {c}</p>)}
+                {d.cons.map((c, i) => <p key={i} className="text-muted-foreground">· {c}</p>)}
               </div>
               <div className="space-y-1">
                 <p className="font-semibold text-blue-400">◎ 적합한 경우</p>
-                <p className="text-zinc-400">{d.bestFor}</p>
+                <p className="text-muted-foreground">{d.bestFor}</p>
               </div>
             </div>
           </div>
@@ -277,18 +277,18 @@ function DeploymentLog({ result }: { result: PositionResult }) {
     <div className="space-y-1">
       <div className="space-y-1 text-xs">
         {shown.map((l, i) => (
-          <div key={i} className="flex items-center gap-2 rounded px-2 py-1 bg-zinc-800/40">
-            <span className="text-zinc-500 w-24 shrink-0">{l.date}</span>
+          <div key={i} className="flex items-center gap-2 rounded px-2 py-1 bg-muted/40 dark:bg-zinc-800/40">
+            <span className="text-muted-foreground w-24 shrink-0">{l.date}</span>
             <span className={cn("font-semibold w-20 text-right shrink-0 tabular-nums", l.amount >= 0 ? "text-emerald-400" : "text-red-400")}>
               {l.amount >= 0 ? "+" : ""}${Math.abs(l.amount).toLocaleString()}
             </span>
-            <span className="text-zinc-500">@ ${l.price.toFixed(2)}</span>
-            <span className="text-zinc-400 truncate">{l.reason}</span>
+            <span className="text-muted-foreground">@ ${l.price.toFixed(2)}</span>
+            <span className="text-muted-foreground truncate">{l.reason}</span>
           </div>
         ))}
       </div>
       {logs.length > 5 && (
-        <button onClick={() => setExpanded(e => !e)} className="text-xs text-zinc-500 hover:text-zinc-300 transition">
+        <button onClick={() => setExpanded(e => !e)} className="text-xs text-muted-foreground hover:text-foreground transition">
           {expanded ? "▲ 접기" : `▼ 전체 보기 (${logs.length}건)`}
         </button>
       )}
@@ -331,7 +331,7 @@ function RankingTable({ results, onSelectDetail }: { results: PositionResult[]; 
     <div className="overflow-x-auto">
       <table className="w-full text-xs">
         <thead>
-          <tr className="border-b border-zinc-800 text-zinc-500">
+          <tr className="border-b border-border dark:border-zinc-800 text-muted-foreground">
             <th className="py-2 pr-3 text-left font-semibold">전략</th>
             {cols.map(({ key, label }) => (
               <th key={key} onClick={() => handleSort(key)}
@@ -344,7 +344,7 @@ function RankingTable({ results, onSelectDetail }: { results: PositionResult[]; 
         </thead>
         <tbody>
           {sorted.map(r => (
-            <tr key={r.id} className={cn("border-b border-zinc-800/40 hover:bg-zinc-800/20", r.rank === 1 && "bg-amber-500/5")}>
+            <tr key={r.id} className={cn("border-b border-border/40 dark:border-zinc-800/40 hover:bg-muted/20 dark:hover:bg-zinc-800/20", r.rank === 1 && "bg-amber-500/5")}>
               <td className="py-2 pr-3">
                 <div className="flex items-center gap-2">
                   <div className="h-2 w-2 rounded-full shrink-0" style={{ background: STRATEGY_COLORS[r.id] }} />
@@ -356,10 +356,10 @@ function RankingTable({ results, onSelectDetail }: { results: PositionResult[]; 
               <td className={cn("py-2 px-2 text-right tabular-nums", r.totalReturn >= 0 ? "text-emerald-400" : "text-red-400")}>{fmt(r.totalReturn)}%</td>
               <td className="py-2 px-2 text-right text-red-400 tabular-nums">-{r.mdd.toFixed(1)}%</td>
               <td className={cn("py-2 px-2 text-right tabular-nums", r.sharpe >= 1 ? "text-emerald-400" : r.sharpe >= 0 ? "text-yellow-400" : "text-red-400")}>{r.sharpe.toFixed(3)}</td>
-              <td className="py-2 px-2 text-right text-zinc-400 tabular-nums">{r.cashDrag}%</td>
-              <td className="py-2 px-2 text-right text-zinc-400 tabular-nums">${r.avgCost.toFixed(2)}</td>
+              <td className="py-2 px-2 text-right text-muted-foreground tabular-nums">{r.cashDrag}%</td>
+              <td className="py-2 px-2 text-right text-muted-foreground tabular-nums">${r.avgCost.toFixed(2)}</td>
               <td className="py-2 px-2 text-right">
-                <button onClick={() => onSelectDetail(r.id)} className="rounded px-2 py-0.5 text-[10px] border border-zinc-700 text-zinc-400 hover:border-zinc-500 hover:text-zinc-200 transition">
+                <button onClick={() => onSelectDetail(r.id)} className="rounded px-2 py-0.5 text-[10px] border border-border dark:border-zinc-700 text-muted-foreground hover:border-zinc-500 hover:text-foreground transition">
                   로그
                 </button>
               </td>
@@ -383,12 +383,12 @@ function BestStrategyCard({ result, ticker }: { result: PositionResult; ticker: 
             <Trophy className="h-5 w-5 text-amber-400" />
             <span className="text-sm font-bold text-amber-300">최적 전략 — {ticker}</span>
           </div>
-          <h2 className="text-xl font-bold text-zinc-100">{result.name}</h2>
-          <p className="text-sm text-zinc-400 mt-0.5">{result.description}</p>
+          <h2 className="text-xl font-bold text-foreground">{result.name}</h2>
+          <p className="text-sm text-muted-foreground mt-0.5">{result.description}</p>
         </div>
         <div className="text-right shrink-0">
           <p className="text-2xl font-bold text-emerald-400">{fmt(result.cagr)}%</p>
-          <p className="text-xs text-zinc-500">연평균 수익률</p>
+          <p className="text-xs text-muted-foreground">연평균 수익률</p>
         </div>
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
@@ -398,14 +398,14 @@ function BestStrategyCard({ result, ticker }: { result: PositionResult; ticker: 
           { label: "샤프비율", val: result.sharpe.toFixed(3), color: result.sharpe >= 1 ? "text-emerald-400" : "text-yellow-400" },
           { label: "평균단가 대비", val: `+${gain}%`, color: "text-blue-400" },
         ].map(({ label, val, color }) => (
-          <div key={label} className="rounded-lg bg-zinc-900/60 p-2.5 text-center">
-            <p className="text-zinc-500 mb-1">{label}</p>
+          <div key={label} className="rounded-lg bg-card/80 dark:bg-zinc-900/60 p-2.5 text-center">
+            <p className="text-muted-foreground mb-1">{label}</p>
             <p className={cn("font-bold", color)}>{val}</p>
           </div>
         ))}
       </div>
-      <div className="text-xs text-zinc-500">
-        <span className="font-medium text-zinc-400">종합점수:</span> {result.score.toFixed(2)}점
+      <div className="text-xs text-muted-foreground">
+        <span className="font-medium text-foreground">종합점수:</span> {result.score.toFixed(2)}점
         (CAGR 40% + 샤프 30% + MDD 30% 가중 평균 순위)
       </div>
     </div>
@@ -470,25 +470,25 @@ export default function PositionLabPage() {
           <Wallet className="h-5 w-5 text-amber-400" />
         </div>
         <div>
-          <h1 className="text-xl font-bold text-zinc-100">자금관리 전략 연구소</h1>
-          <p className="text-sm text-zinc-500">
+          <h1 className="text-xl font-bold text-foreground">자금관리 전략 연구소</h1>
+          <p className="text-sm text-muted-foreground">
             10가지 매수 전략 비교 · 분할매수 · MDD 트리거 · DCA · 현금비율 최적화
           </p>
         </div>
       </div>
 
       {/* Config */}
-      <Card className="border-zinc-800 bg-zinc-900/60">
+      <Card className="border-border dark:border-zinc-800 bg-card dark:bg-zinc-900/60">
         <CardHeader className="pb-3">
-          <CardTitle className="text-sm text-zinc-300">설정</CardTitle>
+          <CardTitle className="text-sm text-foreground">설정</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           {/* Tickers */}
           <div className="space-y-2">
-            <label className="text-xs font-semibold text-zinc-500">종목 티커 (복수 선택 가능)</label>
+            <label className="text-xs font-semibold text-muted-foreground">종목 티커 (복수 선택 가능)</label>
             <div className="flex flex-wrap gap-1.5 items-center">
               {tickers.map(t => (
-                <Badge key={t} variant="secondary" className="gap-1 pr-1 bg-zinc-800 text-zinc-200 border-zinc-700">
+                <Badge key={t} variant="secondary" className="gap-1 pr-1 bg-muted dark:bg-zinc-800 text-foreground border-border dark:border-zinc-700">
                   {t}
                   <button onClick={() => setTickers(p => p.filter(x => x !== t))} className="hover:text-red-400 transition">
                     <X className="h-3 w-3" />
@@ -496,11 +496,11 @@ export default function PositionLabPage() {
                 </Badge>
               ))}
               <div className="flex gap-1">
-                <input className="h-7 w-20 rounded-lg border border-zinc-700 bg-zinc-800 px-2 text-xs text-zinc-100 outline-none focus:border-amber-500 transition"
+                <input className="h-7 w-20 rounded-lg border border-border dark:border-zinc-700 bg-muted dark:bg-zinc-800 px-2 text-xs text-foreground outline-none focus:border-amber-500 transition"
                   placeholder="TSLA" value={tickerInput}
                   onChange={e => setTickerInput(e.target.value.toUpperCase())}
                   onKeyDown={e => e.key === "Enter" && addTicker()} />
-                <Button size="sm" variant="outline" className="h-7 w-7 p-0 border-zinc-700" onClick={() => addTicker()}>
+                <Button size="sm" variant="outline" className="h-7 w-7 p-0 border-border dark:border-zinc-700" onClick={() => addTicker()}>
                   <Plus className="h-3 w-3" />
                 </Button>
               </div>
@@ -509,7 +509,7 @@ export default function PositionLabPage() {
               {PRESET_TICKERS.map(t => (
                 <button key={t} onClick={() => tickers.includes(t) ? setTickers(p => p.filter(x => x !== t)) : addTicker(t)}
                   className={cn("rounded-full border px-2.5 py-0.5 text-xs font-medium transition",
-                    tickers.includes(t) ? "border-amber-500/50 bg-amber-500/15 text-amber-300" : "border-zinc-700 bg-zinc-800/50 text-zinc-500 hover:border-zinc-600 hover:text-zinc-300")}>
+                    tickers.includes(t) ? "border-amber-500/50 bg-amber-500/15 text-amber-300" : "border-border dark:border-zinc-700 bg-muted/50 dark:bg-zinc-800/50 text-muted-foreground hover:border-zinc-600 hover:text-foreground")}>
                   {t}
                 </button>
               ))}
@@ -519,21 +519,21 @@ export default function PositionLabPage() {
           {/* Period + Cash */}
           <div className="flex flex-wrap items-end gap-4">
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-zinc-500">기간</label>
-              <div className="flex gap-1 rounded-lg border border-zinc-700 bg-zinc-800/80 p-1">
+              <label className="text-xs font-semibold text-muted-foreground">기간</label>
+              <div className="flex gap-1 rounded-lg border border-border dark:border-zinc-700 bg-muted dark:bg-zinc-800/80 p-1">
                 {PERIODS.map(({ key, label }) => (
                   <button key={key} onClick={() => setPeriod(key)}
                     className={cn("rounded px-3 py-1 text-xs font-semibold transition",
-                      period === key ? "bg-amber-600 text-white shadow" : "text-zinc-400 hover:bg-zinc-700 hover:text-zinc-100")}>
+                      period === key ? "bg-amber-600 text-white shadow" : "text-muted-foreground hover:bg-zinc-700 hover:text-foreground")}>
                     {label}
                   </button>
                 ))}
               </div>
             </div>
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-zinc-500">초기 자본 ($)</label>
+              <label className="text-xs font-semibold text-muted-foreground">초기 자본 ($)</label>
               <input type="number" min={100} step={1000}
-                className="h-9 w-36 rounded-lg border border-zinc-700 bg-zinc-800 px-3 text-sm text-zinc-100 outline-none focus:border-amber-500 transition"
+                className="h-9 w-36 rounded-lg border border-border dark:border-zinc-700 bg-muted dark:bg-zinc-800 px-3 text-sm text-foreground outline-none focus:border-amber-500 transition"
                 value={initialCash} onChange={e => setInitialCash(Number(e.target.value))} />
             </div>
           </div>
@@ -555,7 +555,7 @@ export default function PositionLabPage() {
               {tickers.map(t => (
                 <button key={t} onClick={() => setActiveTicker(t)}
                   className={cn("rounded-lg px-4 py-1.5 text-sm font-semibold transition",
-                    activeTicker === t ? "bg-amber-600 text-white" : "bg-zinc-800 text-zinc-400 hover:bg-zinc-700")}>
+                    activeTicker === t ? "bg-amber-600 text-white" : "bg-muted dark:bg-zinc-800 text-muted-foreground hover:bg-zinc-700")}>
                   {t}
                 </button>
               ))}
@@ -566,9 +566,9 @@ export default function PositionLabPage() {
           {bestResult && <BestStrategyCard result={bestResult} ticker={activeTicker} />}
 
           {/* Quick rank bar */}
-          <Card className="border-zinc-800 bg-zinc-900/60">
+          <Card className="border-border dark:border-zinc-800 bg-card dark:bg-zinc-900/60">
             <CardHeader className="pb-2">
-              <CardTitle className="flex items-center gap-2 text-sm text-zinc-300">
+              <CardTitle className="flex items-center gap-2 text-sm text-foreground">
                 <Target className="h-4 w-4 text-amber-400" />
                 수익률 순위 (총수익률 기준 · 차트 순서와 동일)
               </CardTitle>
@@ -584,13 +584,13 @@ export default function PositionLabPage() {
                       <div className="h-2 w-2 rounded-full shrink-0" style={{ background: STRATEGY_COLORS[r.id] }} />
                       <span className="text-xs text-zinc-300 truncate">{r.name}</span>
                     </div>
-                    <div className="flex-1 h-2 rounded-full bg-zinc-800 overflow-hidden">
+                    <div className="flex-1 h-2 rounded-full bg-muted dark:bg-zinc-800 overflow-hidden">
                       <div className="h-full rounded-full transition-all" style={{ width: `${barW}%`, background: STRATEGY_COLORS[r.id] + "cc" }} />
                     </div>
                     <span className={cn("w-20 text-right text-xs font-semibold tabular-nums shrink-0", cagrColor(r.cagr))}>
                       {fmt(r.totalReturn)}%
                     </span>
-                    <span className="w-20 text-right text-[10px] text-zinc-500 tabular-nums shrink-0">
+                    <span className="w-20 text-right text-[10px] text-muted-foreground tabular-nums shrink-0">
                       CAGR {fmt(r.cagr)}%
                     </span>
                     <span className="w-12 text-right text-[10px] text-zinc-600 tabular-nums shrink-0">
@@ -603,9 +603,9 @@ export default function PositionLabPage() {
           </Card>
 
           {/* Tabs */}
-          <Card className="border-zinc-800 bg-zinc-900/60">
+          <Card className="border-border dark:border-zinc-800 bg-card dark:bg-zinc-900/60">
             <CardHeader className="pb-0">
-              <div className="flex flex-wrap gap-1 border-b border-zinc-800 pb-3">
+              <div className="flex flex-wrap gap-1 border-b border-border dark:border-zinc-800 pb-3">
                 {([
                   { key: "chart", label: "누적 수익률 차트" },
                   { key: "ranking", label: "상세 순위표" },
@@ -614,7 +614,7 @@ export default function PositionLabPage() {
                 ] as const).map(({ key, label }) => (
                   <button key={key} onClick={() => setActiveTab(key)}
                     className={cn("rounded px-3 py-1 text-xs font-semibold transition",
-                      activeTab === key ? "bg-amber-600 text-white" : "text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200")}>
+                      activeTab === key ? "bg-amber-600 text-white" : "text-muted-foreground hover:bg-muted dark:hover:bg-zinc-800 hover:text-foreground")}>
                     {label}
                   </button>
                 ))}
@@ -638,7 +638,7 @@ export default function PositionLabPage() {
                     {currentResults.map(r => (
                       <button key={r.id} onClick={() => setDetailId(r.id)}
                         className={cn("flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium transition",
-                          detailId === r.id ? "border-transparent text-white" : "border-zinc-700 text-zinc-500 hover:border-zinc-600")}
+                          detailId === r.id ? "border-transparent text-white" : "border-border dark:border-zinc-700 text-muted-foreground hover:border-zinc-600")}
                         style={detailId === r.id ? { background: STRATEGY_COLORS[r.id] + "33", borderColor: STRATEGY_COLORS[r.id], color: STRATEGY_COLORS[r.id] } : undefined}>
                         {RANK_MEDALS[r.rank - 1] ?? `${r.rank}`} {r.name}
                       </button>
@@ -654,9 +654,9 @@ export default function PositionLabPage() {
                           { icon: Wallet, label: "총 투자금", val: `$${detailResult.totalDeployed.toLocaleString()}`, color: "text-zinc-300" },
                           { icon: Target, label: "평균단가", val: `$${detailResult.avgCost.toFixed(2)}`, color: "text-blue-400" },
                         ].map(({ icon: Icon, label, val, color }) => (
-                          <div key={label} className="flex items-center gap-1.5 rounded-lg bg-zinc-800/60 px-3 py-2">
-                            <Icon className="h-3.5 w-3.5 text-zinc-500" />
-                            <span className="text-zinc-500">{label}</span>
+                          <div key={label} className="flex items-center gap-1.5 rounded-lg bg-muted/60 dark:bg-zinc-800/60 px-3 py-2">
+                            <Icon className="h-3.5 w-3.5 text-muted-foreground" />
+                            <span className="text-muted-foreground">{label}</span>
                             <span className={cn("font-semibold", color)}>{val}</span>
                           </div>
                         ))}
@@ -674,7 +674,7 @@ export default function PositionLabPage() {
       )}
 
       {!results && !loading && (
-        <div className="flex flex-col items-center gap-4 py-20 text-center text-zinc-500">
+        <div className="flex flex-col items-center gap-4 py-20 text-center text-muted-foreground">
           <Wallet className="h-14 w-14 opacity-20" />
           <p className="text-base font-medium">종목과 기간을 선택 후 전략 비교를 실행하세요</p>
           <p className="text-sm opacity-70">10가지 자금관리 전략을 동시에 비교합니다</p>

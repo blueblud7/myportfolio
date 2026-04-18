@@ -168,16 +168,16 @@ function TopPerformers({ portfolios }: { portfolios: PortfolioResult[] }) {
         <div key={label} className={cn("rounded-xl border p-4 space-y-2", bg)}>
           <div className="flex items-center gap-2">
             <Icon className={cn("h-4 w-4", iconColor)} />
-            <span className="text-xs font-semibold text-zinc-400">{label}</span>
+            <span className="text-xs font-semibold text-muted-foreground">{label}</span>
           </div>
           <div>
-            <p className="font-bold text-zinc-100 text-base truncate">{result.name}</p>
+            <p className="font-bold text-foreground text-base truncate">{result.name}</p>
             <div className="flex items-center gap-1.5 mt-0.5">
               <RiskBadge level={result.riskLevel} />
             </div>
           </div>
-          <p className="text-sm font-semibold text-zinc-200">{stat}</p>
-          <p className="text-xs text-zinc-500">{sub}</p>
+          <p className="text-sm font-semibold text-foreground">{stat}</p>
+          <p className="text-xs text-muted-foreground">{sub}</p>
         </div>
       ))}
     </div>
@@ -203,7 +203,7 @@ function TickerBadges({ tickers }: { tickers: string[] }) {
   return (
     <div className="flex flex-wrap gap-0.5">
       {tickers.map(t => (
-        <Badge key={t} variant="secondary" className="px-1.5 py-0 text-[9px] font-semibold bg-zinc-800 text-zinc-400 border-zinc-700">
+        <Badge key={t} variant="secondary" className="px-1.5 py-0 text-[9px] font-semibold bg-muted dark:bg-zinc-800 text-muted-foreground border-border dark:border-zinc-700">
           {t}
         </Badge>
       ))}
@@ -228,11 +228,11 @@ function RankingBar({ portfolios }: { portfolios: PortfolioResult[] }) {
             <div className="w-28 shrink-0 flex flex-col gap-0.5">
               <div className="flex items-center gap-1.5">
                 <div className="h-2 w-2 rounded-full shrink-0" style={{ background: RISK_COLORS[p.riskLevel] }} />
-                <span className="text-xs text-zinc-300 truncate font-medium">{p.name}</span>
+                <span className="text-xs text-foreground truncate font-medium">{p.name}</span>
               </div>
               <RiskBadge level={p.riskLevel} />
             </div>
-            <div className="flex-1 h-2 rounded-full bg-zinc-800 overflow-hidden min-w-0">
+            <div className="flex-1 h-2 rounded-full bg-muted dark:bg-zinc-800 overflow-hidden min-w-0">
               <div
                 className="h-full rounded-full transition-all"
                 style={{ width: `${barW}%`, background: RISK_COLORS[p.riskLevel] + "cc" }}
@@ -244,7 +244,7 @@ function RankingBar({ portfolios }: { portfolios: PortfolioResult[] }) {
             <span className={cn("w-20 text-right text-[10px] tabular-nums shrink-0", cagrColor(p.cagr))}>
               CAGR {fmt(p.cagr)}%
             </span>
-            <span className="w-14 text-right text-[10px] text-zinc-600 tabular-nums shrink-0">
+            <span className="w-14 text-right text-[10px] text-muted-foreground tabular-nums shrink-0">
               MDD {p.mdd.toFixed(0)}%
             </span>
           </div>
@@ -300,7 +300,7 @@ function EquityChart({ portfolios }: { portfolios: PortfolioResult[] }) {
               onClick={() => toggleVisible(p.id)}
               className={cn(
                 "flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-xs font-medium transition",
-                on ? "border-transparent text-white" : "border-zinc-700 text-zinc-500 hover:border-zinc-600"
+                on ? "border-transparent text-white" : "border-border dark:border-zinc-700 text-muted-foreground hover:border-zinc-600"
               )}
               style={on ? { background: color + "33", borderColor: color, color } : undefined}
             >
@@ -381,7 +381,7 @@ function CrisisTable({ portfolios }: { portfolios: PortfolioResult[] }) {
     <div className="overflow-x-auto">
       <table className="w-full text-xs">
         <thead>
-          <tr className="border-b border-zinc-800 text-zinc-500">
+          <tr className="border-b border-border dark:border-zinc-800 text-muted-foreground">
             <th className="py-2 pr-3 text-left font-semibold">포트폴리오</th>
             <th className="py-2 px-3 text-right font-semibold whitespace-nowrap">
               <span className="flex items-center justify-end gap-1">
@@ -402,11 +402,11 @@ function CrisisTable({ portfolios }: { portfolios: PortfolioResult[] }) {
           {sorted.map((p, i) => {
             const combined = p.crisis2020 + p.crisis2022;
             return (
-              <tr key={p.id} className={cn("border-b border-zinc-800/40 hover:bg-zinc-800/20", i === 0 && "bg-emerald-500/5")}>
+              <tr key={p.id} className={cn("border-b border-border/40 dark:border-zinc-800/40 hover:bg-muted/20 dark:hover:bg-zinc-800/20", i === 0 && "bg-emerald-500/5")}>
                 <td className="py-2 pr-3">
                   <div className="flex flex-col gap-0.5">
                     <div className="flex items-center gap-1.5">
-                      <span className="font-medium text-zinc-300">{p.name}</span>
+                      <span className="font-medium text-foreground">{p.name}</span>
                       <RiskBadge level={p.riskLevel} />
                     </div>
                     <TickerBadges tickers={p.tickers} />
@@ -475,11 +475,11 @@ function EventAnalysisTable({ portfolios, events }: { portfolios: PortfolioResul
     <div className="space-y-3">
       {/* 이벤트 유형 필터 */}
       <div className="flex flex-wrap gap-1.5 items-center">
-        <span className="text-xs text-zinc-500 mr-1">필터:</span>
+        <span className="text-xs text-muted-foreground mr-1">필터:</span>
         {["경제위기", "지정학", "팬데믹", "시장충격"].map(t => (
           <button key={t} onClick={() => setSelectedType(s => s === t ? null : t)}
             className={cn("rounded-full border px-2.5 py-0.5 text-xs font-medium transition",
-              selectedType === t ? EVENT_TYPE_COLOR[t] + " border-transparent" : "border-zinc-700 text-zinc-500 hover:border-zinc-600")}>
+              selectedType === t ? EVENT_TYPE_COLOR[t] + " border-transparent" : "border-border dark:border-zinc-700 text-muted-foreground hover:border-zinc-600")}>
             {t}
           </button>
         ))}
@@ -488,18 +488,18 @@ function EventAnalysisTable({ portfolios, events }: { portfolios: PortfolioResul
       <div className="overflow-x-auto">
         <table className="w-full text-xs">
           <thead>
-            <tr className="border-b border-zinc-800">
-              <th className="py-2 pr-2 text-left text-zinc-500 font-semibold sticky left-0 bg-zinc-900/95 min-w-[120px]">포트폴리오</th>
+            <tr className="border-b border-border dark:border-zinc-800">
+              <th className="py-2 pr-2 text-left text-muted-foreground font-semibold sticky left-0 bg-card dark:bg-zinc-900/95 min-w-[120px]">포트폴리오</th>
               {activeEvents.map(ev => (
                 <th key={ev.id} className="py-2 px-2 text-right whitespace-nowrap">
                   <div className="flex flex-col items-end gap-0.5">
                     <span className={cn("rounded px-1 py-0.5 text-[10px] font-medium", EVENT_TYPE_COLOR[ev.type])}>{ev.type}</span>
-                    <span className="text-zinc-300 font-semibold">{ev.name}</span>
-                    <span className="text-zinc-600 font-normal">{ev.start.slice(0,7)}</span>
+                    <span className="text-foreground font-semibold">{ev.name}</span>
+                    <span className="text-muted-foreground font-normal">{ev.start.slice(0,7)}</span>
                   </div>
                 </th>
               ))}
-              <th className="py-2 px-2 text-right text-zinc-500 font-semibold whitespace-nowrap">평균 낙폭</th>
+              <th className="py-2 px-2 text-right text-muted-foreground font-semibold whitespace-nowrap">평균 낙폭</th>
             </tr>
           </thead>
           <tbody>
@@ -508,11 +508,11 @@ function EventAnalysisTable({ portfolios, events }: { portfolios: PortfolioResul
               for (const d of p.eventDrawdowns) edMap[d.eventId] = d.drawdown;
               const avg = defenseScore(p);
               return (
-                <tr key={p.id} className={cn("border-b border-zinc-800/40 hover:bg-zinc-800/20", i === 0 && "bg-emerald-500/5")}>
-                  <td className="py-2 pr-2 sticky left-0 bg-zinc-900/95">
+                <tr key={p.id} className={cn("border-b border-border/40 dark:border-zinc-800/40 hover:bg-muted/20 dark:hover:bg-zinc-800/20", i === 0 && "bg-emerald-500/5")}>
+                  <td className="py-2 pr-2 sticky left-0 bg-card dark:bg-zinc-900/95">
                     <div className="flex items-center gap-1.5">
                       <div className="h-2 w-2 rounded-full shrink-0" style={{ background: RISK_COLORS[p.riskLevel] }} />
-                      <span className="font-medium text-zinc-300 whitespace-nowrap">{p.name}</span>
+                      <span className="font-medium text-foreground whitespace-nowrap">{p.name}</span>
                     </div>
                   </td>
                   {activeEvents.map(ev => (
@@ -532,12 +532,12 @@ function EventAnalysisTable({ portfolios, events }: { portfolios: PortfolioResul
       {/* 이벤트 설명 */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
         {activeEvents.map(ev => (
-          <div key={ev.id} className="flex items-start gap-2 rounded-lg bg-zinc-800/40 px-3 py-2 text-xs">
+          <div key={ev.id} className="flex items-start gap-2 rounded-lg bg-muted/40 dark:bg-zinc-800/40 px-3 py-2 text-xs">
             <span className={cn("rounded px-1 py-0.5 text-[10px] font-medium shrink-0", EVENT_TYPE_COLOR[ev.type])}>{ev.type}</span>
             <div>
-              <span className="font-semibold text-zinc-300">{ev.name}</span>
-              <span className="text-zinc-500 ml-1">({ev.start.slice(0,7)} ~ {ev.end.slice(0,7)})</span>
-              <p className="text-zinc-500 mt-0.5">{ev.description}</p>
+              <span className="font-semibold text-foreground">{ev.name}</span>
+              <span className="text-muted-foreground ml-1">({ev.start.slice(0,7)} ~ {ev.end.slice(0,7)})</span>
+              <p className="text-muted-foreground mt-0.5">{ev.description}</p>
             </div>
           </div>
         ))}
@@ -553,7 +553,7 @@ function MddPercentilePanel({ portfolios }: { portfolios: PortfolioResult[] }) {
 
   return (
     <div className="space-y-2">
-      <p className="text-xs text-zinc-500">MDD가 역대 몇 % 주간보다 더 심한 하락인지 (높을수록 극단적)</p>
+      <p className="text-xs text-muted-foreground">MDD가 역대 몇 % 주간보다 더 심한 하락인지 (높을수록 극단적)</p>
       {sorted.map(p => {
         const pct = p.mddPercentile;
         // 상위 X% 극단 = 100 - pct
@@ -563,15 +563,15 @@ function MddPercentilePanel({ portfolios }: { portfolios: PortfolioResult[] }) {
           <div key={p.id} className="flex items-center gap-3">
             <div className="w-28 shrink-0 flex items-center gap-1.5">
               <div className="h-2 w-2 rounded-full shrink-0" style={{ background: RISK_COLORS[p.riskLevel] }} />
-              <span className="text-xs text-zinc-300 truncate">{p.name}</span>
+              <span className="text-xs text-foreground truncate">{p.name}</span>
             </div>
-            <div className="flex-1 h-2 rounded-full bg-zinc-800 overflow-hidden">
+            <div className="flex-1 h-2 rounded-full bg-muted dark:bg-zinc-800 overflow-hidden">
               <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, background: barColor + "cc" }} />
             </div>
             <span className="w-24 text-right text-xs font-semibold tabular-nums shrink-0" style={{ color: barColor }}>
               -{p.mdd.toFixed(1)}%
             </span>
-            <span className="w-28 text-right text-[10px] text-zinc-500 tabular-nums shrink-0">
+            <span className="w-28 text-right text-[10px] text-muted-foreground tabular-nums shrink-0">
               상위 {extremePct}% 극단
             </span>
           </div>
@@ -625,7 +625,7 @@ function MetricsTable({ portfolios }: { portfolios: PortfolioResult[] }) {
     <div className="overflow-x-auto">
       <table className="w-full text-xs">
         <thead>
-          <tr className="border-b border-zinc-800 text-zinc-500">
+          <tr className="border-b border-border dark:border-zinc-800 text-muted-foreground">
             <th className="py-2 pr-3 text-left font-semibold">포트폴리오</th>
             {cols.map(({ key, label }) => (
               <th
@@ -643,12 +643,12 @@ function MetricsTable({ portfolios }: { portfolios: PortfolioResult[] }) {
         </thead>
         <tbody>
           {sorted.map(p => (
-            <tr key={p.id} className={cn("border-b border-zinc-800/40 hover:bg-zinc-800/20", p.rank === 1 && "bg-amber-500/5")}>
+            <tr key={p.id} className={cn("border-b border-border/40 dark:border-zinc-800/40 hover:bg-muted/20 dark:hover:bg-zinc-800/20", p.rank === 1 && "bg-amber-500/5")}>
               <td className="py-2 pr-3">
                 <div className="flex flex-col gap-1">
                   <div className="flex items-center gap-1.5">
                     <div className="h-2 w-2 rounded-full shrink-0" style={{ background: RISK_COLORS[p.riskLevel] }} />
-                    <span className="font-medium text-zinc-300">{p.name}</span>
+                    <span className="font-medium text-foreground">{p.name}</span>
                     <RiskBadge level={p.riskLevel} />
                   </div>
                   <TickerBadges tickers={p.tickers} />
@@ -657,15 +657,15 @@ function MetricsTable({ portfolios }: { portfolios: PortfolioResult[] }) {
               <td className="py-2 px-2 text-right">
                 {p.rank <= 3
                   ? <span className="text-base">{RANK_MEDALS[p.rank - 1]}</span>
-                  : <span className="text-zinc-500 font-mono">{p.rank}위</span>}
+                  : <span className="text-muted-foreground font-mono">{p.rank}위</span>}
               </td>
               <td className={cn("py-2 px-2 text-right font-semibold tabular-nums", cagrColor(p.cagr))}>{fmt(p.cagr)}%</td>
               <td className={cn("py-2 px-2 text-right tabular-nums", p.totalReturn >= 0 ? "text-emerald-400" : "text-red-400")}>{fmt(p.totalReturn)}%</td>
               <td className="py-2 px-2 text-right text-red-400 tabular-nums">-{p.mdd.toFixed(1)}%</td>
               <td className={cn("py-2 px-2 text-right tabular-nums", p.sharpe >= 1 ? "text-emerald-400" : p.sharpe >= 0 ? "text-yellow-400" : "text-red-400")}>{p.sharpe.toFixed(3)}</td>
-              <td className="py-2 px-2 text-right text-zinc-400 tabular-nums">{p.volatility.toFixed(1)}%</td>
+              <td className="py-2 px-2 text-right text-muted-foreground tabular-nums">{p.volatility.toFixed(1)}%</td>
               <td className={cn("py-2 px-2 text-right tabular-nums", p.calmar >= 1 ? "text-emerald-400" : "text-yellow-400")}>{p.calmar.toFixed(3)}</td>
-              <td className="py-2 px-2 text-right text-zinc-400 tabular-nums">{p.maxRecoveryWeeks}w</td>
+              <td className="py-2 px-2 text-right text-muted-foreground tabular-nums">{p.maxRecoveryWeeks}w</td>
             </tr>
           ))}
         </tbody>
@@ -701,7 +701,7 @@ function CompositionPanel({ portfolios }: { portfolios: PortfolioResult[] }) {
               "flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-xs font-medium transition",
               selected === p.id
                 ? "border-transparent text-white"
-                : "border-zinc-700 text-zinc-500 hover:border-zinc-600"
+                : "border-border dark:border-zinc-700 text-muted-foreground hover:border-zinc-600"
             )}
             style={
               selected === p.id
@@ -715,11 +715,11 @@ function CompositionPanel({ portfolios }: { portfolios: PortfolioResult[] }) {
       </div>
 
       {portfolio && (
-        <div className="rounded-lg border border-zinc-700 bg-zinc-800/30 p-4 space-y-3">
+        <div className="rounded-lg border border-border dark:border-zinc-700 bg-muted/30 dark:bg-zinc-800/30 p-4 space-y-3">
           <div className="flex items-center gap-2 flex-wrap">
-            <h3 className="font-bold text-zinc-100 text-sm">{portfolio.name}</h3>
+            <h3 className="font-bold text-foreground text-sm">{portfolio.name}</h3>
             <RiskBadge level={portfolio.riskLevel} />
-            <span className="text-xs text-zinc-500">시작: {portfolio.actualStart}</span>
+            <span className="text-xs text-muted-foreground">시작: {portfolio.actualStart}</span>
           </div>
 
           <div className="space-y-2">
@@ -728,7 +728,7 @@ function CompositionPanel({ portfolios }: { portfolios: PortfolioResult[] }) {
                 <span className="w-12 text-xs font-semibold tabular-nums text-right shrink-0" style={{ color: TICKER_COLORS[ticker] ?? "#a1a1aa" }}>
                   {ticker}
                 </span>
-                <div className="flex-1 h-5 rounded bg-zinc-800 overflow-hidden">
+                <div className="flex-1 h-5 rounded bg-muted dark:bg-zinc-800 overflow-hidden">
                   <div
                     className="h-full rounded flex items-center justify-end pr-2 text-[10px] font-bold text-white/80 transition-all"
                     style={{ width: `${weight}%`, background: (TICKER_COLORS[ticker] ?? "#a1a1aa") + "cc" }}
@@ -745,10 +745,10 @@ function CompositionPanel({ portfolios }: { portfolios: PortfolioResult[] }) {
               { label: "CAGR", val: `${fmt(portfolio.cagr)}%`, color: cagrColor(portfolio.cagr) },
               { label: "MDD", val: `-${portfolio.mdd.toFixed(1)}%`, color: "text-red-400" },
               { label: "샤프", val: portfolio.sharpe.toFixed(3), color: portfolio.sharpe >= 1 ? "text-emerald-400" : "text-yellow-400" },
-              { label: "변동성", val: `${portfolio.volatility.toFixed(1)}%`, color: "text-zinc-400" },
+              { label: "변동성", val: `${portfolio.volatility.toFixed(1)}%`, color: "text-muted-foreground" },
             ].map(({ label, val, color }) => (
-              <div key={label} className="rounded bg-zinc-900/60 p-2 text-center">
-                <p className="text-zinc-500 mb-0.5">{label}</p>
+              <div key={label} className="rounded bg-card/80 dark:bg-zinc-900/60 p-2 text-center">
+                <p className="text-muted-foreground mb-0.5">{label}</p>
                 <p className={cn("font-bold", color)}>{val}</p>
               </div>
             ))}
@@ -782,13 +782,13 @@ function YearlyChart({ portfolios }: { portfolios: PortfolioResult[] }) {
     <div className="space-y-2">
       <div className="flex flex-wrap gap-1.5">
         {top5.map(p => (
-          <span key={p.id} className="flex items-center gap-1 text-xs text-zinc-400">
+          <span key={p.id} className="flex items-center gap-1 text-xs text-muted-foreground">
             <span className="h-2 w-2 rounded-full" style={{ background: RISK_COLORS[p.riskLevel] }} />
             {p.name}
           </span>
         ))}
       </div>
-      <p className="text-[10px] text-zinc-500">CAGR 상위 5개 포트폴리오 연도별 수익률</p>
+      <p className="text-[10px] text-muted-foreground">CAGR 상위 5개 포트폴리오 연도별 수익률</p>
       <ResponsiveContainer width="100%" height={300}>
         <BarChart data={data} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#27272a" />
@@ -869,30 +869,30 @@ export default function PortfolioMixPage() {
           <PieChart className="h-5 w-5 text-violet-400" />
         </div>
         <div>
-          <h1 className="text-xl font-bold text-zinc-100">포트폴리오 믹스 연구소</h1>
-          <p className="text-sm text-zinc-500">
+          <h1 className="text-xl font-bold text-foreground">포트폴리오 믹스 연구소</h1>
+          <p className="text-sm text-muted-foreground">
             20개 멀티에셋 포트폴리오 백테스트 · 월별 리밸런싱 · 위기 방어력 비교 · CAGR/MDD/샤프/칼마르
           </p>
         </div>
       </div>
 
       {/* Settings */}
-      <Card className="border-zinc-800 bg-zinc-900/60">
+      <Card className="border-border dark:border-zinc-800 bg-card dark:bg-zinc-900/60">
         <CardHeader className="pb-3">
-          <CardTitle className="text-sm text-zinc-300">설정</CardTitle>
+          <CardTitle className="text-sm text-foreground">설정</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex flex-wrap items-end gap-4">
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-zinc-500">백테스트 기간</label>
-              <div className="flex gap-1 rounded-lg border border-zinc-700 bg-zinc-800/80 p-1">
+              <label className="text-xs font-semibold text-muted-foreground">백테스트 기간</label>
+              <div className="flex gap-1 rounded-lg border border-border dark:border-zinc-700 bg-muted dark:bg-zinc-800/80 p-1">
                 {PERIODS.map(({ key, label }) => (
                   <button
                     key={key}
                     onClick={() => setPeriod(key)}
                     className={cn(
                       "rounded px-3 py-1 text-xs font-semibold transition",
-                      period === key ? "bg-violet-600 text-white shadow" : "text-zinc-400 hover:bg-zinc-700 hover:text-zinc-100"
+                      period === key ? "bg-violet-600 text-white shadow" : "text-muted-foreground hover:bg-zinc-700 hover:text-foreground"
                     )}
                   >
                     {label}
@@ -901,12 +901,12 @@ export default function PortfolioMixPage() {
               </div>
             </div>
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-zinc-500">초기 자본 ($)</label>
+              <label className="text-xs font-semibold text-muted-foreground">초기 자본 ($)</label>
               <input
                 type="number"
                 min={100}
                 step={1000}
-                className="h-9 w-36 rounded-lg border border-zinc-700 bg-zinc-800 px-3 text-sm text-zinc-100 outline-none focus:border-violet-500 transition"
+                className="h-9 w-36 rounded-lg border border-border dark:border-zinc-700 bg-muted dark:bg-zinc-800 px-3 text-sm text-foreground outline-none focus:border-violet-500 transition"
                 value={initialCash}
                 onChange={e => setInitialCash(Number(e.target.value))}
               />
@@ -925,7 +925,7 @@ export default function PortfolioMixPage() {
                 <><Play className="h-4 w-4" />포트폴리오 비교 실행</>
               )}
             </Button>
-            <div className="flex flex-wrap gap-2 text-xs text-zinc-500">
+            <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
               {(["low", "medium", "high", "extreme"] as RiskLevel[]).map(level => (
                 <span key={level} className="flex items-center gap-1">
                   <span className="h-2 w-2 rounded-full" style={{ background: RISK_COLORS[level] }} />
@@ -947,12 +947,12 @@ export default function PortfolioMixPage() {
       {portfolios.length > 0 && (
         <div className="space-y-5">
           {/* Meta info */}
-          <div className="text-xs text-zinc-500">
-            <span className="font-medium text-zinc-400">{results?.startDate}</span>
+          <div className="text-xs text-muted-foreground">
+            <span className="font-medium text-foreground">{results?.startDate}</span>
             {" ~ "}
-            <span className="font-medium text-zinc-400">{results?.endDate}</span>
+            <span className="font-medium text-foreground">{results?.endDate}</span>
             {" · "}
-            <span className="font-medium text-zinc-400">{portfolios.length}개</span> 포트폴리오 분석 완료
+            <span className="font-medium text-foreground">{portfolios.length}개</span> 포트폴리오 분석 완료
             {" · "}월별 리밸런싱 적용
           </div>
 
@@ -960,9 +960,9 @@ export default function PortfolioMixPage() {
           <TopPerformers portfolios={portfolios} />
 
           {/* Ranking Bar */}
-          <Card className="border-zinc-800 bg-zinc-900/60">
+          <Card className="border-border dark:border-zinc-800 bg-card dark:bg-zinc-900/60">
             <CardHeader className="pb-2">
-              <CardTitle className="flex items-center gap-2 text-sm text-zinc-300">
+              <CardTitle className="flex items-center gap-2 text-sm text-foreground">
                 <TrendingUp className="h-4 w-4 text-violet-400" />
                 수익률 순위 (총수익률 기준)
               </CardTitle>
@@ -973,9 +973,9 @@ export default function PortfolioMixPage() {
           </Card>
 
           {/* Tabs */}
-          <Card className="border-zinc-800 bg-zinc-900/60">
+          <Card className="border-border dark:border-zinc-800 bg-card dark:bg-zinc-900/60">
             <CardHeader className="pb-0">
-              <div className="flex flex-wrap gap-1 border-b border-zinc-800 pb-3">
+              <div className="flex flex-wrap gap-1 border-b border-border dark:border-zinc-800 pb-3">
                 {tabs.map(({ key, label }) => (
                   <button
                     key={key}
@@ -984,7 +984,7 @@ export default function PortfolioMixPage() {
                       "rounded px-3 py-1 text-xs font-semibold transition",
                       activeTab === key
                         ? "bg-violet-600 text-white"
-                        : "text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200"
+                        : "text-muted-foreground hover:bg-muted dark:hover:bg-zinc-800 hover:text-foreground"
                     )}
                   >
                     {label}
@@ -1025,7 +1025,7 @@ export default function PortfolioMixPage() {
       )}
 
       {!results && !loading && (
-        <div className="flex flex-col items-center gap-4 py-20 text-center text-zinc-500">
+        <div className="flex flex-col items-center gap-4 py-20 text-center text-muted-foreground">
           <PieChart className="h-14 w-14 opacity-20" />
           <p className="text-base font-medium">기간을 선택 후 포트폴리오 비교를 실행하세요</p>
           <p className="text-sm opacity-70">

@@ -159,7 +159,7 @@ function Spinner() {
 
 function EmptyState() {
   return (
-    <div className="flex flex-col items-center gap-4 py-20 text-center text-zinc-500">
+    <div className="flex flex-col items-center gap-4 py-20 text-center text-muted-foreground">
       <FlaskConical className="h-14 w-14 opacity-20" />
       <p className="text-base font-medium">전략 파라미터를 설정하고 백테스트를 실행하세요</p>
       <p className="text-sm opacity-70">
@@ -217,8 +217,8 @@ function RankingPanel({
               className={cn(
                 "rounded-lg px-3 py-1 text-xs font-semibold transition",
                 rankTicker === t
-                  ? "bg-zinc-700 text-zinc-100"
-                  : "text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300"
+                  ? "bg-muted dark:bg-zinc-700 text-foreground"
+                  : "text-muted-foreground hover:bg-muted dark:hover:bg-zinc-800 hover:text-foreground"
               )}
             >
               {t}
@@ -235,14 +235,14 @@ function RankingPanel({
           const color = STRATEGY_COLORS[sid] ?? "#71717a";
           return (
             <div key={sid} className="flex items-center gap-3">
-              <span className="w-5 text-right text-xs font-bold text-zinc-400 shrink-0">
+              <span className="w-5 text-right text-xs font-bold text-muted-foreground shrink-0">
                 {RANK_MEDALS[rank - 1] ?? `${rank}`}
               </span>
               <div className="flex items-center gap-1.5 w-28 shrink-0">
                 <div className="h-2 w-2 rounded-full shrink-0" style={{ background: color }} />
                 <span className="text-xs text-zinc-300 truncate">{s.name}</span>
               </div>
-              <div className="flex-1 h-2 rounded-full bg-zinc-800 overflow-hidden">
+              <div className="flex-1 h-2 rounded-full bg-muted dark:bg-zinc-800 overflow-hidden">
                 <div
                   className="h-full rounded-full transition-all"
                   style={{ width: `${barWidth}%`, background: color + "cc" }}
@@ -290,10 +290,10 @@ function SummaryTable({
     <div className="overflow-x-auto">
       <table className="w-full text-xs">
         <thead>
-          <tr className="border-b border-zinc-800">
-            <th className="py-2 text-left font-semibold text-zinc-400 pr-4">전략 (CAGR 순)</th>
+          <tr className="border-b border-border dark:border-zinc-800">
+            <th className="py-2 text-left font-semibold text-muted-foreground pr-4">전략 (CAGR 순)</th>
             {tickers.map((t) => (
-              <th key={t} className="py-2 text-center font-semibold text-zinc-400 px-2">
+              <th key={t} className="py-2 text-center font-semibold text-muted-foreground px-2">
                 {t}
               </th>
             ))}
@@ -301,7 +301,7 @@ function SummaryTable({
         </thead>
         <tbody>
           {strategies.map(([sid, strat], rowIdx) => (
-            <tr key={sid} className="border-b border-zinc-800/50 hover:bg-zinc-800/20">
+            <tr key={sid} className="border-b border-border/50 dark:border-zinc-800/50 hover:bg-muted/20 dark:hover:bg-zinc-800/20">
               <td className="py-2 pr-4">
                 <div className="flex items-center gap-2">
                   <span className="w-4 text-right text-[10px] text-zinc-600 shrink-0">
@@ -311,7 +311,7 @@ function SummaryTable({
                     className="h-2.5 w-2.5 rounded-full shrink-0"
                     style={{ background: STRATEGY_COLORS[sid] ?? "#71717a" }}
                   />
-                  <span className="font-medium text-zinc-300">{strat.name}</span>
+                  <span className="font-medium text-foreground">{strat.name}</span>
                 </div>
               </td>
               {tickers.map((ticker) => {
@@ -417,7 +417,7 @@ function EquityChart({
                 "flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium transition",
                 active
                   ? "border-transparent text-white"
-                  : "border-zinc-700 bg-transparent text-zinc-500 hover:border-zinc-600"
+                  : "border-border dark:border-zinc-700 bg-transparent text-muted-foreground hover:border-zinc-600"
               )}
               style={active ? { background: color + "33", borderColor: color, color } : undefined}
             >
@@ -539,8 +539,8 @@ function YearlyChart({
               className={cn(
                 "rounded-lg px-3 py-1 text-xs font-semibold transition",
                 selectedTicker === t
-                  ? "bg-zinc-700 text-zinc-100"
-                  : "text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300"
+                  ? "bg-muted dark:bg-zinc-700 text-foreground"
+                  : "text-muted-foreground hover:bg-muted dark:hover:bg-zinc-800 hover:text-foreground"
               )}
             >
               {t}
@@ -673,7 +673,7 @@ function DetailTable({
     <div className="overflow-x-auto">
       <table className="w-full text-xs">
         <thead>
-          <tr className="border-b border-zinc-800 text-zinc-500">
+          <tr className="border-b border-border dark:border-zinc-800 text-muted-foreground">
             <th className="py-2 text-left font-semibold pr-3">전략</th>
             <th className="py-2 text-left font-semibold pr-3">티커</th>
             {cols.map(({ key, label }) => (
@@ -695,7 +695,7 @@ function DetailTable({
           {rows.map((r, i) => (
             <tr
               key={`${r.stratId}-${r.ticker}-${i}`}
-              className="border-b border-zinc-800/40 hover:bg-zinc-800/20"
+              className="border-b border-border/40 dark:border-zinc-800/40 hover:bg-muted/20 dark:hover:bg-zinc-800/20"
             >
               <td className="py-2 pr-3">
                 <div className="flex items-center gap-2">
@@ -706,7 +706,7 @@ function DetailTable({
                   <span className="font-medium text-zinc-300">{r.stratName}</span>
                 </div>
               </td>
-              <td className="py-2 pr-3 font-semibold text-zinc-400">{r.ticker}</td>
+              <td className="py-2 pr-3 font-semibold text-muted-foreground">{r.ticker}</td>
               <td className={cn("py-2 px-2 text-right font-semibold tabular-nums", cagrColor(r.cagr))}>
                 {fmt(r.cagr)}%
               </td>
@@ -724,10 +724,10 @@ function DetailTable({
               >
                 {r.sharpe.toFixed(3)}
               </td>
-              <td className="py-2 px-2 text-right text-zinc-400 tabular-nums">
+              <td className="py-2 px-2 text-right text-muted-foreground tabular-nums">
                 {r.winRate != null ? `${r.winRate.toFixed(1)}%` : "—"}
               </td>
-              <td className="py-2 px-2 text-right text-zinc-500 tabular-nums">{r.totalTrades}</td>
+              <td className="py-2 px-2 text-right text-muted-foreground tabular-nums">{r.totalTrades}</td>
             </tr>
           ))}
         </tbody>
@@ -789,7 +789,7 @@ function AiAnalysisTab({
           {loading ? <Spinner /> : <Sparkles className="h-4 w-4" />}
           {loading ? "AI 분석 중..." : "AI 분석 실행"}
         </Button>
-        <p className="text-xs text-zinc-500">GPT-4.1-nano가 백테스트 결과를 종합 분석합니다</p>
+        <p className="text-xs text-muted-foreground">GPT-4.1-nano가 백테스트 결과를 종합 분석합니다</p>
       </div>
 
       {error && (
@@ -799,40 +799,40 @@ function AiAnalysisTab({
       )}
 
       {analysis && (
-        <div className="rounded-xl border border-zinc-800 bg-zinc-900/60 p-5">
+        <div className="rounded-xl border border-border dark:border-zinc-800 bg-card/80 dark:bg-zinc-900/60 p-5">
           <div className="prose prose-invert prose-sm max-w-none">
             {analysis.split("\n").map((line, i) => {
               if (line.startsWith("## ")) {
                 return (
-                  <h2 key={i} className="mt-4 mb-2 text-sm font-bold text-zinc-200 first:mt-0">
+                  <h2 key={i} className="mt-4 mb-2 text-sm font-bold text-foreground first:mt-0">
                     {line.replace("## ", "")}
                   </h2>
                 );
               }
               if (line.startsWith("### ")) {
                 return (
-                  <h3 key={i} className="mt-3 mb-1 text-xs font-semibold text-zinc-300">
+                  <h3 key={i} className="mt-3 mb-1 text-xs font-semibold text-foreground">
                     {line.replace("### ", "")}
                   </h3>
                 );
               }
               if (line.startsWith("**") && line.endsWith("**")) {
                 return (
-                  <p key={i} className="font-semibold text-zinc-200 my-1 text-xs">
+                  <p key={i} className="font-semibold text-foreground my-1 text-xs">
                     {line.replace(/\*\*/g, "")}
                   </p>
                 );
               }
               if (line.startsWith("- ")) {
                 return (
-                  <p key={i} className="pl-3 text-xs text-zinc-400 my-0.5 before:content-['•'] before:mr-2 before:text-zinc-600">
+                  <p key={i} className="pl-3 text-xs text-muted-foreground my-0.5 before:content-['•'] before:mr-2 before:text-muted-foreground">
                     {line.replace("- ", "").replace(/\*\*(.*?)\*\*/g, "$1")}
                   </p>
                 );
               }
               if (line.trim() === "") return <div key={i} className="h-2" />;
               return (
-                <p key={i} className="text-xs text-zinc-400 my-1">
+                <p key={i} className="text-xs text-muted-foreground my-1">
                   {line.replace(/\*\*(.*?)\*\*/g, "$1")}
                 </p>
               );
@@ -980,26 +980,26 @@ export default function StrategyLabPage() {
           <FlaskConical className="h-5 w-5 text-violet-400" />
         </div>
         <div>
-          <h1 className="text-xl font-bold text-zinc-100">전략 연구소 / Strategy Lab</h1>
-          <p className="text-sm text-zinc-500">8가지 투자 전략을 여러 티커에 동시에 백테스트합니다</p>
+          <h1 className="text-xl font-bold text-foreground">전략 연구소 / Strategy Lab</h1>
+          <p className="text-sm text-muted-foreground">8가지 투자 전략을 여러 티커에 동시에 백테스트합니다</p>
         </div>
       </div>
 
       {/* Config Panel */}
-      <Card className="border-zinc-800 bg-zinc-900/60">
+      <Card className="border-border dark:border-zinc-800 bg-card dark:bg-zinc-900/60">
         <CardHeader className="pb-3">
-          <CardTitle className="text-sm text-zinc-300">파라미터 설정</CardTitle>
+          <CardTitle className="text-sm text-foreground">파라미터 설정</CardTitle>
         </CardHeader>
         <CardContent className="space-y-5">
           {/* Ticker Input */}
           <div className="space-y-2">
-            <label className="text-xs font-semibold text-zinc-500">종목 티커</label>
+            <label className="text-xs font-semibold text-muted-foreground">종목 티커</label>
             <div className="flex flex-wrap gap-1.5 items-center">
               {tickers.map((t) => (
                 <Badge
                   key={t}
                   variant="secondary"
-                  className="gap-1 pr-1 bg-zinc-800 text-zinc-200 border-zinc-700"
+                  className="gap-1 pr-1 bg-muted dark:bg-zinc-800 text-foreground border-border dark:border-zinc-700"
                 >
                   {t}
                   <button
@@ -1012,13 +1012,13 @@ export default function StrategyLabPage() {
               ))}
               <div className="flex gap-1">
                 <input
-                  className="h-7 w-20 rounded-lg border border-zinc-700 bg-zinc-800 px-2 text-xs text-zinc-100 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/30 transition"
+                  className="h-7 w-20 rounded-lg border border-border dark:border-zinc-700 bg-muted dark:bg-zinc-800 px-2 text-xs text-foreground outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/30 transition"
                   placeholder="TSLA"
                   value={tickerInput}
                   onChange={(e) => setTickerInput(e.target.value.toUpperCase())}
                   onKeyDown={(e) => e.key === "Enter" && addTicker()}
                 />
-                <Button size="sm" variant="outline" className="h-7 w-7 p-0 border-zinc-700" onClick={addTicker}>
+                <Button size="sm" variant="outline" className="h-7 w-7 p-0 border-border dark:border-zinc-700" onClick={addTicker}>
                   <Plus className="h-3 w-3" />
                 </Button>
               </div>
@@ -1033,7 +1033,7 @@ export default function StrategyLabPage() {
                     "rounded-full border px-2.5 py-0.5 text-xs font-medium transition",
                     tickers.includes(t)
                       ? "border-blue-500/50 bg-blue-500/15 text-blue-300"
-                      : "border-zinc-700 bg-zinc-800/50 text-zinc-500 hover:border-zinc-600 hover:text-zinc-300"
+                      : "border-border dark:border-zinc-700 bg-muted/50 dark:bg-zinc-800/50 text-muted-foreground hover:border-zinc-600 hover:text-foreground"
                   )}
                 >
                   {t}
@@ -1045,8 +1045,8 @@ export default function StrategyLabPage() {
           {/* Period + Initial Cash */}
           <div className="flex flex-wrap items-end gap-4">
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-zinc-500">기간</label>
-              <div className="flex gap-1 rounded-lg border border-zinc-700 bg-zinc-800/80 p-1">
+              <label className="text-xs font-semibold text-muted-foreground">기간</label>
+              <div className="flex gap-1 rounded-lg border border-border dark:border-zinc-700 bg-muted dark:bg-zinc-800/80 p-1">
                 {PERIODS.map(({ value, label }) => (
                   <button
                     key={value}
@@ -1055,7 +1055,7 @@ export default function StrategyLabPage() {
                       "rounded px-3 py-1 text-xs font-semibold transition",
                       period === value
                         ? "bg-blue-600 text-white shadow"
-                        : "text-zinc-400 hover:bg-zinc-700 hover:text-zinc-100"
+                        : "text-muted-foreground hover:bg-zinc-700 hover:text-foreground"
                     )}
                   >
                     {label}
@@ -1064,12 +1064,12 @@ export default function StrategyLabPage() {
               </div>
             </div>
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-zinc-500">초기 자본 ($)</label>
+              <label className="text-xs font-semibold text-muted-foreground">초기 자본 ($)</label>
               <input
                 type="number"
                 min={100}
                 step={1000}
-                className="h-9 w-36 rounded-lg border border-zinc-700 bg-zinc-800 px-3 text-sm text-zinc-100 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/30 transition"
+                className="h-9 w-36 rounded-lg border border-border dark:border-zinc-700 bg-muted dark:bg-zinc-800 px-3 text-sm text-foreground outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/30 transition"
                 value={initialCash}
                 onChange={(e) => setInitialCash(Number(e.target.value))}
               />
@@ -1079,14 +1079,14 @@ export default function StrategyLabPage() {
           {/* Strategy Selection */}
           <div className="space-y-2">
             <div className="flex items-center gap-3">
-              <label className="text-xs font-semibold text-zinc-500">전략 선택</label>
+              <label className="text-xs font-semibold text-muted-foreground">전략 선택</label>
               <button
                 onClick={selectAllStrategies}
                 className={cn(
                   "rounded-full border px-2 py-0.5 text-xs transition",
                   strategyAll
                     ? "border-violet-500/50 bg-violet-500/15 text-violet-300"
-                    : "border-zinc-700 text-zinc-500 hover:border-zinc-600 hover:text-zinc-300"
+                    : "border-border dark:border-zinc-700 text-muted-foreground hover:border-zinc-600 hover:text-foreground"
                 )}
               >
                 전체 선택
@@ -1103,7 +1103,7 @@ export default function StrategyLabPage() {
                       "flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium transition",
                       active
                         ? "border-transparent text-white"
-                        : "border-zinc-700 bg-zinc-800/50 text-zinc-500 hover:border-zinc-600 hover:text-zinc-300"
+                        : "border-border dark:border-zinc-700 bg-muted/50 dark:bg-zinc-800/50 text-muted-foreground hover:border-zinc-600 hover:text-foreground"
                     )}
                     style={
                       active
@@ -1150,20 +1150,20 @@ export default function StrategyLabPage() {
       </Card>
 
       {/* AI Custom Strategy */}
-      <Card className="border-zinc-800 bg-zinc-900/60">
+      <Card className="border-border dark:border-zinc-800 bg-card dark:bg-zinc-900/60">
         <CardHeader className="pb-3">
-          <CardTitle className="flex items-center gap-2 text-sm text-zinc-300">
+          <CardTitle className="flex items-center gap-2 text-sm text-foreground">
             <Sparkles className="h-4 w-4 text-violet-400" />
             AI 전략 생성
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          <p className="text-xs text-zinc-500">
+          <p className="text-xs text-muted-foreground">
             자연어로 투자 전략을 설명하면 AI가 구조화된 전략 파라미터를 생성합니다
           </p>
           <div className="flex gap-2">
             <textarea
-              className="flex-1 rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-600 outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500/30 transition resize-none"
+              className="flex-1 rounded-lg border border-border dark:border-zinc-700 bg-muted dark:bg-zinc-800 px-3 py-2 text-sm text-foreground placeholder-zinc-600 outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500/30 transition resize-none"
               rows={2}
               placeholder="예: RSI가 25 아래면 매수, 75 위면 매도 / 10주 이동평균이 30주를 돌파하면 매수..."
               value={customStrategy}
@@ -1173,18 +1173,18 @@ export default function StrategyLabPage() {
               onClick={generateCustomStrategy}
               disabled={customLoading || !customStrategy.trim()}
               variant="outline"
-              className="shrink-0 border-zinc-700 hover:bg-violet-500/10 hover:border-violet-500/50 hover:text-violet-300"
+              className="shrink-0 border-border dark:border-zinc-700 hover:bg-violet-500/10 hover:border-violet-500/50 hover:text-violet-300"
             >
               {customLoading ? <Spinner /> : <Sparkles className="h-4 w-4" />}
               <span className="ml-2 hidden sm:inline">AI로 전략 생성</span>
             </Button>
           </div>
           {customResult && (
-            <div className="rounded-lg border border-zinc-800 bg-zinc-950/50 p-3">
-              <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-zinc-600">
+            <div className="rounded-lg border border-border dark:border-zinc-800 bg-muted/20 dark:bg-zinc-950/50 p-3">
+              <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                 생성된 전략 파라미터
               </p>
-              <pre className="text-xs text-zinc-400 overflow-x-auto whitespace-pre-wrap">{customResult}</pre>
+              <pre className="text-xs text-muted-foreground overflow-x-auto whitespace-pre-wrap">{customResult}</pre>
             </div>
           )}
         </CardContent>
@@ -1194,9 +1194,9 @@ export default function StrategyLabPage() {
       {results ? (
         <div className="space-y-4">
           {/* Summary heatmap */}
-          <Card className="border-zinc-800 bg-zinc-900/60">
+          <Card className="border-border dark:border-zinc-800 bg-card dark:bg-zinc-900/60">
             <CardHeader className="pb-3">
-              <CardTitle className="flex items-center gap-2 text-sm text-zinc-300">
+              <CardTitle className="flex items-center gap-2 text-sm text-foreground">
                 <Trophy className="h-4 w-4 text-amber-400" />
                 전략별 CAGR 요약 (수익률 순)
               </CardTitle>
@@ -1204,11 +1204,11 @@ export default function StrategyLabPage() {
             <CardContent className="space-y-5">
               {/* Ranking bar chart per ticker */}
               <div>
-                <p className="mb-3 text-xs font-semibold text-zinc-500">📊 전략 순위 (티커별)</p>
+                <p className="mb-3 text-xs font-semibold text-muted-foreground">📊 전략 순위 (티커별)</p>
                 <RankingPanel results={results} tickers={tickers} />
               </div>
-              <div className="border-t border-zinc-800 pt-4">
-                <p className="mb-2 text-xs font-semibold text-zinc-500">🗂 전체 비교표</p>
+              <div className="border-t border-border dark:border-zinc-800 pt-4">
+                <p className="mb-2 text-xs font-semibold text-muted-foreground">🗂 전체 비교표</p>
                 <SummaryTable results={results} tickers={tickers} />
               </div>
             </CardContent>
@@ -1262,11 +1262,11 @@ export default function StrategyLabPage() {
               return cards.map((c, i) => (
                 <div
                   key={i}
-                  className="rounded-xl border border-zinc-800 bg-zinc-900/60 px-4 py-3"
+                  className="rounded-xl border border-border dark:border-zinc-800 bg-card/80 dark:bg-zinc-900/60 px-4 py-3"
                 >
                   <div className="flex items-center gap-2 mb-1">
                     {c.icon}
-                    <p className="text-xs text-zinc-500">{c.label}</p>
+                    <p className="text-xs text-muted-foreground">{c.label}</p>
                   </div>
                   <p className={cn("text-2xl font-bold tabular-nums", c.cls)}>{c.value}</p>
                   <p className="text-[11px] text-zinc-600 mt-0.5">{c.sub}</p>
@@ -1276,9 +1276,9 @@ export default function StrategyLabPage() {
           </div>
 
           {/* Tabs */}
-          <Card className="border-zinc-800 bg-zinc-900/60">
+          <Card className="border-border dark:border-zinc-800 bg-card dark:bg-zinc-900/60">
             <CardHeader className="pb-0">
-              <div className="flex flex-wrap gap-1 border-b border-zinc-800 pb-3">
+              <div className="flex flex-wrap gap-1 border-b border-border dark:border-zinc-800 pb-3">
                 {tabs.map((tab) => (
                   <button
                     key={tab.key}
@@ -1286,8 +1286,8 @@ export default function StrategyLabPage() {
                     className={cn(
                       "rounded-lg px-3 py-1.5 text-xs font-semibold transition",
                       activeTab === tab.key
-                        ? "bg-zinc-700 text-zinc-100"
-                        : "text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300"
+                        ? "bg-muted dark:bg-zinc-700 text-foreground"
+                        : "text-muted-foreground hover:bg-muted dark:hover:bg-zinc-800 hover:text-foreground"
                     )}
                   >
                     {tab.label}
@@ -1321,7 +1321,7 @@ export default function StrategyLabPage() {
       )}
 
       {loading && (
-        <div className="flex flex-col items-center gap-4 py-20 text-center text-zinc-500">
+        <div className="flex flex-col items-center gap-4 py-20 text-center text-muted-foreground">
           <Loader2 className="h-10 w-10 animate-spin opacity-40" />
           <p className="text-sm">
             {tickers.length}개 티커 × 8가지 전략 백테스트 실행 중...
