@@ -102,23 +102,24 @@ function calcConsensus(agents: AgentAnalysis[]): AgentsResult["consensus"] {
 }
 
 export async function GET() {
+  if (!process.env.OPENAI_API_KEY) {
+    return NextResponse.json({ error: "OPENAI_API_KEY가 설정되지 않았습니다. Vercel 환경변수를 확인하세요." }, { status: 500 });
+  }
+
   if (cache && Date.now() - cache.ts < CACHE_TTL) {
     return NextResponse.json(cache.data);
   }
 
   try {
     const sentiment: SentimentData = await fetchSentimentData();
-
     const prompt = buildUserPrompt(sentiment);
-
-    // 12개 에이전트 병렬 실행
     const agents = await Promise.all(AGENT_PROFILES.map((p) => runAgent(p, prompt)));
     const consensus = calcConsensus(agents);
     const result: AgentsResult = { agents, consensus, timestamp: new Date().toISOString() };
-
     cache = { data: result, ts: Date.now() };
     return NextResponse.json(result);
   } catch (e) {
-    return NextResponse.json({ error: String(e) }, { status: 500 });
+    const msg = e instanceof Error ? e.message : String(e);
+    return NextResponse.json({ error: msg }, { status: 500 });
   }
 }
