@@ -180,31 +180,33 @@ export default function BudgetPage() {
   }, [expenses]);
 
   const handleSave = async (data: Partial<ExpenseItem>) => {
-    if (data.id) {
-      await fetch(EXPENSE_API, {
-        method: "PUT",
+    try {
+      const res = await fetch(EXPENSE_API, {
+        method: data.id ? "PUT" : "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
       });
-    } else {
-      await fetch(EXPENSE_API, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
+      if (!res.ok) throw new Error(await res.text());
+      setEditingId(null);
+      setAddingType(null);
+      globalMutate(EXPENSE_API);
+    } catch (e) {
+      alert(`저장 실패: ${e instanceof Error ? e.message : String(e)}`);
     }
-    setEditingId(null);
-    setAddingType(null);
-    globalMutate(EXPENSE_API);
   };
 
   const handleDelete = async (id: number) => {
-    await fetch(EXPENSE_API, {
-      method: "DELETE",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id }),
-    });
-    globalMutate(EXPENSE_API);
+    try {
+      const res = await fetch(EXPENSE_API, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id }),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      globalMutate(EXPENSE_API);
+    } catch (e) {
+      alert(`삭제 실패: ${e instanceof Error ? e.message : String(e)}`);
+    }
   };
 
   const renderSection = (

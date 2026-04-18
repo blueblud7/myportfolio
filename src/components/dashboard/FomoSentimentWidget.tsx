@@ -1,7 +1,7 @@
 "use client";
 
 import { useFomoSentiment } from "@/hooks/use-api";
-import type { SentimentData } from "@/app/api/fomo-sentiment/route";
+import type { SentimentData } from "@/types/fomo";
 import { cn } from "@/lib/utils";
 
 function scoreColor(score: number): string {

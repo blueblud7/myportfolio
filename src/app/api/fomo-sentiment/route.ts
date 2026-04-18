@@ -1,26 +1,10 @@
 import { NextResponse } from "next/server";
+import type { SentimentData } from "@/types/fomo";
+
+export type { SentimentData };
 
 const CACHE_TTL = 5 * 60 * 1000; // 5분
 let cache: { data: SentimentData; ts: number } | null = null;
-
-export interface SentimentData {
-  KR: number;
-  US: number;
-  Crypto: number;
-  Overall: number;
-  labels: { KR: string; US: string; Crypto: string; Overall: string };
-  raw: {
-    vix: number;
-    vixChange: number;
-    cryptoFG: number;
-    cryptoLabel: string;
-    kospiChangePct: number;
-    kosdaqChangePct: number;
-    sp500ChangePct: number;
-    foreignNetBuy: number;
-  };
-  timestamp: string;
-}
 
 function scoreToLabel(score: number): string {
   if (score <= 20) return "극단적 공포";

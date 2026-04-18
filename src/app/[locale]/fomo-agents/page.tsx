@@ -2,8 +2,7 @@
 
 import { useState } from "react";
 import { useFomoAgents, useFomoSentiment } from "@/hooks/use-api";
-import type { AgentAnalysis, AgentsResult } from "@/app/api/fomo-agents/route";
-import type { SentimentData } from "@/app/api/fomo-sentiment/route";
+import type { AgentAnalysis, AgentsResult, SentimentData } from "@/types/fomo";
 import { cn } from "@/lib/utils";
 import { Brain, TrendingUp, TrendingDown, Minus, RefreshCw, ChevronDown, ChevronUp } from "lucide-react";
 

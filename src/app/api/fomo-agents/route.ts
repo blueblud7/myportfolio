@@ -1,37 +1,13 @@
 import { NextResponse } from "next/server";
 import OpenAI from "openai";
-import type { SentimentData } from "@/app/api/fomo-sentiment/route";
+import type { SentimentData, AgentAnalysis, AgentsResult } from "@/types/fomo";
+
+export type { AgentAnalysis, AgentsResult };
 
 const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 const CACHE_TTL = 60 * 60 * 1000; // 1시간
 let cache: { data: AgentsResult; ts: number } | null = null;
-
-export interface AgentAnalysis {
-  id: string;
-  name: string;
-  style: string;
-  weight: number;
-  action: "Buy" | "Hold" | "Sell";
-  fomoScore: number;
-  interpretation: string;
-  actionReason: string;
-  warning: string;
-  innerMonologue: string;
-  biasesDetected: string[];
-}
-
-export interface AgentsResult {
-  agents: AgentAnalysis[];
-  consensus: {
-    buyPct: number;
-    holdPct: number;
-    sellPct: number;
-    avgFomoScore: number;
-    weightedAction: "Buy" | "Hold" | "Sell";
-  };
-  timestamp: string;
-}
 
 const AGENT_PROFILES = [
   { id: "A01", name: "20대 남성 공격형", style: "공격적 모멘텀", weight: 3, systemPrompt: "당신은 20대 초반 남성 투자자입니다. 투자 경험이 1년 미만이며, SNS와 유튜브에서 투자 정보를 얻습니다. FOMO에 매우 취약하며, 레버리지 ETF와 급등주에 관심이 많습니다. 손절보다 물타기를 선호하고, 단기 가격 움직임에 민감합니다." },
