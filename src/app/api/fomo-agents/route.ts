@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import OpenAI from "openai";
+
+export const maxDuration = 60;
 import type { SentimentData, AgentAnalysis, AgentsResult } from "@/types/fomo";
 import { fetchSentimentData } from "@/lib/fomo-sentiment";
 
