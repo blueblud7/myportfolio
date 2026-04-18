@@ -81,11 +81,12 @@ async function runAgent(profile: typeof AGENT_PROFILES[0], prompt: string): Prom
       innerMonologue: raw.inner_monologue ?? "",
       biasesDetected: Array.isArray(raw.biases_detected) ? raw.biases_detected : [],
     };
-  } catch {
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
     return {
       id: profile.id, name: profile.name, style: profile.style, weight: profile.weight,
       action: "Hold", fomoScore: 5,
-      interpretation: "분석 실패", actionReason: "", warning: "", innerMonologue: "", biasesDetected: [],
+      interpretation: `분석 실패: ${msg}`, actionReason: "", warning: "", innerMonologue: "", biasesDetected: [],
     };
   }
 }
