@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import OpenAI from "openai";
 import type { SentimentData, AgentAnalysis, AgentsResult } from "@/types/fomo";
+import { fetchSentimentData } from "@/lib/fomo-sentiment";
 
 export type { AgentAnalysis, AgentsResult };
 
@@ -106,9 +107,7 @@ export async function GET() {
   }
 
   try {
-    // 현재 심리 점수 가져오기
-    const sentRes = await fetch(`${process.env.NEXTAUTH_URL ?? "http://localhost:3000"}/api/fomo-sentiment`);
-    const sentiment: SentimentData = await sentRes.json();
+    const sentiment: SentimentData = await fetchSentimentData();
 
     const prompt = buildUserPrompt(sentiment);
 

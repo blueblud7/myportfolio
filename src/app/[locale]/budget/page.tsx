@@ -387,7 +387,7 @@ export default function BudgetPage() {
 
           {/* Category breakdown list */}
           <div className="mt-2 space-y-1.5">
-            {chartData
+            {[...chartData]
               .sort((a, b) => b.value - a.value)
               .map((d) => (
                 <div key={d.name} className="flex items-center justify-between text-xs">

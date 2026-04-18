@@ -109,9 +109,10 @@ function ConsensusBar({ buyPct, holdPct, sellPct }: { buyPct: number; holdPct: n
 }
 
 export default function FomoAgentsPage() {
-  const { data: agentsData, isLoading, mutate } = useFomoAgents();
+  const { data: agentsData, isLoading, mutate, error: agentsError } = useFomoAgents();
   const { data: sentimentData } = useFomoSentiment();
-  const d = agentsData as AgentsResult | undefined;
+  const raw = agentsData as (AgentsResult & { error?: string }) | undefined;
+  const d: AgentsResult | undefined = raw?.consensus ? raw as AgentsResult : undefined;
   const s = sentimentData as SentimentData | undefined;
   const [refreshing, setRefreshing] = useState(false);
 
@@ -188,6 +189,13 @@ export default function FomoAgentsPage() {
               <div className="h-3 w-4/5 rounded bg-muted" />
             </div>
           ))}
+        </div>
+      ) : (agentsError || raw?.error) ? (
+        <div className="flex flex-col items-center justify-center py-20 text-center space-y-2">
+          <Brain className="h-10 w-10 text-red-400/60" />
+          <p className="text-sm text-red-400">에이전트 분석 실패</p>
+          <p className="text-xs text-muted-foreground">{raw?.error ?? String(agentsError)}</p>
+          <p className="text-xs text-muted-foreground">OPENAI_API_KEY 환경변수가 Vercel에 설정되어 있는지 확인하세요.</p>
         </div>
       ) : d ? (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
