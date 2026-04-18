@@ -9,7 +9,7 @@ export type { AgentAnalysis, AgentsResult };
 
 const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-const CACHE_TTL = 60 * 60 * 1000; // 1시간
+const CACHE_TTL = 30 * 60 * 1000; // 30분
 let cache: { data: AgentsResult; ts: number } | null = null;
 
 const AGENT_PROFILES = [
@@ -61,13 +61,14 @@ async function runAgent(profile: typeof AGENT_PROFILES[0], prompt: string): Prom
     const res = await client.chat.completions.create({
       model: "gpt-5-nano",
       max_completion_tokens: 2000,
-      response_format: { type: "json_object" },
       messages: [
         { role: "system", content: profile.systemPrompt },
         { role: "user", content: prompt },
       ],
     });
-    const raw = JSON.parse(res.choices[0].message.content ?? "{}");
+    const content = res.choices[0].message.content ?? "";
+    const jsonMatch = content.match(/\{[\s\S]*\}/);
+    const raw = JSON.parse(jsonMatch ? jsonMatch[0] : "{}");
     return {
       id: profile.id,
       name: profile.name,
@@ -102,6 +103,11 @@ function calcConsensus(agents: AgentAnalysis[]): AgentsResult["consensus"] {
   const avgFomoScore = Math.round(agents.reduce((s, a) => s + a.fomoScore * a.weight, 0) / total * 10) / 10;
   const weightedAction: "Buy" | "Hold" | "Sell" = buy >= hold && buy >= sell ? "Buy" : hold >= sell ? "Hold" : "Sell";
   return { buyPct, holdPct, sellPct, avgFomoScore, weightedAction };
+}
+
+export async function DELETE() {
+  cache = null;
+  return NextResponse.json({ ok: true });
 }
 
 export async function GET() {
