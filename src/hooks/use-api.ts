@@ -183,3 +183,10 @@ export function useFomoSentiment() {
     dedupingInterval: 5 * 60 * 1000,
   });
 }
+
+export function useFomoAgents() {
+  return useSWR("/api/fomo-agents", fetcher, {
+    revalidateOnFocus: false,
+    dedupingInterval: 60 * 60 * 1000,
+  });
+}
