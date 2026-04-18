@@ -67,6 +67,7 @@ async function runAgent(profile: typeof AGENT_PROFILES[0], prompt: string): Prom
       ],
     });
     const content = res.choices[0].message.content ?? "";
+    const finish = res.choices[0].finish_reason;
     const jsonMatch = content.match(/\{[\s\S]*\}/);
     const raw = JSON.parse(jsonMatch ? jsonMatch[0] : "{}");
     return {
@@ -76,7 +77,7 @@ async function runAgent(profile: typeof AGENT_PROFILES[0], prompt: string): Prom
       weight: profile.weight,
       action: ["Buy", "Hold", "Sell"].includes(raw.action) ? raw.action : "Hold",
       fomoScore: Math.min(10, Math.max(0, Number(raw.fomo_score ?? 5))),
-      interpretation: raw.interpretation ?? "",
+      interpretation: raw.interpretation ?? `[finish:${finish}] ${content.slice(0, 300)}`,
       actionReason: raw.action_reason ?? "",
       warning: raw.warning ?? "",
       innerMonologue: raw.inner_monologue ?? "",
