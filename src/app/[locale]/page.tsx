@@ -9,6 +9,7 @@ import { MarketIndices } from "@/components/dashboard/MarketIndices";
 import { PolymarketWidget } from "@/components/dashboard/PolymarketWidget";
 import { PutCallRatioWidget } from "@/components/dashboard/PutCallRatioWidget";
 import { WatchlistWidget } from "@/components/dashboard/WatchlistWidget";
+import { FomoSentimentWidget } from "@/components/dashboard/FomoSentimentWidget";
 import { useAccounts, useHoldings, useExchangeRate, useBankBalances, refreshPrices } from "@/hooks/use-api";
 
 export default function DashboardPage() {
@@ -151,7 +152,7 @@ export default function DashboardPage() {
         <AllocationChart title={t("byAccount")} data={allocationByAccount} />
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid gap-4 md:grid-cols-3">
         <div className="rounded-xl border bg-card p-4">
           <h2 className="mb-3 text-sm font-semibold">{t("putCallRatio")}</h2>
           <PutCallRatioWidget />
@@ -160,6 +161,7 @@ export default function DashboardPage() {
           <h2 className="mb-3 text-sm font-semibold">{t("polymarket")}</h2>
           <PolymarketWidget />
         </div>
+        <FomoSentimentWidget />
       </div>
 
       <WatchlistWidget />

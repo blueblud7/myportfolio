@@ -176,3 +176,10 @@ export async function refreshPrices(tickers: string[]) {
   });
   return res.json();
 }
+
+export function useFomoSentiment() {
+  return useSWR("/api/fomo-sentiment", fetcher, {
+    revalidateOnFocus: false,
+    dedupingInterval: 5 * 60 * 1000,
+  });
+}
