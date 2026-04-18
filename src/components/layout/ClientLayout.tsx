@@ -28,7 +28,7 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
             />
             <div className="flex-1 min-w-0">
               <Header onMenuToggle={() => setMobileMenuOpen((v) => !v)} />
-              <main className="min-h-screen bg-zinc-50 p-4 sm:p-6 dark:bg-zinc-900">{children}</main>
+              <main className="min-h-screen bg-background p-4 sm:p-6">{children}</main>
             </div>
           </div>
         </SWRConfig>
