@@ -38,7 +38,7 @@ async function runAgent(profile: typeof AGENT_PROFILES[0], prompt: string): Prom
   try {
     const res = await client.chat.completions.create({
       model: "gpt-5-nano",
-      max_completion_tokens: 1000,
+      max_completion_tokens: 8000,
       response_format: { type: "json_object" },
       messages: [
         { role: "system", content: profile.systemPrompt },
