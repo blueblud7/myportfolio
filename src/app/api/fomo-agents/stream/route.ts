@@ -19,21 +19,23 @@ export async function GET() {
 
         send({ type: "start", total: AGENT_PROFILES.length });
 
-        const agents: AgentsResult["agents"] = [];
+        const agents: (AgentsResult["agents"][number] | null)[] = new Array(AGENT_PROFILES.length).fill(null);
+        let completed = 0;
 
-        for (let i = 0; i < AGENT_PROFILES.length; i++) {
-          const profile = AGENT_PROFILES[i];
-          send({ type: "thinking", index: i, name: profile.name });
+        await Promise.all(
+          AGENT_PROFILES.map(async (profile, i) => {
+            send({ type: "thinking", index: i, name: profile.name });
+            const agent = await runAgent(profile, prompt);
+            agents[i] = agent;
+            completed++;
+            send({ type: "agent", index: i, agent, completed, total: AGENT_PROFILES.length });
+          })
+        );
 
-          const agent = await runAgent(profile, prompt);
-          agents.push(agent);
-
-          send({ type: "agent", index: i, agent });
-        }
-
-        const consensus = calcConsensus(agents);
+        const finalAgents = agents.filter((a): a is AgentsResult["agents"][number] => a !== null);
+        const consensus = calcConsensus(finalAgents);
         const timestamp = new Date().toISOString();
-        const result: AgentsResult = { agents, consensus, timestamp };
+        const result: AgentsResult = { agents: finalAgents, consensus, timestamp };
 
         setAgentsCache({ data: result, ts: Date.now() });
 

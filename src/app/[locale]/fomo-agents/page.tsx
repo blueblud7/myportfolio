@@ -178,7 +178,7 @@ function ConsensusBar({
 type SSEEvent =
   | { type: "start"; total: number }
   | { type: "thinking"; index: number; name: string }
-  | { type: "agent"; index: number; agent: AgentAnalysis }
+  | { type: "agent"; index: number; agent: AgentAnalysis; completed: number; total: number }
   | { type: "done"; consensus: AgentsResult["consensus"]; timestamp: string }
   | { type: "error"; message: string };
 
@@ -190,7 +190,7 @@ export default function FomoAgentsPage() {
 
   const [agents, setAgents] = useState<AgentAnalysis[]>([]);
   const [streaming, setStreaming] = useState(false);
-  const [progress, setProgress] = useState({ current: 0, total: 0, currentName: "" });
+  const [progress, setProgress] = useState({ current: 0, total: 0, thinking: 0 });
   const [consensus, setConsensus] = useState<AgentsResult["consensus"] | null>(null);
   const [timestamp, setTimestamp] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);
@@ -203,7 +203,7 @@ export default function FomoAgentsPage() {
     setTimestamp(null);
     setLoaded(false);
     setError(null);
-    setProgress({ current: 0, total: 0, currentName: "" });
+    setProgress({ current: 0, total: 0, thinking: 0 });
 
     fetch("/api/fomo-agents/stream")
       .then((response) => {
@@ -260,10 +260,10 @@ export default function FomoAgentsPage() {
       if (evt.type === "start") {
         setProgress((p) => ({ ...p, total: evt.total }));
       } else if (evt.type === "thinking") {
-        setProgress((p) => ({ ...p, currentName: evt.name }));
+        setProgress((p) => ({ ...p, thinking: p.thinking + 1 }));
       } else if (evt.type === "agent") {
         setAgents((prev) => [...prev, evt.agent]);
-        setProgress((p) => ({ ...p, current: p.current + 1 }));
+        setProgress((p) => ({ ...p, current: evt.completed }));
       } else if (evt.type === "done") {
         setConsensus(evt.consensus);
         setTimestamp(evt.timestamp);
@@ -292,7 +292,7 @@ export default function FomoAgentsPage() {
           setAgents(result.agents);
           setConsensus(result.consensus);
           setTimestamp(result.timestamp);
-          setProgress({ current: result.agents.length, total: result.agents.length, currentName: "" });
+          setProgress({ current: result.agents.length, total: result.agents.length, thinking: 0 });
           setLoaded(true);
         } else {
           // { cached: false } or any non-result → stream
@@ -345,23 +345,26 @@ export default function FomoAgentsPage() {
         <div className="rounded-xl border bg-card p-4 space-y-3">
           <div className="flex items-center justify-between text-xs">
             <span className="font-medium text-foreground">
-              분석 중...{" "}
-              {progress.currentName && (
-                <span className="text-violet-500">{progress.currentName}</span>
+              {progress.thinking > 0 && progress.current < progress.total ? (
+                <>
+                  <span className="text-violet-500">{progress.thinking}개 에이전트</span> 병렬 분석 중...
+                </>
+              ) : (
+                "분석 중..."
               )}
             </span>
             <span className="text-muted-foreground tabular-nums">
-              {progress.current}/{progress.total}
+              {progress.current}/{progress.total} 완료
             </span>
           </div>
           <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
             <div
-              className="h-full rounded-full bg-blue-500 transition-all duration-500"
+              className="h-full rounded-full bg-violet-500 transition-all duration-300"
               style={{ width: `${progressPct}%` }}
             />
           </div>
           <p className="text-[10px] text-muted-foreground">
-            각 에이전트가 순차적으로 시장을 분석하고 있습니다
+            모든 에이전트가 동시에 시장을 분석합니다
           </p>
         </div>
       )}
