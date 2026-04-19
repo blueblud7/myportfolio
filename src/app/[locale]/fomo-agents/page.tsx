@@ -1,10 +1,12 @@
 "use client";
 
-import { useState } from "react";
-import { useFomoAgents, useFomoSentiment } from "@/hooks/use-api";
+import { useState, useEffect, useCallback } from "react";
+import { useFomoSentiment } from "@/hooks/use-api";
 import type { AgentAnalysis, AgentsResult, SentimentData } from "@/types/fomo";
 import { cn } from "@/lib/utils";
 import { Brain, TrendingUp, TrendingDown, Minus, RefreshCw, ChevronDown, ChevronUp } from "lucide-react";
+
+// ─── Helpers ────────────────────────────────────────────────────────────────
 
 function actionColor(action: string) {
   if (action === "Buy") return "text-emerald-500";
@@ -32,6 +34,8 @@ function fomoColor(score: number) {
   return "text-red-400";
 }
 
+// ─── Components ─────────────────────────────────────────────────────────────
+
 function AgentCard({ agent }: { agent: AgentAnalysis }) {
   const [expanded, setExpanded] = useState(false);
 
@@ -49,10 +53,36 @@ function AgentCard({ agent }: { agent: AgentAnalysis }) {
           <span className={cn("text-xs font-bold", fomoColor(agent.fomoScore))}>
             FOMO {agent.fomoScore}/10
           </span>
-          <div className={cn("flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-bold", actionColor(agent.action), actionBg(agent.action))}>
+          <div
+            className={cn(
+              "flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-bold",
+              actionColor(agent.action),
+              actionBg(agent.action)
+            )}
+          >
             <ActionIcon action={agent.action} />
             {agent.action}
           </div>
+        </div>
+      </div>
+
+      <div className="space-y-1.5">
+        <div className="flex justify-between text-[10px] text-muted-foreground">
+          <span>FOMO 점수</span>
+          <span className={cn("font-semibold", fomoColor(agent.fomoScore))}>{agent.fomoScore}/10</span>
+        </div>
+        <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
+          <div
+            className={cn(
+              "h-full rounded-full transition-all",
+              agent.fomoScore <= 4
+                ? "bg-emerald-500"
+                : agent.fomoScore <= 7
+                ? "bg-yellow-400"
+                : "bg-red-500"
+            )}
+            style={{ width: `${(agent.fomoScore / 10) * 100}%` }}
+          />
         </div>
       </div>
 
@@ -70,7 +100,9 @@ function AgentCard({ agent }: { agent: AgentAnalysis }) {
         <div className="space-y-2 border-t border-border/50 pt-2">
           <div className="rounded-lg bg-muted/50 p-2.5">
             <p className="text-[10px] font-semibold text-muted-foreground mb-1">내면의 독백</p>
-            <p className="text-xs italic text-foreground/80 leading-relaxed">"{agent.innerMonologue}"</p>
+            <p className="text-xs italic text-foreground/80 leading-relaxed">
+              &ldquo;{agent.innerMonologue}&rdquo;
+            </p>
           </div>
           {agent.warning && (
             <div className="rounded-lg bg-orange-500/5 border border-orange-500/20 p-2.5">
@@ -81,7 +113,12 @@ function AgentCard({ agent }: { agent: AgentAnalysis }) {
           {agent.biasesDetected.length > 0 && (
             <div className="flex flex-wrap gap-1">
               {agent.biasesDetected.map((b) => (
-                <span key={b} className="text-[9px] rounded-full bg-muted px-2 py-0.5 text-muted-foreground">{b}</span>
+                <span
+                  key={b}
+                  className="text-[9px] rounded-full bg-muted px-2 py-0.5 text-muted-foreground"
+                >
+                  {b}
+                </span>
               ))}
             </div>
           )}
@@ -91,7 +128,35 @@ function AgentCard({ agent }: { agent: AgentAnalysis }) {
   );
 }
 
-function ConsensusBar({ buyPct, holdPct, sellPct }: { buyPct: number; holdPct: number; sellPct: number }) {
+function SkeletonCard() {
+  return (
+    <div className="rounded-xl border bg-card p-4 space-y-3 animate-pulse">
+      <div className="flex items-start justify-between gap-2">
+        <div className="space-y-1.5 flex-1">
+          <div className="h-3.5 w-2/3 rounded bg-muted" />
+          <div className="h-2.5 w-1/3 rounded bg-muted" />
+        </div>
+        <div className="h-6 w-16 rounded-full bg-muted" />
+      </div>
+      <div className="h-1.5 w-full rounded-full bg-muted" />
+      <div className="space-y-1.5">
+        <div className="h-3 w-full rounded bg-muted" />
+        <div className="h-3 w-4/5 rounded bg-muted" />
+      </div>
+      <div className="h-3 w-24 rounded bg-muted" />
+    </div>
+  );
+}
+
+function ConsensusBar({
+  buyPct,
+  holdPct,
+  sellPct,
+}: {
+  buyPct: number;
+  holdPct: number;
+  sellPct: number;
+}) {
   return (
     <div className="space-y-1.5">
       <div className="flex h-3 w-full overflow-hidden rounded-full">
@@ -108,23 +173,151 @@ function ConsensusBar({ buyPct, holdPct, sellPct }: { buyPct: number; holdPct: n
   );
 }
 
+// ─── SSE event shapes ────────────────────────────────────────────────────────
+
+type SSEEvent =
+  | { type: "start"; total: number }
+  | { type: "thinking"; index: number; name: string }
+  | { type: "agent"; index: number; agent: AgentAnalysis }
+  | { type: "done"; consensus: AgentsResult["consensus"]; timestamp: string }
+  | { type: "error"; message: string };
+
+// ─── Page ────────────────────────────────────────────────────────────────────
+
 export default function FomoAgentsPage() {
-  const { data: agentsData, isLoading, mutate, error: agentsError } = useFomoAgents();
   const { data: sentimentData } = useFomoSentiment();
-  const raw = agentsData as (AgentsResult & { error?: string }) | undefined;
-  const d: AgentsResult | undefined = raw?.consensus ? raw as AgentsResult : undefined;
   const s = sentimentData as SentimentData | undefined;
-  const [refreshing, setRefreshing] = useState(false);
+
+  const [agents, setAgents] = useState<AgentAnalysis[]>([]);
+  const [streaming, setStreaming] = useState(false);
+  const [progress, setProgress] = useState({ current: 0, total: 0, currentName: "" });
+  const [consensus, setConsensus] = useState<AgentsResult["consensus"] | null>(null);
+  const [timestamp, setTimestamp] = useState<string | null>(null);
+  const [loaded, setLoaded] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const startStream = useCallback(() => {
+    setStreaming(true);
+    setAgents([]);
+    setConsensus(null);
+    setTimestamp(null);
+    setLoaded(false);
+    setError(null);
+    setProgress({ current: 0, total: 0, currentName: "" });
+
+    fetch("/api/fomo-agents/stream")
+      .then((response) => {
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        if (!response.body) throw new Error("No response body");
+
+        const reader = response.body.getReader();
+        const textDecoder = new TextDecoder();
+        let buffer = "";
+
+        function processChunk() {
+          reader
+            .read()
+            .then(({ done, value }) => {
+              if (done) {
+                setStreaming(false);
+                return;
+              }
+
+              buffer += textDecoder.decode(value, { stream: true });
+
+              // Split on double newline (SSE event separator)
+              const parts = buffer.split("\n\n");
+              buffer = parts.pop() ?? "";
+
+              for (const part of parts) {
+                for (const line of part.split("\n")) {
+                  if (!line.startsWith("data: ")) continue;
+                  try {
+                    const evt = JSON.parse(line.slice(6)) as SSEEvent;
+                    handleEvent(evt);
+                  } catch {
+                    // ignore malformed lines
+                  }
+                }
+              }
+
+              processChunk();
+            })
+            .catch((err: unknown) => {
+              setError(err instanceof Error ? err.message : String(err));
+              setStreaming(false);
+            });
+        }
+
+        processChunk();
+      })
+      .catch((err: unknown) => {
+        setError(err instanceof Error ? err.message : String(err));
+        setStreaming(false);
+      });
+
+    function handleEvent(evt: SSEEvent) {
+      if (evt.type === "start") {
+        setProgress((p) => ({ ...p, total: evt.total }));
+      } else if (evt.type === "thinking") {
+        setProgress((p) => ({ ...p, currentName: evt.name }));
+      } else if (evt.type === "agent") {
+        setAgents((prev) => [...prev, evt.agent]);
+        setProgress((p) => ({ ...p, current: p.current + 1 }));
+      } else if (evt.type === "done") {
+        setConsensus(evt.consensus);
+        setTimestamp(evt.timestamp);
+        setLoaded(true);
+        setStreaming(false);
+      } else if (evt.type === "error") {
+        setError(evt.message);
+        setStreaming(false);
+      }
+    }
+  }, []);
+
+  // On mount: check cache first
+  useEffect(() => {
+    fetch("/api/fomo-agents")
+      .then((r) => r.json())
+      .then((data: unknown) => {
+        if (
+          data &&
+          typeof data === "object" &&
+          "agents" in data &&
+          "consensus" in data &&
+          "timestamp" in data
+        ) {
+          const result = data as AgentsResult;
+          setAgents(result.agents);
+          setConsensus(result.consensus);
+          setTimestamp(result.timestamp);
+          setProgress({ current: result.agents.length, total: result.agents.length, currentName: "" });
+          setLoaded(true);
+        } else {
+          // { cached: false } or any non-result → stream
+          startStream();
+        }
+      })
+      .catch(() => {
+        startStream();
+      });
+  }, [startStream]);
 
   const handleRefresh = async () => {
-    setRefreshing(true);
-    // 캐시 무효화용 별도 엔드포인트 없이 SWR revalidate
-    await mutate();
-    setRefreshing(false);
+    await fetch("/api/fomo-agents", { method: "DELETE" });
+    startStream();
   };
+
+  const skeletonCount =
+    streaming && progress.total > 0 ? Math.max(0, progress.total - agents.length) : 0;
+
+  const progressPct =
+    progress.total > 0 ? Math.round((progress.current / progress.total) * 100) : 0;
 
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div className="flex items-start justify-between gap-4">
         <div>
           <div className="flex items-center gap-2.5">
@@ -134,20 +327,46 @@ export default function FomoAgentsPage() {
             <h1 className="text-2xl font-bold">AI 투자자 에이전트</h1>
           </div>
           <p className="mt-1 text-sm text-muted-foreground">
-            12개 투자자 페르소나가 현재 시장을 분석합니다 · gpt-5-nano · 1시간 캐시
+            12개 투자자 페르소나가 현재 시장을 분석합니다 · gpt-5-nano · 30분 캐시
           </p>
         </div>
         <button
           onClick={handleRefresh}
-          disabled={refreshing || isLoading}
+          disabled={streaming}
           className="flex items-center gap-1.5 rounded-lg border bg-card px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors disabled:opacity-40"
         >
-          <RefreshCw className={cn("h-3.5 w-3.5", refreshing && "animate-spin")} />
+          <RefreshCw className={cn("h-3.5 w-3.5", streaming && "animate-spin")} />
           새로고침
         </button>
       </div>
 
-      {/* 현재 시장 심리 요약 */}
+      {/* Progress section */}
+      {streaming && (
+        <div className="rounded-xl border bg-card p-4 space-y-3">
+          <div className="flex items-center justify-between text-xs">
+            <span className="font-medium text-foreground">
+              분석 중...{" "}
+              {progress.currentName && (
+                <span className="text-violet-500">{progress.currentName}</span>
+              )}
+            </span>
+            <span className="text-muted-foreground tabular-nums">
+              {progress.current}/{progress.total}
+            </span>
+          </div>
+          <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
+            <div
+              className="h-full rounded-full bg-blue-500 transition-all duration-500"
+              style={{ width: `${progressPct}%` }}
+            />
+          </div>
+          <p className="text-[10px] text-muted-foreground">
+            각 에이전트가 순차적으로 시장을 분석하고 있습니다
+          </p>
+        </div>
+      )}
+
+      {/* Sentiment summary */}
       {s && (
         <div className="grid grid-cols-4 gap-3">
           {(["Overall", "KR", "US", "Crypto"] as const).map((m) => (
@@ -160,54 +379,83 @@ export default function FomoAgentsPage() {
         </div>
       )}
 
-      {/* 컨센서스 */}
-      {d && (
+      {/* Consensus */}
+      {consensus && (
         <div className="rounded-xl border bg-card p-4 space-y-3">
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-semibold">에이전트 컨센서스</h2>
-            <div className={cn("flex items-center gap-1.5 rounded-full px-3 py-1 text-sm font-bold border",
-              actionColor(d.consensus.weightedAction), actionBg(d.consensus.weightedAction))}>
-              <ActionIcon action={d.consensus.weightedAction} />
-              {d.consensus.weightedAction === "Buy" ? "매수 우세" : d.consensus.weightedAction === "Sell" ? "매도 우세" : "관망 우세"}
+            <div
+              className={cn(
+                "flex items-center gap-1.5 rounded-full px-3 py-1 text-sm font-bold border",
+                actionColor(consensus.weightedAction),
+                actionBg(consensus.weightedAction)
+              )}
+            >
+              <ActionIcon action={consensus.weightedAction} />
+              {consensus.weightedAction === "Buy"
+                ? "매수 우세"
+                : consensus.weightedAction === "Sell"
+                ? "매도 우세"
+                : "관망 우세"}
             </div>
           </div>
-          <ConsensusBar buyPct={d.consensus.buyPct} holdPct={d.consensus.holdPct} sellPct={d.consensus.sellPct} />
+          <ConsensusBar
+            buyPct={consensus.buyPct}
+            holdPct={consensus.holdPct}
+            sellPct={consensus.sellPct}
+          />
           <div className="flex justify-between text-xs text-muted-foreground pt-1">
-            <span>평균 FOMO 점수: <span className={cn("font-bold", fomoColor(d.consensus.avgFomoScore))}>{d.consensus.avgFomoScore}/10</span></span>
-            <span>{new Date(d.timestamp).toLocaleString("ko-KR", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })} 기준</span>
+            <span>
+              평균 FOMO 점수:{" "}
+              <span className={cn("font-bold", fomoColor(consensus.avgFomoScore))}>
+                {consensus.avgFomoScore}/10
+              </span>
+            </span>
+            {timestamp && (
+              <span>
+                {new Date(timestamp).toLocaleString("ko-KR", {
+                  month: "short",
+                  day: "numeric",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}{" "}
+                기준
+              </span>
+            )}
           </div>
         </div>
       )}
 
-      {/* 에이전트 카드 */}
-      {isLoading ? (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {Array.from({ length: 12 }).map((_, i) => (
-            <div key={i} className="rounded-xl border bg-card p-4 space-y-3 animate-pulse">
-              <div className="h-4 w-2/3 rounded bg-muted" />
-              <div className="h-3 w-full rounded bg-muted" />
-              <div className="h-3 w-4/5 rounded bg-muted" />
-            </div>
-          ))}
-        </div>
-      ) : (agentsError || raw?.error) ? (
+      {/* Error state */}
+      {error && !streaming && (
         <div className="flex flex-col items-center justify-center py-20 text-center space-y-2">
           <Brain className="h-10 w-10 text-red-400/60" />
           <p className="text-sm text-red-400">에이전트 분석 실패</p>
-          <p className="text-xs text-muted-foreground">{raw?.error ?? String(agentsError)}</p>
-          <p className="text-xs text-muted-foreground">OPENAI_API_KEY 환경변수가 Vercel에 설정되어 있는지 확인하세요.</p>
+          <p className="text-xs text-muted-foreground">{error}</p>
+          <p className="text-xs text-muted-foreground">
+            OPENAI_API_KEY 환경변수가 Vercel에 설정되어 있는지 확인하세요.
+          </p>
         </div>
-      ) : d ? (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {d.agents.map((agent) => (
-            <AgentCard key={agent.id} agent={agent} />
-          ))}
-        </div>
-      ) : (
+      )}
+
+      {/* Initial loading state (before stream starts) */}
+      {!loaded && !streaming && !error && (
         <div className="flex flex-col items-center justify-center py-20 text-center space-y-2">
           <Brain className="h-10 w-10 text-muted-foreground/40" />
           <p className="text-muted-foreground text-sm">에이전트 분석을 불러오는 중...</p>
           <p className="text-muted-foreground/60 text-xs">OPENAI_API_KEY가 설정되어 있어야 합니다.</p>
+        </div>
+      )}
+
+      {/* Agent cards grid */}
+      {(agents.length > 0 || skeletonCount > 0) && (
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {agents.map((agent) => (
+            <AgentCard key={agent.id} agent={agent} />
+          ))}
+          {Array.from({ length: skeletonCount }).map((_, i) => (
+            <SkeletonCard key={`skeleton-${i}`} />
+          ))}
         </div>
       )}
     </div>
