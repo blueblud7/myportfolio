@@ -168,7 +168,11 @@ export function useAccountSnapshots(start?: string, end?: string) {
   });
 }
 
-export async function refreshPrices(tickers: string[]) {
+export async function refreshPrices(tickers: string[]): Promise<{
+  updated: number;
+  failed: string[];
+  quotes: { ticker: string; price: number; changePct: number; currency: string; name: string }[];
+}> {
   const res = await fetch("/api/prices", {
     method: "POST",
     headers: { "Content-Type": "application/json" },

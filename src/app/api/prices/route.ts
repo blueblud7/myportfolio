@@ -1,12 +1,24 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
-import { getQuotes } from "@/lib/yahoo-finance";
+import { getQuote } from "@/lib/yahoo-finance";
 import { todayPST } from "@/lib/tz";
 
+export const maxDuration = 60;
+
 export async function POST(req: NextRequest) {
-  const { tickers } = await req.json() as { tickers: string[] };
-  if (!tickers?.length) return NextResponse.json({ error: "tickers required" }, { status: 400 });
-  const quotes = await getQuotes(tickers);
+  const { tickers } = (await req.json()) as { tickers: string[] };
+  if (!tickers?.length)
+    return NextResponse.json({ error: "tickers required" }, { status: 400 });
+
+  const results = await Promise.allSettled(tickers.map(getQuote));
+  const quotes: { ticker: string; price: number; changePct: number; currency: string; name: string }[] = [];
+  const failed: string[] = [];
+
+  results.forEach((r, i) => {
+    if (r.status === "fulfilled" && r.value) quotes.push(r.value);
+    else failed.push(tickers[i]);
+  });
+
   const sql = getDb();
   const today = todayPST();
   for (const q of quotes) {
@@ -15,7 +27,7 @@ export async function POST(req: NextRequest) {
       ON CONFLICT (ticker, date) DO UPDATE SET price=${q.price}, change_pct=${q.changePct}
     `;
   }
-  return NextResponse.json({ updated: quotes.length, quotes });
+  return NextResponse.json({ updated: quotes.length, failed, quotes });
 }
 
 export async function GET(req: NextRequest) {
