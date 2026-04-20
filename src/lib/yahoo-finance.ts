@@ -59,6 +59,17 @@ export async function getQuote(ticker: string): Promise<QuoteResult | null> {
     const meta = data.meta;
     const price = meta.regularMarketPrice as number | undefined;
     if (!price) continue;
+
+    // 한국 주식 교차검증: 잘못된 거래소에서 fuzzy match로 MUTUALFUND가 리턴되는 경우 방지
+    if (isKorean) {
+      const instrumentType = meta.instrumentType as string | undefined;
+      const longName = (meta.longName ?? "") as string;
+      const shortName = (meta.shortName ?? "") as string;
+      // 유효하지 않음: EQUITY/ETF가 아니거나, shortName에 티커/쉼표 포함 (fuzzy match 패턴)
+      if (instrumentType && instrumentType !== "EQUITY" && instrumentType !== "ETF") continue;
+      if (!longName && (shortName.includes(ticker) || shortName.includes(","))) continue;
+    }
+
     const prevClose = (meta.chartPreviousClose ?? meta.regularMarketPreviousClose ?? price) as number;
     const changePct = prevClose ? ((price - prevClose) / prevClose) * 100 : 0;
     return {
