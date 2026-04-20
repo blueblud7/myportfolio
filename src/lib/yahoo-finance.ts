@@ -45,43 +45,75 @@ async function fetchYahooSummary(
   }
 }
 
+async function fetchNaverStock(ticker: string): Promise<QuoteResult | null> {
+  try {
+    const url = `https://m.stock.naver.com/api/stock/${encodeURIComponent(ticker)}/basic`;
+    const res = await fetch(url, { headers: YF_HEADERS, cache: "no-store" });
+    if (!res.ok) return null;
+    const json = await res.json();
+    if (json?.code === "StockConflict" || !json?.closePrice) return null;
+    const price = parseFloat(String(json.closePrice).replace(/,/g, ""));
+    if (!isFinite(price) || price <= 0) return null;
+    const changePct = parseFloat(String(json.fluctuationsRatio ?? "0"));
+    return {
+      ticker,
+      price,
+      changePct: isFinite(changePct) ? changePct : 0,
+      currency: "KRW",
+      name: json.stockName ?? ticker,
+    };
+  } catch {
+    return null;
+  }
+}
+
 export async function getQuote(ticker: string): Promise<QuoteResult | null> {
   if (ticker === "CASH") return null;
 
   const isKorean = /^\d[A-Z0-9]{5}$/i.test(ticker);
-  const symbols = isKorean
-    ? [`${ticker}.KS`, `${ticker}.KQ`]
-    : [resolveYahooSymbol(ticker)];
 
-  for (const symbol of symbols) {
-    const data = await fetchYahooChart(symbol);
-    if (!data) continue;
-    const meta = data.meta;
-    const price = meta.regularMarketPrice as number | undefined;
-    if (!price) continue;
-
-    // 한국 주식 교차검증: 잘못된 거래소에서 fuzzy match로 MUTUALFUND가 리턴되는 경우 방지
-    if (isKorean) {
+  // 한국 종목: Naver가 실시간 데이터를 제공 (Yahoo는 장중에도 전일 종가를 캐시)
+  if (isKorean) {
+    const naver = await fetchNaverStock(ticker);
+    if (naver) return naver;
+    // Naver 실패 시 Yahoo로 fallback (instrumentType 검증 포함)
+    for (const suffix of [".KS", ".KQ"]) {
+      const data = await fetchYahooChart(`${ticker}${suffix}`);
+      if (!data) continue;
+      const meta = data.meta;
+      const price = meta.regularMarketPrice as number | undefined;
+      if (!price) continue;
       const instrumentType = meta.instrumentType as string | undefined;
-      const longName = (meta.longName ?? "") as string;
-      const shortName = (meta.shortName ?? "") as string;
-      // 유효하지 않음: EQUITY/ETF가 아니거나, shortName에 티커/쉼표 포함 (fuzzy match 패턴)
       if (instrumentType && instrumentType !== "EQUITY" && instrumentType !== "ETF") continue;
-      if (!longName && (shortName.includes(ticker) || shortName.includes(","))) continue;
+      const prevClose = (meta.chartPreviousClose ?? price) as number;
+      const changePct = prevClose ? ((price - prevClose) / prevClose) * 100 : 0;
+      return {
+        ticker,
+        price,
+        changePct,
+        currency: (meta.currency as string) ?? "KRW",
+        name: (meta.longName ?? meta.shortName ?? `${ticker}${suffix}`) as string,
+      };
     }
-
-    const prevClose = (meta.chartPreviousClose ?? meta.regularMarketPreviousClose ?? price) as number;
-    const changePct = prevClose ? ((price - prevClose) / prevClose) * 100 : 0;
-    return {
-      ticker,
-      price,
-      changePct,
-      currency: (meta.currency as string) ?? (isKorean ? "KRW" : "USD"),
-      name: (meta.longName ?? meta.shortName ?? symbol) as string,
-    };
+    return null;
   }
 
-  return null;
+  // 해외 종목: Yahoo Finance
+  const symbol = resolveYahooSymbol(ticker);
+  const data = await fetchYahooChart(symbol);
+  if (!data) return null;
+  const meta = data.meta;
+  const price = meta.regularMarketPrice as number | undefined;
+  if (!price) return null;
+  const prevClose = (meta.chartPreviousClose ?? meta.regularMarketPreviousClose ?? price) as number;
+  const changePct = prevClose ? ((price - prevClose) / prevClose) * 100 : 0;
+  return {
+    ticker,
+    price,
+    changePct,
+    currency: (meta.currency as string) ?? "USD",
+    name: (meta.longName ?? meta.shortName ?? symbol) as string,
+  };
 }
 
 export async function getQuotes(tickers: string[]): Promise<QuoteResult[]> {
