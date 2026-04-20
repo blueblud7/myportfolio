@@ -49,6 +49,7 @@ export default function AccountDetailPage() {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [editingHolding, setEditingHolding] = useState<any>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [refreshResult, setRefreshResult] = useState<{ updated: number; failed: string[] } | null>(null);
   const [kiwoomOpen, setKiwoomOpen] = useState(false);
   const [currency, setCurrencyState] = useState<"KRW" | "USD">("KRW");
   useEffect(() => {
@@ -100,9 +101,16 @@ export default function AccountDetailPage() {
     const tickers = holdings
       .filter((h: { ticker: string; manual_price: number | null }) => h.ticker !== "CASH" && !h.manual_price)
       .map((h: { ticker: string }) => h.ticker);
-    await refreshPrices(tickers);
-    await mutateHoldings();
-    setRefreshing(false);
+    try {
+      const result = await refreshPrices(tickers);
+      setRefreshResult({ updated: result.updated ?? 0, failed: result.failed ?? [] });
+      await mutateHoldings();
+    } catch (e) {
+      setRefreshResult({ updated: 0, failed: tickers });
+      console.error("refresh failed", e);
+    } finally {
+      setRefreshing(false);
+    }
   }, [holdings, mutateHoldings]);
 
   // 탭이 포커스될 때마다 자동 새로고침
@@ -183,6 +191,30 @@ export default function AccountDetailPage() {
           </div>
         </div>
       </div>
+
+      {refreshResult && (
+        <div
+          className={cn(
+            "rounded-md border px-3 py-2 text-xs flex items-center justify-between",
+            refreshResult.failed.length === 0
+              ? "border-emerald-500/30 bg-emerald-500/5 text-emerald-600 dark:text-emerald-400"
+              : refreshResult.updated === 0
+              ? "border-red-500/30 bg-red-500/5 text-red-600 dark:text-red-400"
+              : "border-yellow-500/30 bg-yellow-500/5 text-yellow-600 dark:text-yellow-400"
+          )}
+        >
+          <span>
+            {refreshResult.failed.length === 0
+              ? `가격 업데이트 완료 (${refreshResult.updated}개)`
+              : refreshResult.updated === 0
+              ? `모든 가격 조회 실패 (${refreshResult.failed.length}개): ${refreshResult.failed.slice(0, 5).join(", ")} — Yahoo Finance 연결 문제`
+              : `${refreshResult.updated}개 성공 / ${refreshResult.failed.length}개 실패: ${refreshResult.failed.slice(0, 5).join(", ")}${refreshResult.failed.length > 5 ? " 외" : ""}`}
+          </span>
+          <button onClick={() => setRefreshResult(null)} className="ml-2 opacity-60 hover:opacity-100">
+            ✕
+          </button>
+        </div>
+      )}
 
       <div className="grid gap-4 sm:grid-cols-3">
           <Card>
