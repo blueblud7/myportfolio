@@ -1,8 +1,8 @@
-import YahooFinance from "yahoo-finance2";
 import { resolveYahooSymbol } from "./ticker-resolver";
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const yf = new (YahooFinance as any)({ suppressNotices: ["yahooSurvey"] });
+const YF_HEADERS = {
+  "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+};
 
 export interface QuoteResult {
   ticker: string;
@@ -12,62 +12,71 @@ export interface QuoteResult {
   name: string;
 }
 
+async function fetchYahooChart(
+  symbol: string,
+  params?: Record<string, string>
+): Promise<{ meta: Record<string, unknown>; quotes?: unknown[] } | null> {
+  try {
+    const url = new URL(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}`);
+    if (params) Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v));
+    const res = await fetch(url.toString(), { headers: YF_HEADERS, cache: "no-store" });
+    if (!res.ok) return null;
+    const json = await res.json();
+    const result = json?.chart?.result?.[0];
+    if (!result) return null;
+    return { meta: result.meta ?? {}, quotes: result.timestamp ? result.indicators?.quote?.[0] : undefined };
+  } catch {
+    return null;
+  }
+}
+
+async function fetchYahooSummary(
+  symbol: string,
+  modules: string
+): Promise<Record<string, unknown> | null> {
+  try {
+    const url = `https://query1.finance.yahoo.com/v10/finance/quoteSummary/${encodeURIComponent(symbol)}?modules=${modules}`;
+    const res = await fetch(url, { headers: YF_HEADERS, cache: "no-store" });
+    if (!res.ok) return null;
+    const json = await res.json();
+    return json?.quoteSummary?.result?.[0] ?? null;
+  } catch {
+    return null;
+  }
+}
+
 export async function getQuote(ticker: string): Promise<QuoteResult | null> {
-  // 현금은 가격 조회 불필요
   if (ticker === "CASH") return null;
 
-  // 한국 종목(숫자로 시작하는 6자리 영숫자)은 .KS → .KQ 순으로 시도
-  if (/^\d[A-Z0-9]{5}$/i.test(ticker)) {
-    for (const suffix of [".KS", ".KQ"]) {
-      try {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const result: any = await yf.quote(`${ticker}${suffix}`);
-        if (!result?.regularMarketPrice) continue;
+  const isKorean = /^\d[A-Z0-9]{5}$/i.test(ticker);
+  const symbols = isKorean
+    ? [`${ticker}.KS`, `${ticker}.KQ`]
+    : [resolveYahooSymbol(ticker)];
 
-        const name = result.shortName ?? result.longName ?? "";
-        // shortName에 ticker가 포함되거나 쉼표가 있으면 잘못된 데이터 → 다음 suffix 시도
-        if (!name || name.includes(ticker) || name.includes(",")) continue;
-
-        return {
-          ticker,
-          price: result.regularMarketPrice,
-          changePct: result.regularMarketChangePercent ?? 0,
-          currency: result.currency ?? "KRW",
-          name,
-        };
-      } catch {
-        // 해당 suffix로 조회 실패 시 다음 시도
-      }
-    }
-    return null;
-  }
-
-  // 해외 종목
-  try {
-    const symbol = resolveYahooSymbol(ticker);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const result: any = await yf.quote(symbol);
-    if (!result || !result.regularMarketPrice) return null;
+  for (const symbol of symbols) {
+    const data = await fetchYahooChart(symbol);
+    if (!data) continue;
+    const meta = data.meta;
+    const price = meta.regularMarketPrice as number | undefined;
+    if (!price) continue;
+    const prevClose = (meta.chartPreviousClose ?? meta.regularMarketPreviousClose ?? price) as number;
+    const changePct = prevClose ? ((price - prevClose) / prevClose) * 100 : 0;
     return {
       ticker,
-      price: result.regularMarketPrice,
-      changePct: result.regularMarketChangePercent ?? 0,
-      currency: result.currency ?? "USD",
-      name: result.shortName ?? result.longName ?? ticker,
+      price,
+      changePct,
+      currency: (meta.currency as string) ?? (isKorean ? "KRW" : "USD"),
+      name: (meta.longName ?? meta.shortName ?? symbol) as string,
     };
-  } catch (e) {
-    console.error(`Failed to get quote for ${ticker}:`, e);
-    return null;
   }
+
+  return null;
 }
 
 export async function getQuotes(tickers: string[]): Promise<QuoteResult[]> {
   const results = await Promise.allSettled(tickers.map(getQuote));
   return results
-    .filter(
-      (r): r is PromiseFulfilledResult<QuoteResult | null> =>
-        r.status === "fulfilled"
-    )
+    .filter((r): r is PromiseFulfilledResult<QuoteResult | null> => r.status === "fulfilled")
     .map((r) => r.value)
     .filter((r): r is QuoteResult => r !== null);
 }
@@ -79,30 +88,21 @@ export async function getStockMetadataFromYahoo(ticker: string): Promise<{
 } | null> {
   if (ticker === "CASH") return null;
 
+  const SECTOR_NORMALIZE: Record<string, string> = {
+    Healthcare: "Health Care",
+    "Financial Services": "Financials",
+  };
+
   const trySymbol = async (symbol: string) => {
-    try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const result: any = await yf.quoteSummary(symbol, {
-        modules: ["assetProfile", "summaryDetail"],
-      });
-      if (!result) return null;
-      // 영어 원문 그대로 저장 (화면에서 locale에 맞게 번역)
-      // Yahoo Finance가 반환하는 비표준 섹터명 정규화
-      const rawSector: string = result.assetProfile?.sector ?? "";
-      const SECTOR_NORMALIZE: Record<string, string> = {
-        Healthcare: "Health Care",
-        "Financial Services": "Financials",
-      };
-      const sector = SECTOR_NORMALIZE[rawSector] ?? rawSector;
-      const annualDividend: number =
-        result.summaryDetail?.trailingAnnualDividendRate ?? 0;
-      const dividendYieldRaw: number =
-        result.summaryDetail?.dividendYield ?? 0;
-      const dividendYield = dividendYieldRaw < 1 ? dividendYieldRaw * 100 : dividendYieldRaw;
-      return { sector, annual_dividend: annualDividend, dividend_yield: dividendYield };
-    } catch {
-      return null;
-    }
+    const result = await fetchYahooSummary(symbol, "assetProfile,summaryDetail");
+    if (!result) return null;
+    const rawSector = ((result.assetProfile as Record<string, unknown>)?.sector as string) ?? "";
+    const sector = SECTOR_NORMALIZE[rawSector] ?? rawSector;
+    const summaryDetail = result.summaryDetail as Record<string, unknown> ?? {};
+    const annualDividend = (summaryDetail.trailingAnnualDividendRate as number) ?? 0;
+    const dividendYieldRaw = (summaryDetail.dividendYield as number) ?? 0;
+    const dividendYield = dividendYieldRaw < 1 ? dividendYieldRaw * 100 : dividendYieldRaw;
+    return { sector, annual_dividend: annualDividend, dividend_yield: dividendYield };
   };
 
   if (/^\d[A-Z0-9]{5}$/i.test(ticker)) {
@@ -113,8 +113,7 @@ export async function getStockMetadataFromYahoo(ticker: string): Promise<{
     return null;
   }
 
-  const symbol = resolveYahooSymbol(ticker);
-  return trySymbol(symbol);
+  return trySymbol(resolveYahooSymbol(ticker));
 }
 
 export async function getBenchmarkHistory(
@@ -123,20 +122,19 @@ export async function getBenchmarkHistory(
   endDate: string
 ): Promise<{ date: string; close: number }[]> {
   try {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const result: any = await yf.chart(symbol, {
-      period1: startDate,
-      period2: endDate,
-      interval: "1d",
-    });
-    if (!result?.quotes) return [];
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return result.quotes
-      .filter((q: { date: Date; close: number | null }) => q.close != null)
-      .map((q: { date: Date; close: number }) => ({
-        date: q.date.toISOString().split("T")[0],
-        close: q.close,
-      }));
+    const p1 = Math.floor(new Date(startDate).getTime() / 1000).toString();
+    const p2 = Math.floor(new Date(endDate).getTime() / 1000).toString();
+    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?period1=${p1}&period2=${p2}&interval=1d`;
+    const res = await fetch(url, { headers: YF_HEADERS, cache: "no-store" });
+    if (!res.ok) return [];
+    const json = await res.json();
+    const result = json?.chart?.result?.[0];
+    if (!result?.timestamp) return [];
+    const timestamps: number[] = result.timestamp;
+    const closes: (number | null)[] = result.indicators?.quote?.[0]?.close ?? [];
+    return timestamps
+      .map((ts, i) => ({ date: new Date(ts * 1000).toISOString().split("T")[0], close: closes[i] }))
+      .filter((r): r is { date: string; close: number } => r.close != null);
   } catch (e) {
     console.error(`Failed to get benchmark history for ${symbol}:`, e);
     return [];
@@ -149,23 +147,16 @@ export async function getDividendCalendarEvents(
   if (ticker === "CASH") return null;
 
   const trySymbol = async (symbol: string) => {
-    try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const result: any = await yf.quoteSummary(symbol, {
-        modules: ["calendarEvents"],
-      });
-      if (!result?.calendarEvents) return null;
-      const cal = result.calendarEvents;
-      const exDate = cal.exDividendDate
-        ? new Date(cal.exDividendDate).toISOString().split("T")[0]
-        : null;
-      const divDate = cal.dividendDate
-        ? new Date(cal.dividendDate).toISOString().split("T")[0]
-        : null;
-      return { exDividendDate: exDate, dividendDate: divDate };
-    } catch {
-      return null;
-    }
+    const result = await fetchYahooSummary(symbol, "calendarEvents");
+    if (!result?.calendarEvents) return null;
+    const cal = result.calendarEvents as Record<string, unknown>;
+    const exDate = cal.exDividendDate
+      ? new Date(cal.exDividendDate as string).toISOString().split("T")[0]
+      : null;
+    const divDate = cal.dividendDate
+      ? new Date(cal.dividendDate as string).toISOString().split("T")[0]
+      : null;
+    return { exDividendDate: exDate, dividendDate: divDate };
   };
 
   if (/^\d[A-Z0-9]{5}$/i.test(ticker)) {
@@ -176,16 +167,10 @@ export async function getDividendCalendarEvents(
     return null;
   }
 
-  const symbol = resolveYahooSymbol(ticker);
-  return trySymbol(symbol);
+  return trySymbol(resolveYahooSymbol(ticker));
 }
 
 export async function getExchangeRate(): Promise<number> {
-  try {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const result: any = await yf.quote("USDKRW=X");
-    return result?.regularMarketPrice ?? 1350;
-  } catch {
-    return 1350;
-  }
+  const data = await fetchYahooChart("USDKRW=X");
+  return (data?.meta.regularMarketPrice as number) ?? 1350;
 }
