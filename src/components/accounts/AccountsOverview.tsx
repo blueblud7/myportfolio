@@ -10,16 +10,25 @@ import { Money } from "@/components/ui/money";
 import { cn } from "@/lib/utils";
 import { TrendingUp, TrendingDown, Wallet, PiggyBank, BarChart2 } from "lucide-react";
 
+import type { Account } from "@/types";
+
 interface AccountsOverviewProps {
   currency?: "KRW" | "USD";
+  ownerFilter?: string;
+  accounts?: Account[];
 }
 
-export function AccountsOverview({ currency = "KRW" }: AccountsOverviewProps) {
+export function AccountsOverview({ currency = "KRW", ownerFilter = "all", accounts }: AccountsOverviewProps) {
   const t = useTranslations("AccountsOverview");
   const { data: holdings } = useHoldings();
   const { data: exchangeRateData } = useExchangeRate();
   const { data: reports } = useReports();
   const exchangeRate = exchangeRateData?.rate ?? 1350;
+
+  const allowedAccountIds = useMemo(() => {
+    if (ownerFilter === "all" || !accounts) return null;
+    return new Set(accounts.map((a) => a.id));
+  }, [ownerFilter, accounts]);
 
   const summary = useMemo(() => {
     if (!Array.isArray(holdings)) return { totalKrw: 0, costKrw: 0, gainLossKrw: 0, gainLossPct: 0 };
@@ -28,9 +37,11 @@ export function AccountsOverview({ currency = "KRW" }: AccountsOverviewProps) {
     let costKrw = 0;
 
     for (const h of holdings as {
+      account_id: number;
       ticker: string; quantity: number; avg_cost: number;
       current_price: number; currency: string;
     }[]) {
+      if (allowedAccountIds && !allowedAccountIds.has(h.account_id)) continue;
       const price = h.ticker === "CASH" ? h.avg_cost : (h.current_price || h.avg_cost);
       const value = h.quantity * price;
       const cost = h.quantity * h.avg_cost;
@@ -43,14 +54,17 @@ export function AccountsOverview({ currency = "KRW" }: AccountsOverviewProps) {
     const gainLossKrw = totalKrw - costKrw;
     const gainLossPct = costKrw > 0 ? (gainLossKrw / costKrw) * 100 : 0;
     return { totalKrw, costKrw, gainLossKrw, gainLossPct };
-  }, [holdings, exchangeRate]);
+  }, [holdings, exchangeRate, allowedAccountIds]);
 
   const allocationData = useMemo(() => {
     if (!reports?.by_account) return [];
+    const allowedNames = allowedAccountIds && accounts
+      ? new Set(accounts.map((a) => a.name))
+      : null;
     return reports.by_account
-      .filter((a) => a.value_krw > 0)
+      .filter((a) => a.value_krw > 0 && (!allowedNames || allowedNames.has(a.name)))
       .map((a) => ({ name: a.name, value: a.value_krw }));
-  }, [reports]);
+  }, [reports, allowedAccountIds, accounts]);
 
   const topPerformers = reports?.top_performers ?? [];
   const worstPerformers = reports?.worst_performers ?? [];

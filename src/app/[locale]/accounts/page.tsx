@@ -33,13 +33,39 @@ export default function AccountsPage() {
   const [orderedAccounts, setOrderedAccounts] = useState<Account[]>([]);
   const [dragIndex, setDragIndex] = useState<number | null>(null);
   const [dropIndex, setDropIndex] = useState<number | null>(null);
+  const [ownerFilter, setOwnerFilter] = useState<string>("all");
 
   useEffect(() => {
     const saved = localStorage.getItem("portfolio_currency") as "KRW" | "USD" | null;
     if (saved === "USD") startTransition(() => setCurrencyState("USD"));
     const savedView = localStorage.getItem("accounts_view") as ViewMode | null;
     if (savedView) setViewMode(savedView);
+    const savedOwner = localStorage.getItem("accounts_owner_filter");
+    if (savedOwner) setOwnerFilter(savedOwner);
   }, []);
+
+  const handleOwnerFilter = (v: string) => {
+    setOwnerFilter(v);
+    localStorage.setItem("accounts_owner_filter", v);
+  };
+
+  const owners = useMemo(() => {
+    if (!Array.isArray(accounts)) return [];
+    const set = new Set<string>();
+    for (const a of accounts) if (a.owner) set.add(a.owner);
+    return Array.from(set).sort();
+  }, [accounts]);
+
+  const hasUnassigned = useMemo(
+    () => Array.isArray(accounts) && accounts.some((a) => !a.owner),
+    [accounts]
+  );
+
+  const filteredAccounts = useMemo(() => {
+    if (ownerFilter === "all") return orderedAccounts;
+    if (ownerFilter === "__unassigned__") return orderedAccounts.filter((a) => !a.owner);
+    return orderedAccounts.filter((a) => a.owner === ownerFilter);
+  }, [orderedAccounts, ownerFilter]);
 
   useEffect(() => {
     if (Array.isArray(accounts)) setOrderedAccounts(accounts);
@@ -157,6 +183,7 @@ export default function AccountsPage() {
   };
 
   const isEmpty = !Array.isArray(orderedAccounts) || orderedAccounts.length === 0;
+  const isFilteredEmpty = filteredAccounts.length === 0;
 
   return (
     <div className="space-y-6">
@@ -243,7 +270,54 @@ export default function AccountsPage() {
         </div>
       )}
 
-      <AccountsOverview currency={currency} />
+      {(owners.length > 0 || hasUnassigned) && (
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-xs text-muted-foreground">소유자:</span>
+          <button
+            onClick={() => handleOwnerFilter("all")}
+            className={cn(
+              "rounded-full border px-3 py-1 text-xs font-medium transition-colors",
+              ownerFilter === "all"
+                ? "border-blue-500 bg-blue-500 text-white"
+                : "border-border bg-card text-muted-foreground hover:text-foreground"
+            )}
+          >
+            전체 ({orderedAccounts.length})
+          </button>
+          {owners.map((o) => {
+            const count = orderedAccounts.filter((a) => a.owner === o).length;
+            return (
+              <button
+                key={o}
+                onClick={() => handleOwnerFilter(o)}
+                className={cn(
+                  "rounded-full border px-3 py-1 text-xs font-medium transition-colors",
+                  ownerFilter === o
+                    ? "border-blue-500 bg-blue-500 text-white"
+                    : "border-border bg-card text-muted-foreground hover:text-foreground"
+                )}
+              >
+                {o} ({count})
+              </button>
+            );
+          })}
+          {hasUnassigned && (
+            <button
+              onClick={() => handleOwnerFilter("__unassigned__")}
+              className={cn(
+                "rounded-full border px-3 py-1 text-xs font-medium transition-colors",
+                ownerFilter === "__unassigned__"
+                  ? "border-blue-500 bg-blue-500 text-white"
+                  : "border-border bg-card text-muted-foreground hover:text-foreground"
+              )}
+            >
+              미지정 ({orderedAccounts.filter((a) => !a.owner).length})
+            </button>
+          )}
+        </div>
+      )}
+
+      <AccountsOverview currency={currency} ownerFilter={ownerFilter} accounts={filteredAccounts} />
 
       <AccountTrendChart currency={currency} exchangeRate={exchangeRate} />
 
@@ -253,9 +327,15 @@ export default function AccountsPage() {
             {t("noAccounts")}
           </CardContent>
         </Card>
+      ) : isFilteredEmpty ? (
+        <Card>
+          <CardContent className="py-12 text-center text-muted-foreground">
+            선택한 소유자의 계좌가 없습니다.
+          </CardContent>
+        </Card>
       ) : viewMode === "card" ? (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {orderedAccounts.map((account, index) => {
+          {filteredAccounts.map((account, index) => {
             const stat = accountStats[account.id];
             const gainLoss = stat ? stat.totalKrw - stat.costKrw : 0;
             const gainLossPct = stat?.costKrw > 0 ? (gainLoss / stat.costKrw) * 100 : 0;
@@ -271,7 +351,7 @@ export default function AccountsPage() {
                   isDragging && "opacity-40 scale-95",
                   isDropTarget && "ring-2 ring-indigo-500 ring-offset-1"
                 )}
-                draggable
+                draggable={ownerFilter === "all"}
                 onDragStart={() => handleDragStart(index)}
                 onDragOver={(e) => handleDragOver(e, index)}
                 onDrop={(e) => handleDrop(e, index)}
@@ -282,11 +362,16 @@ export default function AccountsPage() {
                     <GripVertical className="mt-0.5 h-4 w-4 shrink-0 cursor-grab text-muted-foreground/50 active:cursor-grabbing" />
                     <div>
                       <CardTitle className="text-lg">{account.name}</CardTitle>
-                      <div className="mt-1 flex gap-2">
+                      <div className="mt-1 flex flex-wrap gap-2">
                         <Badge variant="outline">
                           {account.type === "stock" ? t("stock") : t("bank")}
                         </Badge>
                         <Badge variant="secondary">{account.currency}</Badge>
+                        {account.owner && (
+                          <Badge variant="outline" className="border-blue-500/40 text-blue-600 dark:text-blue-400">
+                            👤 {account.owner}
+                          </Badge>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -375,7 +460,7 @@ export default function AccountsPage() {
               </tr>
             </thead>
             <tbody>
-              {orderedAccounts.map((account, index) => {
+              {filteredAccounts.map((account, index) => {
                 const stat = accountStats[account.id];
                 const gainLoss = stat ? stat.totalKrw - stat.costKrw : 0;
                 const gainLossPct = stat?.costKrw > 0 ? (gainLoss / stat.costKrw) * 100 : 0;
@@ -391,7 +476,7 @@ export default function AccountsPage() {
                       isDragging && "opacity-40",
                       isDropTarget && "bg-indigo-500/10"
                     )}
-                    draggable
+                    draggable={ownerFilter === "all"}
                     onDragStart={() => handleDragStart(index)}
                     onDragOver={(e) => handleDragOver(e, index)}
                     onDrop={(e) => handleDrop(e, index)}
@@ -402,13 +487,18 @@ export default function AccountsPage() {
                     </td>
                     <td className="px-4 py-3">
                       <div className="font-medium">{account.name}</div>
-                      <div className="mt-0.5 flex gap-1.5">
+                      <div className="mt-0.5 flex flex-wrap gap-1.5">
                         <Badge variant="outline" className="text-[10px] px-1 py-0">
                           {account.type === "stock" ? t("stock") : t("bank")}
                         </Badge>
                         <Badge variant="secondary" className="text-[10px] px-1 py-0">
                           {account.currency}
                         </Badge>
+                        {account.owner && (
+                          <Badge variant="outline" className="text-[10px] px-1 py-0 border-blue-500/40 text-blue-600 dark:text-blue-400">
+                            👤 {account.owner}
+                          </Badge>
+                        )}
                       </div>
                     </td>
                     <td className="px-4 py-3 text-muted-foreground hidden sm:table-cell">

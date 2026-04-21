@@ -5,6 +5,7 @@ export interface Account {
   currency: "KRW" | "USD";
   broker: string;
   target_pct: number;
+  owner?: string | null;
   created_at: string;
 }
 
