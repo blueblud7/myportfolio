@@ -43,6 +43,48 @@ function calcComposite(raw: SentimentData["raw"]): Pick<SentimentData, "KR" | "U
   return { KR, US, Crypto, Overall };
 }
 
+// 외국인 KOSPI 순매수 (억원) — KRX 공공 API, 실패 시 0 (중립)
+async function fetchForeignNetBuy(): Promise<number> {
+  try {
+    const today = new Date();
+    // 주말이면 가장 최근 금요일로 조정
+    const day = today.getDay();
+    if (day === 0) today.setDate(today.getDate() - 2);
+    else if (day === 6) today.setDate(today.getDate() - 1);
+    const trdDd = today.toISOString().split("T")[0].replace(/-/g, "");
+
+    const res = await fetch("https://data.krx.co.kr/comm/bldAttendant/getJsonData.cmd", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+        "User-Agent": "Mozilla/5.0",
+        "Referer": "https://data.krx.co.kr/",
+      },
+      body: new URLSearchParams({
+        bld: "dbms/MDC/STAT/standard/MDCSTAT02501",
+        locale: "ko_KR",
+        idxIndMidclssCd: "01",
+        trdDd,
+      }).toString(),
+      cache: "no-store",
+    });
+
+    if (!res.ok) return 0;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const json: any = await res.json();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const rows: any[] = json?.OutBlock_1 ?? [];
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const foreign = rows.find((r: any) => r.INVST_TP_NM?.includes("외국인"));
+    if (!foreign) return 0;
+    // NETBUY_TRDVAL: 백만원 단위 → 억원으로 변환
+    const raw = String(foreign.NETBUY_TRDVAL ?? "0").replace(/,/g, "");
+    return Math.round(Number(raw) / 100);
+  } catch {
+    return 0;
+  }
+}
+
 async function fetchYahoo(symbol: string): Promise<{ price: number; prevClose: number }> {
   const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}`;
   const res = await fetch(url, { headers: { "User-Agent": "Mozilla/5.0" }, cache: "no-store" });
@@ -52,12 +94,13 @@ async function fetchYahoo(symbol: string): Promise<{ price: number; prevClose: n
 }
 
 export async function fetchSentimentData(): Promise<SentimentData> {
-  const [vixData, kospiData, kosdaqData, sp500Data, fngRes] = await Promise.allSettled([
+  const [vixData, kospiData, kosdaqData, sp500Data, fngRes, foreignNetBuyData] = await Promise.allSettled([
     fetchYahoo("^VIX"),
     fetchYahoo("^KS11"),
     fetchYahoo("^KQ11"),
     fetchYahoo("^GSPC"),
     fetch("https://api.alternative.me/fng/", { cache: "no-store" }).then((r) => r.json()),
+    fetchForeignNetBuy(),
   ]);
 
   const vix = vixData.status === "fulfilled" ? vixData.value : { price: 18.5, prevClose: 17.2 };
@@ -65,6 +108,7 @@ export async function fetchSentimentData(): Promise<SentimentData> {
   const kosdaq = kosdaqData.status === "fulfilled" ? kosdaqData.value : { price: 850, prevClose: 855 };
   const sp500 = sp500Data.status === "fulfilled" ? sp500Data.value : { price: 5100, prevClose: 5125 };
   const fng = fngRes.status === "fulfilled" ? fngRes.value : null;
+  const foreignNetBuy = foreignNetBuyData.status === "fulfilled" ? foreignNetBuyData.value : 0;
 
   const cryptoFG = Number(fng?.data?.[0]?.value ?? 45);
   const cryptoLabel = fng?.data?.[0]?.value_classification ?? "Fear";
@@ -77,7 +121,7 @@ export async function fetchSentimentData(): Promise<SentimentData> {
     kospiChangePct: kospi.prevClose ? ((kospi.price - kospi.prevClose) / kospi.prevClose) * 100 : 0,
     kosdaqChangePct: kosdaq.prevClose ? ((kosdaq.price - kosdaq.prevClose) / kosdaq.prevClose) * 100 : 0,
     sp500ChangePct: sp500.prevClose ? ((sp500.price - sp500.prevClose) / sp500.prevClose) * 100 : 0,
-    foreignNetBuy: -500,
+    foreignNetBuy,
   };
 
   const scores = calcComposite(raw);

@@ -119,7 +119,7 @@ ${bankBalances.map((b) => `- ${b.name}: ${b.currency === "USD" ? "$" : "₩"}${b
 
     const message = await client.chat.completions.create({
       model: "gpt-5-nano",
-      max_tokens: 1500,
+      max_completion_tokens: 1500,
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: userMessage },
