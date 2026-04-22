@@ -106,7 +106,7 @@ export async function GET(req: NextRequest) {
           ? r.value
           : { key: "", name: "", ticker: "", changePct: null, price: null }
       )
-      .filter((r) => r.key)
+      .filter((r) => r.key && r.changePct !== null)
       .sort((a, b) => (b.changePct ?? -999) - (a.changePct ?? -999));
 
   const data: SectorFlowResponse = {
