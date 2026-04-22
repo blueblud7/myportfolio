@@ -134,7 +134,10 @@ export default function DashboardPage() {
     <div className="space-y-5">
       <h1 className="text-2xl font-bold">{t("title")}</h1>
 
-      {/* ① 포트폴리오 요약 — 가장 중요한 숫자 */}
+      {/* ① 시장 지수 — 맨 위 */}
+      <MarketIndices />
+
+      {/* ② 포트폴리오 요약 */}
       <SummaryCards
         totalKrw={summary.totalKrw}
         totalUsd={summary.totalUsd}
@@ -145,19 +148,12 @@ export default function DashboardPage() {
         bankValueKrw={summary.bankValueKrw}
       />
 
-      {/* ② Today's Signals — 보유 종목 급변동 */}
+      {/* ③ Today's Signals — 시장 전체 + 내 포트폴리오 탭 */}
       <TodaySignals />
 
-      {/* ③ 시장 지표 + 심리 — 3열 */}
+      {/* ④ 심리 지표 + P/C Ratio + Polymarket — 3열 */}
       <div className="grid gap-4 lg:grid-cols-3">
-        <div className="lg:col-span-2">
-          <MarketIndices />
-        </div>
         <FomoSentimentWidget />
-      </div>
-
-      {/* ④ P/C Ratio + Polymarket — 2열 */}
-      <div className="grid gap-4 md:grid-cols-2">
         <div className="rounded-xl border bg-card p-4">
           <h2 className="mb-3 text-sm font-semibold">{t("putCallRatio")}</h2>
           <PutCallRatioWidget />
