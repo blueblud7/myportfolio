@@ -93,6 +93,14 @@ export function FomoSentimentWidget() {
           <span>S&P500 <span className={cn("font-mono", d.raw.sp500ChangePct >= 0 ? "text-emerald-500" : "text-red-500")}>
             {d.raw.sp500ChangePct >= 0 ? "+" : ""}{d.raw.sp500ChangePct.toFixed(2)}%
           </span></span>
+          {d.raw.cnnFG !== null && (
+            <span className="col-span-2 flex items-center justify-between border-t border-border pt-1 mt-0.5">
+              <span>CNN Fear&Greed</span>
+              <span className={cn("font-mono font-bold", scoreColor(d.raw.cnnFG))}>
+                {d.raw.cnnFG} <span className="font-normal opacity-70">{d.raw.cnnFGLabel}</span>
+              </span>
+            </span>
+          )}
         </div>
       )}
 

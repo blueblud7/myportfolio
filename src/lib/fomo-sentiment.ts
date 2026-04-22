@@ -85,6 +85,33 @@ async function fetchForeignNetBuy(): Promise<number> {
   }
 }
 
+// CNN Fear & Greed Index (주식시장 기준)
+async function fetchCnnFearGreed(): Promise<{ score: number | null; label: string | null }> {
+  try {
+    const res = await fetch(
+      "https://production.dataviz.cnn.io/index/fearandgreed/graphdata",
+      { headers: { "User-Agent": "Mozilla/5.0", "Referer": "https://www.cnn.com/" }, cache: "no-store" }
+    );
+    if (!res.ok) return { score: null, label: null };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const json: any = await res.json();
+    const fg = json?.fear_and_greed;
+    if (!fg) return { score: null, label: null };
+    const score = Math.round(Number(fg.score));
+    const ratingMap: Record<string, string> = {
+      "Extreme Fear": "극단적 공포",
+      "Fear": "공포",
+      "Neutral": "중립",
+      "Greed": "탐욕",
+      "Extreme Greed": "극단적 탐욕",
+    };
+    const label = ratingMap[fg.rating as string] ?? fg.rating ?? null;
+    return { score, label };
+  } catch {
+    return { score: null, label: null };
+  }
+}
+
 async function fetchYahoo(symbol: string): Promise<{ price: number; prevClose: number }> {
   const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}`;
   const res = await fetch(url, { headers: { "User-Agent": "Mozilla/5.0" }, cache: "no-store" });
@@ -94,13 +121,14 @@ async function fetchYahoo(symbol: string): Promise<{ price: number; prevClose: n
 }
 
 export async function fetchSentimentData(): Promise<SentimentData> {
-  const [vixData, kospiData, kosdaqData, sp500Data, fngRes, foreignNetBuyData] = await Promise.allSettled([
+  const [vixData, kospiData, kosdaqData, sp500Data, fngRes, foreignNetBuyData, cnnFGData] = await Promise.allSettled([
     fetchYahoo("^VIX"),
     fetchYahoo("^KS11"),
     fetchYahoo("^KQ11"),
     fetchYahoo("^GSPC"),
     fetch("https://api.alternative.me/fng/", { cache: "no-store" }).then((r) => r.json()),
     fetchForeignNetBuy(),
+    fetchCnnFearGreed(),
   ]);
 
   const vix = vixData.status === "fulfilled" ? vixData.value : { price: 18.5, prevClose: 17.2 };
@@ -109,6 +137,7 @@ export async function fetchSentimentData(): Promise<SentimentData> {
   const sp500 = sp500Data.status === "fulfilled" ? sp500Data.value : { price: 5100, prevClose: 5125 };
   const fng = fngRes.status === "fulfilled" ? fngRes.value : null;
   const foreignNetBuy = foreignNetBuyData.status === "fulfilled" ? foreignNetBuyData.value : 0;
+  const cnnFG = cnnFGData.status === "fulfilled" ? cnnFGData.value : { score: null, label: null };
 
   const cryptoFG = Number(fng?.data?.[0]?.value ?? 45);
   const cryptoLabel = fng?.data?.[0]?.value_classification ?? "Fear";
@@ -122,6 +151,8 @@ export async function fetchSentimentData(): Promise<SentimentData> {
     kosdaqChangePct: kosdaq.prevClose ? ((kosdaq.price - kosdaq.prevClose) / kosdaq.prevClose) * 100 : 0,
     sp500ChangePct: sp500.prevClose ? ((sp500.price - sp500.prevClose) / sp500.prevClose) * 100 : 0,
     foreignNetBuy,
+    cnnFG: cnnFG.score,
+    cnnFGLabel: cnnFG.label,
   };
 
   const scores = calcComposite(raw);

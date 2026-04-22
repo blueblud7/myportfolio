@@ -13,6 +13,8 @@ export interface SentimentData {
     kosdaqChangePct: number;
     sp500ChangePct: number;
     foreignNetBuy: number;
+    cnnFG: number | null;
+    cnnFGLabel: string | null;
   };
   timestamp: string;
 }
