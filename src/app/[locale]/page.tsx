@@ -10,6 +10,7 @@ import { PolymarketWidget } from "@/components/dashboard/PolymarketWidget";
 import { PutCallRatioWidget } from "@/components/dashboard/PutCallRatioWidget";
 import { WatchlistWidget } from "@/components/dashboard/WatchlistWidget";
 import { FomoSentimentWidget } from "@/components/dashboard/FomoSentimentWidget";
+import { TodaySignals } from "@/components/dashboard/TodaySignals";
 import { useAccounts, useHoldings, useExchangeRate, useBankBalances, refreshPrices } from "@/hooks/use-api";
 
 export default function DashboardPage() {
@@ -130,11 +131,10 @@ export default function DashboardPage() {
   }, [summary, t]);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <h1 className="text-2xl font-bold">{t("title")}</h1>
 
-      <MarketIndices />
-
+      {/* ① 포트폴리오 요약 — 가장 중요한 숫자 */}
       <SummaryCards
         totalKrw={summary.totalKrw}
         totalUsd={summary.totalUsd}
@@ -145,14 +145,19 @@ export default function DashboardPage() {
         bankValueKrw={summary.bankValueKrw}
       />
 
-      <TotalAssetChart />
+      {/* ② Today's Signals — 보유 종목 급변동 */}
+      <TodaySignals />
 
-      <div className="grid gap-4 md:grid-cols-2">
-        <AllocationChart title={t("byCurrency")} data={allocationByType} />
-        <AllocationChart title={t("byAccount")} data={allocationByAccount} />
+      {/* ③ 시장 지표 + 심리 — 3열 */}
+      <div className="grid gap-4 lg:grid-cols-3">
+        <div className="lg:col-span-2">
+          <MarketIndices />
+        </div>
+        <FomoSentimentWidget />
       </div>
 
-      <div className="grid gap-4 md:grid-cols-3">
+      {/* ④ P/C Ratio + Polymarket — 2열 */}
+      <div className="grid gap-4 md:grid-cols-2">
         <div className="rounded-xl border bg-card p-4">
           <h2 className="mb-3 text-sm font-semibold">{t("putCallRatio")}</h2>
           <PutCallRatioWidget />
@@ -161,7 +166,15 @@ export default function DashboardPage() {
           <h2 className="mb-3 text-sm font-semibold">{t("polymarket")}</h2>
           <PolymarketWidget />
         </div>
-        <FomoSentimentWidget />
+      </div>
+
+      {/* ⑤ 자산 추이 차트 */}
+      <TotalAssetChart />
+
+      {/* ⑥ 배분 + 워치리스트 */}
+      <div className="grid gap-4 md:grid-cols-2">
+        <AllocationChart title={t("byCurrency")} data={allocationByType} />
+        <AllocationChart title={t("byAccount")} data={allocationByAccount} />
       </div>
 
       <WatchlistWidget />
