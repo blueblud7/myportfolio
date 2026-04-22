@@ -12,8 +12,8 @@ import type { SectorFlowResponse, SectorItem } from "@/app/api/sector-flow/route
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface GoalData {
-  goals: { id: number; year: number; return_target_pct: number; value_target_usd: number | null; note: string | null }[];
-  currentGoal: { year: number; return_target_pct: number; value_target_usd: number | null; note: string | null } | null;
+  goals: { id: number; year: number; return_target_pct: number; value_target_usd: number | null; start_value_usd: number | null; note: string | null }[];
+  currentGoal: { year: number; return_target_pct: number; value_target_usd: number | null; start_value_usd: number | null; note: string | null } | null;
   ytd: { startKrw: number | null; currentKrw: number | null; startUsd: number | null; currentUsd: number | null; returnPct: number | null };
   exchangeRate: number;
   daysLeft: number;
@@ -73,55 +73,78 @@ function GoalForm({
   year,
   initialPct,
   initialUsd,
-  startUsd,
+  initialStartUsd,
+  snapshotStartUsd,
   onSave,
   onCancel,
 }: {
   year: number;
   initialPct: number;
   initialUsd: number | null;
-  startUsd: number | null;
-  onSave: (params: { returnTargetPct?: number; valueTargetUsd?: number }) => void;
+  initialStartUsd: number | null;
+  snapshotStartUsd: number | null;
+  onSave: (params: { returnTargetPct?: number; valueTargetUsd?: number; startValueUsd?: number }) => void;
   onCancel: () => void;
 }) {
   const [mode, setMode] = useState<InputMode>(initialUsd ? "usd" : "pct");
   const [usdVal, setUsdVal] = useState(initialUsd ? (initialUsd / 1_000_000).toFixed(3) : "");
   const [pctVal, setPctVal] = useState(initialPct ? initialPct.toFixed(1) : "");
+  // 연초 기준값: 수동입력 > 스냅샷
+  const defaultStart = initialStartUsd ?? snapshotStartUsd;
+  const [startVal, setStartVal] = useState(defaultStart ? (defaultStart / 1_000_000).toFixed(3) : "");
 
-  // Preview the other field in real-time
+  const startUsd = parseFloat(startVal) * 1_000_000 || null;
   const usdNum = parseFloat(usdVal) * 1_000_000;
   const pctNum = parseFloat(pctVal);
+
   const previewPct = mode === "usd" && !isNaN(usdNum) && startUsd
-    ? ((usdNum - startUsd) / startUsd) * 100
-    : null;
+    ? ((usdNum - startUsd) / startUsd) * 100 : null;
   const previewUsd = mode === "pct" && !isNaN(pctNum) && startUsd
-    ? startUsd * (1 + pctNum / 100)
-    : null;
+    ? startUsd * (1 + pctNum / 100) : null;
 
   const handleSave = () => {
+    const sv = startUsd && startUsd > 0 ? startUsd : undefined;
     if (mode === "usd") {
-      if (!isNaN(usdNum) && usdNum > 0) onSave({ valueTargetUsd: usdNum });
+      if (!isNaN(usdNum) && usdNum > 0) onSave({ valueTargetUsd: usdNum, startValueUsd: sv });
     } else {
-      if (!isNaN(pctNum)) onSave({ returnTargetPct: pctNum });
+      if (!isNaN(pctNum)) onSave({ returnTargetPct: pctNum, startValueUsd: sv });
     }
   };
 
   return (
     <div className="space-y-3">
+      {/* 연초 기준값 */}
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-xs text-zinc-500 w-20 shrink-0">연초 기준값</span>
+        <div className="flex items-center gap-1">
+          <span className="text-sm text-zinc-400">$</span>
+          <Input
+            type="number"
+            step="0.001"
+            value={startVal}
+            onChange={(e) => setStartVal(e.target.value)}
+            placeholder="1.450"
+            className="h-8 w-28 tabular-nums"
+          />
+          <span className="text-sm text-zinc-400">M</span>
+        </div>
+        {snapshotStartUsd && (
+          <span className="text-[11px] text-zinc-600">
+            (스냅샷: {fmtUsd(snapshotStartUsd)} — 다르면 직접 입력)
+          </span>
+        )}
+      </div>
+
       {/* Mode toggle */}
       <div className="flex gap-1 rounded-lg bg-muted/30 p-0.5 w-fit">
-        <button
-          onClick={() => setMode("usd")}
+        <button onClick={() => setMode("usd")}
           className={cn("rounded px-3 py-1 text-xs font-medium transition-colors",
-            mode === "usd" ? "bg-background text-foreground shadow" : "text-muted-foreground hover:text-foreground")}
-        >
+            mode === "usd" ? "bg-background text-foreground shadow" : "text-muted-foreground hover:text-foreground")}>
           목표 금액 ($)
         </button>
-        <button
-          onClick={() => setMode("pct")}
+        <button onClick={() => setMode("pct")}
           className={cn("rounded px-3 py-1 text-xs font-medium transition-colors",
-            mode === "pct" ? "bg-background text-foreground shadow" : "text-muted-foreground hover:text-foreground")}
-        >
+            mode === "pct" ? "bg-background text-foreground shadow" : "text-muted-foreground hover:text-foreground")}>
           목표 수익률 (%)
         </button>
       </div>
@@ -130,15 +153,9 @@ function GoalForm({
         {mode === "usd" ? (
           <div className="flex items-center gap-1.5">
             <span className="text-sm text-zinc-400">$</span>
-            <Input
-              autoFocus
-              type="number"
-              step="0.001"
-              value={usdVal}
+            <Input autoFocus type="number" step="0.001" value={usdVal}
               onChange={(e) => setUsdVal(e.target.value)}
-              placeholder="2.200"
-              className="h-8 w-28 tabular-nums"
-            />
+              placeholder="2.200" className="h-8 w-28 tabular-nums" />
             <span className="text-sm text-zinc-400">M</span>
             {previewPct !== null && (
               <span className="flex items-center gap-1 text-xs text-zinc-400">
@@ -146,27 +163,21 @@ function GoalForm({
                 역산: <span className={cn("font-semibold", previewPct >= 0 ? "text-emerald-400" : "text-red-400")}>
                   {fmtPct(previewPct)}
                 </span>
-                {startUsd && <span className="text-zinc-600">(연초 {fmtUsd(startUsd)} 기준)</span>}
+                <span className="text-zinc-600">(연초 {fmtUsd(startUsd)} 기준)</span>
               </span>
             )}
           </div>
         ) : (
           <div className="flex items-center gap-1.5">
-            <Input
-              autoFocus
-              type="number"
-              step="0.1"
-              value={pctVal}
+            <Input autoFocus type="number" step="0.1" value={pctVal}
               onChange={(e) => setPctVal(e.target.value)}
-              placeholder="20"
-              className="h-8 w-24 tabular-nums"
-            />
+              placeholder="20" className="h-8 w-24 tabular-nums" />
             <span className="text-sm text-zinc-400">%</span>
             {previewUsd !== null && (
               <span className="flex items-center gap-1 text-xs text-zinc-400">
                 <ArrowRight className="h-3 w-3" />
                 목표금액: <span className="font-semibold text-blue-400">{fmtUsd(previewUsd)}</span>
-                {startUsd && <span className="text-zinc-600">(연초 {fmtUsd(startUsd)} 기준)</span>}
+                <span className="text-zinc-600">(연초 {fmtUsd(startUsd)} 기준)</span>
               </span>
             )}
           </div>
@@ -221,7 +232,7 @@ export default function GoalsPage() {
   useEffect(() => { loadGoals(); }, [loadGoals]);
   useEffect(() => { loadFlow(period); }, [period, loadFlow]);
 
-  const saveGoal = async (params: { returnTargetPct?: number; valueTargetUsd?: number }) => {
+  const saveGoal = async (params: { returnTargetPct?: number; valueTargetUsd?: number; startValueUsd?: number }) => {
     const year = goalData?.year ?? new Date().getFullYear();
     await fetch("/api/goals", {
       method: "POST",
@@ -244,6 +255,7 @@ export default function GoalsPage() {
   const targetPct = goal ? Number(goal.return_target_pct) : null;
   const targetUsd = goal?.value_target_usd ? Number(goal.value_target_usd) : null;
   const startUsd = ytd?.startUsd ?? null;
+  const snapshotStartUsd = goalData?.ytd.startUsd ?? null;
   const currentUsd = ytd?.currentUsd ?? null;
 
   // 목표까지 남은 금액
@@ -312,7 +324,8 @@ export default function GoalsPage() {
               year={goalData?.year ?? new Date().getFullYear()}
               initialPct={targetPct ?? 0}
               initialUsd={targetUsd}
-              startUsd={startUsd}
+              initialStartUsd={goal?.start_value_usd ? Number(goal.start_value_usd) : null}
+              snapshotStartUsd={snapshotStartUsd}
               onSave={saveGoal}
               onCancel={() => setEditing(false)}
             />
