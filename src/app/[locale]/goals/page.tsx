@@ -5,16 +5,17 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Target, TrendingUp, TrendingDown, Pencil, Check, X, RefreshCw, Calendar, Flame } from "lucide-react";
+import { Target, TrendingUp, TrendingDown, Pencil, Check, X, RefreshCw, Calendar, Flame, ArrowRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { SectorFlowResponse, SectorItem } from "@/app/api/sector-flow/route";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface GoalData {
-  goals: { id: number; year: number; return_target_pct: number; note: string | null }[];
-  currentGoal: { year: number; return_target_pct: number; note: string | null } | null;
-  ytd: { startValue: number | null; currentValue: number | null; returnPct: number | null };
+  goals: { id: number; year: number; return_target_pct: number; value_target_usd: number | null; note: string | null }[];
+  currentGoal: { year: number; return_target_pct: number; value_target_usd: number | null; note: string | null } | null;
+  ytd: { startKrw: number | null; currentKrw: number | null; startUsd: number | null; currentUsd: number | null; returnPct: number | null };
+  exchangeRate: number;
   daysLeft: number;
   daysPassed: number;
   totalDays: number;
@@ -22,6 +23,7 @@ interface GoalData {
 }
 
 type Period = "1W" | "1M" | "3M" | "YTD";
+type InputMode = "usd" | "pct";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -36,29 +38,29 @@ function heatColor(pct: number | null): string {
   return           "bg-red-500/25     text-red-300 border-red-500/30";
 }
 
-function fmt(n: number | null, digits = 2): string {
+function fmtPct(n: number | null, digits = 1): string {
   if (n === null) return "—";
-  const s = n.toFixed(digits);
-  return n >= 0 ? `+${s}%` : `${s}%`;
+  return (n >= 0 ? "+" : "") + n.toFixed(digits) + "%";
+}
+
+function fmtUsd(n: number | null): string {
+  if (n === null) return "—";
+  if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(2)}M`;
+  return `$${Math.round(n).toLocaleString()}`;
 }
 
 // ─── Sector Tile ──────────────────────────────────────────────────────────────
 
 function SectorTile({ item }: { item: SectorItem }) {
-  const colorClass = heatColor(item.changePct);
   return (
-    <div className={cn("rounded-xl border px-3 py-2.5 transition-colors", colorClass)}>
+    <div className={cn("rounded-xl border px-3 py-2.5 transition-colors", heatColor(item.changePct))}>
       <div className="flex items-start justify-between gap-1">
         <div className="min-w-0">
           <p className="truncate text-xs font-semibold leading-tight">{item.name}</p>
           <p className="mt-0.5 text-[10px] opacity-60">{item.ticker}</p>
         </div>
-        <span className={cn(
-          "shrink-0 text-sm font-bold tabular-nums",
-          item.changePct === null ? "text-zinc-500"
-          : item.changePct >= 0 ? "" : ""
-        )}>
-          {fmt(item.changePct)}
+        <span className="shrink-0 text-sm font-bold tabular-nums">
+          {fmtPct(item.changePct)}
         </span>
       </div>
     </div>
@@ -69,39 +71,118 @@ function SectorTile({ item }: { item: SectorItem }) {
 
 function GoalForm({
   year,
-  initial,
+  initialPct,
+  initialUsd,
+  startUsd,
   onSave,
   onCancel,
 }: {
   year: number;
-  initial: number;
-  onSave: (pct: number) => void;
+  initialPct: number;
+  initialUsd: number | null;
+  startUsd: number | null;
+  onSave: (params: { returnTargetPct?: number; valueTargetUsd?: number }) => void;
   onCancel: () => void;
 }) {
-  const [val, setVal] = useState(String(initial || ""));
+  const [mode, setMode] = useState<InputMode>(initialUsd ? "usd" : "pct");
+  const [usdVal, setUsdVal] = useState(initialUsd ? (initialUsd / 1_000_000).toFixed(3) : "");
+  const [pctVal, setPctVal] = useState(initialPct ? initialPct.toFixed(1) : "");
+
+  // Preview the other field in real-time
+  const usdNum = parseFloat(usdVal) * 1_000_000;
+  const pctNum = parseFloat(pctVal);
+  const previewPct = mode === "usd" && !isNaN(usdNum) && startUsd
+    ? ((usdNum - startUsd) / startUsd) * 100
+    : null;
+  const previewUsd = mode === "pct" && !isNaN(pctNum) && startUsd
+    ? startUsd * (1 + pctNum / 100)
+    : null;
+
+  const handleSave = () => {
+    if (mode === "usd") {
+      if (!isNaN(usdNum) && usdNum > 0) onSave({ valueTargetUsd: usdNum });
+    } else {
+      if (!isNaN(pctNum)) onSave({ returnTargetPct: pctNum });
+    }
+  };
+
   return (
-    <div className="flex items-center gap-2">
-      <span className="text-sm text-zinc-400">{year}년 목표</span>
-      <div className="flex items-center gap-1">
-        <Input
-          autoFocus
-          type="number"
-          step="0.1"
-          value={val}
-          onChange={(e) => setVal(e.target.value)}
-          placeholder="20"
-          className="h-8 w-24 text-center tabular-nums"
-        />
-        <span className="text-sm text-zinc-400">%</span>
+    <div className="space-y-3">
+      {/* Mode toggle */}
+      <div className="flex gap-1 rounded-lg bg-muted/30 p-0.5 w-fit">
+        <button
+          onClick={() => setMode("usd")}
+          className={cn("rounded px-3 py-1 text-xs font-medium transition-colors",
+            mode === "usd" ? "bg-background text-foreground shadow" : "text-muted-foreground hover:text-foreground")}
+        >
+          목표 금액 ($)
+        </button>
+        <button
+          onClick={() => setMode("pct")}
+          className={cn("rounded px-3 py-1 text-xs font-medium transition-colors",
+            mode === "pct" ? "bg-background text-foreground shadow" : "text-muted-foreground hover:text-foreground")}
+        >
+          목표 수익률 (%)
+        </button>
       </div>
-      <Button size="icon" variant="ghost" className="h-8 w-8 text-emerald-400 hover:text-emerald-300"
-        onClick={() => { const n = parseFloat(val); if (!isNaN(n)) onSave(n); }}>
-        <Check className="h-4 w-4" />
-      </Button>
-      <Button size="icon" variant="ghost" className="h-8 w-8 text-zinc-500 hover:text-zinc-300"
-        onClick={onCancel}>
-        <X className="h-4 w-4" />
-      </Button>
+
+      <div className="flex flex-wrap items-center gap-3">
+        {mode === "usd" ? (
+          <div className="flex items-center gap-1.5">
+            <span className="text-sm text-zinc-400">$</span>
+            <Input
+              autoFocus
+              type="number"
+              step="0.001"
+              value={usdVal}
+              onChange={(e) => setUsdVal(e.target.value)}
+              placeholder="2.200"
+              className="h-8 w-28 tabular-nums"
+            />
+            <span className="text-sm text-zinc-400">M</span>
+            {previewPct !== null && (
+              <span className="flex items-center gap-1 text-xs text-zinc-400">
+                <ArrowRight className="h-3 w-3" />
+                역산: <span className={cn("font-semibold", previewPct >= 0 ? "text-emerald-400" : "text-red-400")}>
+                  {fmtPct(previewPct)}
+                </span>
+                {startUsd && <span className="text-zinc-600">(연초 {fmtUsd(startUsd)} 기준)</span>}
+              </span>
+            )}
+          </div>
+        ) : (
+          <div className="flex items-center gap-1.5">
+            <Input
+              autoFocus
+              type="number"
+              step="0.1"
+              value={pctVal}
+              onChange={(e) => setPctVal(e.target.value)}
+              placeholder="20"
+              className="h-8 w-24 tabular-nums"
+            />
+            <span className="text-sm text-zinc-400">%</span>
+            {previewUsd !== null && (
+              <span className="flex items-center gap-1 text-xs text-zinc-400">
+                <ArrowRight className="h-3 w-3" />
+                목표금액: <span className="font-semibold text-blue-400">{fmtUsd(previewUsd)}</span>
+                {startUsd && <span className="text-zinc-600">(연초 {fmtUsd(startUsd)} 기준)</span>}
+              </span>
+            )}
+          </div>
+        )}
+
+        <div className="flex items-center gap-1">
+          <Button size="icon" variant="ghost" className="h-8 w-8 text-emerald-400 hover:text-emerald-300"
+            onClick={handleSave}>
+            <Check className="h-4 w-4" />
+          </Button>
+          <Button size="icon" variant="ghost" className="h-8 w-8 text-zinc-500 hover:text-zinc-300"
+            onClick={onCancel}>
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -140,12 +221,12 @@ export default function GoalsPage() {
   useEffect(() => { loadGoals(); }, [loadGoals]);
   useEffect(() => { loadFlow(period); }, [period, loadFlow]);
 
-  const saveGoal = async (pct: number) => {
+  const saveGoal = async (params: { returnTargetPct?: number; valueTargetUsd?: number }) => {
     const year = goalData?.year ?? new Date().getFullYear();
     await fetch("/api/goals", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ year, returnTargetPct: pct }),
+      body: JSON.stringify({ year, ...params }),
     });
     setEditing(false);
     loadGoals();
@@ -161,14 +242,23 @@ export default function GoalsPage() {
   const ytd = goalData?.ytd;
   const ytdPct = ytd?.returnPct ?? null;
   const targetPct = goal ? Number(goal.return_target_pct) : null;
+  const targetUsd = goal?.value_target_usd ? Number(goal.value_target_usd) : null;
+  const startUsd = ytd?.startUsd ?? null;
+  const currentUsd = ytd?.currentUsd ?? null;
 
-  // Progress: how far along toward target (clamped to 0–100% display)
+  // 목표까지 남은 금액
+  const remainingUsd = targetUsd && currentUsd ? targetUsd - currentUsd : null;
+  const gainedUsd = startUsd && currentUsd ? currentUsd - startUsd : null;
+  const neededUsd = targetUsd && startUsd ? targetUsd - startUsd : null;
+
+  // 목표 달성 진행률 (금액 기준)
   const progressPct =
-    targetPct && ytdPct !== null
+    neededUsd && gainedUsd !== null && neededUsd > 0
+      ? Math.min(100, Math.max(0, (gainedUsd / neededUsd) * 100))
+      : targetPct && ytdPct !== null
       ? Math.min(100, Math.max(0, (ytdPct / targetPct) * 100))
       : null;
 
-  // Time progress this year
   const timeProgressPct = goalData
     ? Math.round((goalData.daysPassed / goalData.totalDays) * 100)
     : null;
@@ -196,20 +286,12 @@ export default function GoalsPage() {
             <div className="flex items-center gap-2">
               <span className="text-sm font-semibold text-blue-300">{goalData?.year ?? "—"}년 수익 목표</span>
               {goal && (
-                <Badge
-                  variant="outline"
-                  className={cn(
-                    "text-xs",
-                    isAhead
-                      ? "border-emerald-500/40 text-emerald-400"
-                      : "border-amber-500/40 text-amber-400"
-                  )}
-                >
+                <Badge variant="outline" className={cn("text-xs",
+                  isAhead ? "border-emerald-500/40 text-emerald-400" : "border-amber-500/40 text-amber-400")}>
                   {isAhead ? "목표 앞서는 중" : "목표 뒤처지는 중"}
                 </Badge>
               )}
             </div>
-
             {!editing && (
               <div className="flex items-center gap-1">
                 <Button size="sm" variant="ghost" className="h-7 gap-1.5 text-xs text-zinc-400 hover:text-zinc-200"
@@ -219,9 +301,7 @@ export default function GoalsPage() {
                 </Button>
                 {goal && (
                   <Button size="sm" variant="ghost" className="h-7 text-xs text-zinc-600 hover:text-red-400"
-                    onClick={deleteGoal}>
-                    삭제
-                  </Button>
+                    onClick={deleteGoal}>삭제</Button>
                 )}
               </div>
             )}
@@ -230,73 +310,78 @@ export default function GoalsPage() {
           {editing ? (
             <GoalForm
               year={goalData?.year ?? new Date().getFullYear()}
-              initial={targetPct ?? 0}
+              initialPct={targetPct ?? 0}
+              initialUsd={targetUsd}
+              startUsd={startUsd}
               onSave={saveGoal}
               onCancel={() => setEditing(false)}
             />
           ) : goal ? (
             <>
-              {/* Big numbers */}
-              <div className="mb-4 grid grid-cols-3 gap-4">
+              {/* Big numbers — 4열 */}
+              <div className="mb-4 grid grid-cols-2 gap-4 sm:grid-cols-4">
                 <div>
-                  <p className="mb-1 text-[11px] text-zinc-500">목표 수익률</p>
-                  <p className="text-3xl font-bold text-blue-400 tabular-nums">
-                    +{targetPct?.toFixed(1)}%
+                  <p className="mb-1 text-[11px] text-zinc-500">목표 금액</p>
+                  <p className="text-2xl font-bold text-blue-400 tabular-nums">{fmtUsd(targetUsd)}</p>
+                  <p className="mt-0.5 text-xs text-zinc-500">{fmtPct(targetPct)} 수익률</p>
+                </div>
+                <div>
+                  <p className="mb-1 text-[11px] text-zinc-500">현재 평가금액</p>
+                  <p className={cn("text-2xl font-bold tabular-nums",
+                    currentUsd === null ? "text-zinc-500"
+                    : (currentUsd ?? 0) >= (targetUsd ?? Infinity) ? "text-emerald-400" : "text-zinc-200")}>
+                    {fmtUsd(currentUsd)}
+                  </p>
+                  <p className={cn("mt-0.5 text-xs", ytdPct === null ? "text-zinc-500" : ytdPct >= 0 ? "text-emerald-500" : "text-red-500")}>
+                    YTD {fmtPct(ytdPct)}
                   </p>
                 </div>
                 <div>
-                  <p className="mb-1 text-[11px] text-zinc-500">현재 YTD 수익률</p>
-                  <p className={cn(
-                    "text-3xl font-bold tabular-nums",
-                    ytdPct === null ? "text-zinc-500"
-                    : ytdPct >= 0 ? "text-emerald-400" : "text-red-400"
-                  )}>
-                    {ytdPct !== null ? fmt(ytdPct, 1) : "—"}
-                  </p>
+                  <p className="mb-1 text-[11px] text-zinc-500">연초 기준</p>
+                  <p className="text-2xl font-bold text-zinc-400 tabular-nums">{fmtUsd(startUsd)}</p>
+                  <p className="mt-0.5 text-xs text-zinc-600">올해 시작점</p>
                 </div>
                 <div>
-                  <p className="mb-1 text-[11px] text-zinc-500">남은 일수</p>
-                  <div className="flex items-end gap-1">
-                    <p className="text-3xl font-bold text-zinc-300 tabular-nums">
-                      {goalData?.daysLeft ?? "—"}
-                    </p>
-                    <span className="mb-0.5 text-sm text-zinc-500">일</span>
-                  </div>
+                  <p className="mb-1 text-[11px] text-zinc-500">남은 금액</p>
+                  <p className={cn("text-2xl font-bold tabular-nums",
+                    remainingUsd === null ? "text-zinc-500"
+                    : remainingUsd <= 0 ? "text-emerald-400" : "text-amber-400")}>
+                    {remainingUsd !== null
+                      ? remainingUsd <= 0
+                        ? "달성 ✓"
+                        : fmtUsd(remainingUsd)
+                      : "—"}
+                  </p>
+                  <p className="mt-0.5 text-xs text-zinc-500">{goalData?.daysLeft ?? "—"}일 남음</p>
                 </div>
               </div>
 
-              {/* Goal progress bar */}
+              {/* Progress bar */}
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between text-[11px] text-zinc-500">
-                  <span>목표 달성률 {progressPct !== null ? Math.round(progressPct) : 0}%</span>
+                  <span>달성률 {progressPct !== null ? Math.round(progressPct) : 0}%
+                    {gainedUsd !== null && neededUsd !== null &&
+                      <span className="ml-1 text-zinc-600">({fmtUsd(gainedUsd)} / {fmtUsd(neededUsd)})</span>
+                    }
+                  </span>
                   <span className="flex items-center gap-1">
                     <Calendar className="h-3 w-3" />
                     시간 경과 {timeProgressPct ?? 0}%
                   </span>
                 </div>
                 <div className="relative h-3 overflow-hidden rounded-full bg-zinc-800">
-                  {/* Time progress (background indicator) */}
                   {timeProgressPct !== null && (
-                    <div
-                      className="absolute inset-y-0 left-0 rounded-full bg-zinc-600/40"
-                      style={{ width: `${timeProgressPct}%` }}
-                    />
+                    <div className="absolute inset-y-0 left-0 rounded-full bg-zinc-600/40"
+                      style={{ width: `${timeProgressPct}%` }} />
                   )}
-                  {/* Goal progress */}
                   {progressPct !== null && (
-                    <div
-                      className={cn(
-                        "absolute inset-y-0 left-0 rounded-full transition-all duration-700",
-                        progressPct >= (timeProgressPct ?? 0)
-                          ? "bg-emerald-500"
-                          : "bg-amber-500"
-                      )}
-                      style={{ width: `${progressPct}%` }}
-                    />
+                    <div className={cn("absolute inset-y-0 left-0 rounded-full transition-all duration-700",
+                      progressPct >= (timeProgressPct ?? 0) ? "bg-emerald-500" : "bg-amber-500")}
+                      style={{ width: `${progressPct}%` }} />
                   )}
                 </div>
                 <p className="text-[10px] text-zinc-600">
-                  회색: 올해 경과 시간 비율 / 컬러: 목표 대비 달성률
+                  회색: 올해 경과 시간 / 컬러: 목표 대비 달성률 (환율 {goalData?.exchangeRate?.toLocaleString()}원/달러 기준)
                 </p>
               </div>
             </>
@@ -304,6 +389,7 @@ export default function GoalsPage() {
             <div className="flex flex-col items-center gap-2 py-6 text-center text-zinc-500">
               <Target className="h-10 w-10 opacity-20" />
               <p className="text-sm">아직 올해 목표를 설정하지 않았습니다.</p>
+              <p className="text-xs text-zinc-600">목표 금액($) 또는 목표 수익률(%)로 입력할 수 있습니다.</p>
               <Button size="sm" variant="outline" onClick={() => setEditing(true)} className="mt-1">
                 목표 설정하기
               </Button>
@@ -320,12 +406,8 @@ export default function GoalsPage() {
             <span className="font-semibold">섹터별 자금 흐름</span>
             <span className="text-xs text-zinc-500">— 기간별 등락률 (수익률 ≈ 자금 유입 프록시)</span>
           </div>
-          <Button
-            size="icon"
-            variant="ghost"
-            className="h-7 w-7 text-zinc-500 hover:text-zinc-300"
-            onClick={() => loadFlow(period)}
-          >
+          <Button size="icon" variant="ghost" className="h-7 w-7 text-zinc-500 hover:text-zinc-300"
+            onClick={() => loadFlow(period)}>
             <RefreshCw className={cn("h-3.5 w-3.5", loadingFlow && "animate-spin")} />
           </Button>
         </div>
@@ -333,16 +415,9 @@ export default function GoalsPage() {
         {/* Period tabs */}
         <div className="mb-4 flex gap-1 rounded-xl bg-muted/30 p-1 w-fit">
           {PERIODS.map((p) => (
-            <button
-              key={p.id}
-              onClick={() => setPeriod(p.id)}
-              className={cn(
-                "rounded-lg px-3.5 py-1.5 text-sm font-medium transition-all",
-                period === p.id
-                  ? "bg-background shadow text-foreground"
-                  : "text-muted-foreground hover:text-foreground"
-              )}
-            >
+            <button key={p.id} onClick={() => setPeriod(p.id)}
+              className={cn("rounded-lg px-3.5 py-1.5 text-sm font-medium transition-all",
+                period === p.id ? "bg-background shadow text-foreground" : "text-muted-foreground hover:text-foreground")}>
               {p.label}
             </button>
           ))}
@@ -357,55 +432,41 @@ export default function GoalsPage() {
 
         {flowData && (
           <div className="grid gap-6 lg:grid-cols-2">
-            {/* US */}
             <div>
               <div className="mb-2.5 flex items-center gap-2">
                 <span className="text-lg">🇺🇸</span>
                 <span className="font-semibold">미국 섹터 (S&P SPDR ETF)</span>
-                {flowData.us[0]?.changePct !== undefined && (
-                  <Badge variant="outline" className={cn(
-                    "ml-auto text-xs",
-                    (flowData.us[0]?.changePct ?? 0) >= 0
-                      ? "border-emerald-500/30 text-emerald-400"
-                      : "border-red-500/30 text-red-400"
-                  )}>
-                    {flowData.us[0]?.changePct !== undefined && (
-                      <>
-                        {(flowData.us[0].changePct ?? 0) >= 0 ? <TrendingUp className="mr-1 inline h-3 w-3" /> : <TrendingDown className="mr-1 inline h-3 w-3" />}
-                        최강: {flowData.us[0].name.split(" ")[0]} {fmt(flowData.us[0].changePct)}
-                      </>
-                    )}
+                {flowData.us[0] && (
+                  <Badge variant="outline" className={cn("ml-auto text-xs",
+                    (flowData.us[0].changePct ?? 0) >= 0 ? "border-emerald-500/30 text-emerald-400" : "border-red-500/30 text-red-400")}>
+                    {(flowData.us[0].changePct ?? 0) >= 0
+                      ? <TrendingUp className="mr-1 inline h-3 w-3" />
+                      : <TrendingDown className="mr-1 inline h-3 w-3" />}
+                    최강: {flowData.us[0].name.split(" ")[0]} {fmtPct(flowData.us[0].changePct)}
                   </Badge>
                 )}
               </div>
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-2 xl:grid-cols-3">
-                {flowData.us.map((item) => (
-                  <SectorTile key={item.key} item={item} />
-                ))}
+                {flowData.us.map((item) => <SectorTile key={item.key} item={item} />)}
               </div>
             </div>
 
-            {/* KR */}
             <div>
               <div className="mb-2.5 flex items-center gap-2">
                 <span className="text-lg">🇰🇷</span>
                 <span className="font-semibold">한국 섹터 (KODEX/TIGER ETF)</span>
-                {flowData.kr[0]?.changePct !== undefined && (
-                  <Badge variant="outline" className={cn(
-                    "ml-auto text-xs",
-                    (flowData.kr[0]?.changePct ?? 0) >= 0
-                      ? "border-emerald-500/30 text-emerald-400"
-                      : "border-red-500/30 text-red-400"
-                  )}>
-                    {(flowData.kr[0].changePct ?? 0) >= 0 ? <TrendingUp className="mr-1 inline h-3 w-3" /> : <TrendingDown className="mr-1 inline h-3 w-3" />}
-                    최강: {flowData.kr[0].name} {fmt(flowData.kr[0].changePct)}
+                {flowData.kr[0] && (
+                  <Badge variant="outline" className={cn("ml-auto text-xs",
+                    (flowData.kr[0].changePct ?? 0) >= 0 ? "border-emerald-500/30 text-emerald-400" : "border-red-500/30 text-red-400")}>
+                    {(flowData.kr[0].changePct ?? 0) >= 0
+                      ? <TrendingUp className="mr-1 inline h-3 w-3" />
+                      : <TrendingDown className="mr-1 inline h-3 w-3" />}
+                    최강: {flowData.kr[0].name} {fmtPct(flowData.kr[0].changePct)}
                   </Badge>
                 )}
               </div>
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-2 xl:grid-cols-2">
-                {flowData.kr.map((item) => (
-                  <SectorTile key={item.key} item={item} />
-                ))}
+                {flowData.kr.map((item) => <SectorTile key={item.key} item={item} />)}
               </div>
             </div>
           </div>
