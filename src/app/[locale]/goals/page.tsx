@@ -28,14 +28,14 @@ type InputMode = "usd" | "pct";
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function heatColor(pct: number | null): string {
-  if (pct === null) return "bg-zinc-800/60 text-zinc-400";
-  if (pct >= 8)  return "bg-emerald-500/30 text-emerald-200 border-emerald-500/40";
-  if (pct >= 4)  return "bg-emerald-500/20 text-emerald-300 border-emerald-500/30";
-  if (pct >= 1)  return "bg-emerald-500/10 text-emerald-400 border-emerald-500/20";
-  if (pct >= -1) return "bg-zinc-700/50    text-zinc-300 border-zinc-600/50";
-  if (pct >= -4) return "bg-red-500/10     text-red-400 border-red-500/20";
-  if (pct >= -8) return "bg-red-500/20     text-red-300 border-red-500/30";
-  return           "bg-red-500/30     text-red-200 border-red-500/40";
+  if (pct === null) return "bg-zinc-100 dark:bg-zinc-800/60 text-zinc-500 dark:text-zinc-400 border-zinc-200 dark:border-zinc-700";
+  if (pct >= 8)  return "bg-emerald-100 dark:bg-emerald-500/30 text-emerald-800 dark:text-emerald-200 border-emerald-300 dark:border-emerald-500/40";
+  if (pct >= 4)  return "bg-emerald-50  dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-500/30";
+  if (pct >= 1)  return "bg-emerald-50  dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/20";
+  if (pct >= -1) return "bg-zinc-100    dark:bg-zinc-700/50    text-zinc-600   dark:text-zinc-300   border-zinc-200 dark:border-zinc-600/50";
+  if (pct >= -4) return "bg-red-50      dark:bg-red-500/10     text-red-600    dark:text-red-400    border-red-200 dark:border-red-500/20";
+  if (pct >= -8) return "bg-red-100     dark:bg-red-500/20     text-red-700    dark:text-red-300    border-red-300 dark:border-red-500/30";
+  return           "bg-red-100     dark:bg-red-500/30     text-red-800    dark:text-red-200    border-red-300 dark:border-red-500/40";
 }
 
 function fmtPct(n: number | null, digits = 1): string {
@@ -57,7 +57,7 @@ function SectorTile({ item }: { item: SectorItem }) {
       <div className="flex items-start justify-between gap-1">
         <div className="min-w-0">
           <p className="truncate text-xs font-semibold leading-tight">{item.name}</p>
-          <p className="mt-0.5 text-[10px] opacity-75">{item.ticker}</p>
+          <p className="mt-0.5 text-[10px] opacity-60 dark:opacity-75">{item.ticker}</p>
         </div>
         <span className="shrink-0 text-sm font-bold tabular-nums">
           {fmtPct(item.changePct)}
