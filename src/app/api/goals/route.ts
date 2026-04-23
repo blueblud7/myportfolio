@@ -118,11 +118,15 @@ export async function POST(req: NextRequest) {
     valueTargetUsd = resolvedStartUsd * (1 + returnTargetPct / 100);
   }
 
+  // valueTargetUsd만 있고 startUsd 없으면 pct=0으로 저장 (나중에 start 입력 시 재계산)
+  if (returnTargetPct === null && valueTargetUsd !== null) {
+    returnTargetPct = 0;
+  }
   if (returnTargetPct === null) return NextResponse.json({ error: "목표값 필요" }, { status: 400 });
 
   const rows = await sql`
     INSERT INTO annual_goals (year, return_target_pct, value_target_usd, start_value_usd, note)
-    VALUES (${year}, ${returnTargetPct}, ${valueTargetUsd}, ${startValueUsd}, ${note ?? null})
+    VALUES (${year}, ${returnTargetPct}, ${valueTargetUsd}, ${resolvedStartUsd}, ${note ?? null})
     ON CONFLICT (year) DO UPDATE SET
       return_target_pct = EXCLUDED.return_target_pct,
       value_target_usd  = EXCLUDED.value_target_usd,

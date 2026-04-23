@@ -232,13 +232,21 @@ export default function GoalsPage() {
   useEffect(() => { loadGoals(); }, [loadGoals]);
   useEffect(() => { loadFlow(period); }, [period, loadFlow]);
 
+  const [saveError, setSaveError] = useState<string | null>(null);
+
   const saveGoal = async (params: { returnTargetPct?: number; valueTargetUsd?: number; startValueUsd?: number }) => {
     const year = goalData?.year ?? new Date().getFullYear();
-    await fetch("/api/goals", {
+    setSaveError(null);
+    const res = await fetch("/api/goals", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ year, ...params }),
     });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      setSaveError(err.error ?? "저장 실패");
+      return;
+    }
     setEditing(false);
     loadGoals();
   };
@@ -320,23 +328,35 @@ export default function GoalsPage() {
           </div>
 
           {editing ? (
-            <GoalForm
-              year={goalData?.year ?? new Date().getFullYear()}
-              initialPct={targetPct ?? 0}
-              initialUsd={targetUsd}
-              initialStartUsd={goal?.start_value_usd ? Number(goal.start_value_usd) : null}
-              snapshotStartUsd={snapshotStartUsd}
-              onSave={saveGoal}
-              onCancel={() => setEditing(false)}
-            />
+            <>
+              <GoalForm
+                year={goalData?.year ?? new Date().getFullYear()}
+                initialPct={targetPct ?? 0}
+                initialUsd={targetUsd}
+                initialStartUsd={goal?.start_value_usd ? Number(goal.start_value_usd) : null}
+                snapshotStartUsd={snapshotStartUsd}
+                onSave={saveGoal}
+                onCancel={() => { setEditing(false); setSaveError(null); }}
+              />
+              {saveError && (
+                <p className="mt-2 text-xs text-red-400">{saveError}</p>
+              )}
+            </>
           ) : goal ? (
             <>
               {/* Big numbers — 4열 */}
               <div className="mb-4 grid grid-cols-2 gap-4 sm:grid-cols-4">
                 <div>
                   <p className="mb-1 text-[11px] text-zinc-500">목표 금액</p>
-                  <p className="text-2xl font-bold text-blue-400 tabular-nums">{fmtUsd(targetUsd)}</p>
-                  <p className="mt-0.5 text-xs text-zinc-500">{fmtPct(targetPct)} 수익률</p>
+                  <p className="text-2xl font-bold text-blue-400 tabular-nums">
+                    {targetUsd ? fmtUsd(targetUsd) : targetPct !== null && targetPct !== 0 ? fmtPct(targetPct) : "—"}
+                  </p>
+                  {targetPct !== null && targetPct !== 0
+                    ? <p className="mt-0.5 text-xs text-zinc-500">{fmtPct(targetPct)} 수익률</p>
+                    : targetUsd !== null
+                    ? <p className="mt-0.5 text-xs text-amber-500">수정: 연초값 입력 필요</p>
+                    : <p className="mt-0.5 text-xs text-zinc-500">—</p>
+                  }
                 </div>
                 <div>
                   <p className="mb-1 text-[11px] text-zinc-500">현재 평가금액</p>
