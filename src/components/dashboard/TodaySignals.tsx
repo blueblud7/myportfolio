@@ -68,7 +68,9 @@ function MarketRow({ item, rank }: { item: MarketMoverItem; rank?: number }) {
           {isUp ? "+" : ""}{item.changePct.toFixed(2)}%
         </p>
         <p className="text-[10px] text-muted-foreground tabular-nums">
-          ${item.price.toFixed(item.price < 10 ? 3 : 2)}
+          {item.currency === "KRW"
+            ? `₩${Math.round(item.price).toLocaleString("ko-KR")}`
+            : `$${item.price.toFixed(item.price < 10 ? 3 : 2)}`}
         </p>
       </div>
     </div>
