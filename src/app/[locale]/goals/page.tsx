@@ -28,14 +28,14 @@ type InputMode = "usd" | "pct";
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function heatColor(pct: number | null): string {
-  if (pct === null) return "bg-zinc-800/60 text-zinc-500";
-  if (pct >= 8)  return "bg-emerald-500/25 text-emerald-300 border-emerald-500/30";
-  if (pct >= 4)  return "bg-emerald-500/15 text-emerald-400 border-emerald-500/20";
-  if (pct >= 1)  return "bg-emerald-500/8  text-emerald-500/80 border-emerald-500/10";
-  if (pct >= -1) return "bg-zinc-700/40    text-zinc-400 border-zinc-700/40";
-  if (pct >= -4) return "bg-red-500/8      text-red-500/80 border-red-500/10";
-  if (pct >= -8) return "bg-red-500/15     text-red-400 border-red-500/20";
-  return           "bg-red-500/25     text-red-300 border-red-500/30";
+  if (pct === null) return "bg-zinc-800/60 text-zinc-400";
+  if (pct >= 8)  return "bg-emerald-500/30 text-emerald-200 border-emerald-500/40";
+  if (pct >= 4)  return "bg-emerald-500/20 text-emerald-300 border-emerald-500/30";
+  if (pct >= 1)  return "bg-emerald-500/10 text-emerald-400 border-emerald-500/20";
+  if (pct >= -1) return "bg-zinc-700/50    text-zinc-300 border-zinc-600/50";
+  if (pct >= -4) return "bg-red-500/10     text-red-400 border-red-500/20";
+  if (pct >= -8) return "bg-red-500/20     text-red-300 border-red-500/30";
+  return           "bg-red-500/30     text-red-200 border-red-500/40";
 }
 
 function fmtPct(n: number | null, digits = 1): string {
@@ -57,7 +57,7 @@ function SectorTile({ item }: { item: SectorItem }) {
       <div className="flex items-start justify-between gap-1">
         <div className="min-w-0">
           <p className="truncate text-xs font-semibold leading-tight">{item.name}</p>
-          <p className="mt-0.5 text-[10px] opacity-60">{item.ticker}</p>
+          <p className="mt-0.5 text-[10px] opacity-75">{item.ticker}</p>
         </div>
         <span className="shrink-0 text-sm font-bold tabular-nums">
           {fmtPct(item.changePct)}
