@@ -2,7 +2,13 @@ import { neon } from '@neondatabase/serverless';
 import { execSync } from 'child_process';
 
 const DB_PATH = `${process.env.HOME}/.myportfolio/portfolio.db`;
-const DATABASE_URL = 'postgresql://neondb_owner:npg_39nFgZfRzLiN@ep-jolly-art-aizsugj6-pooler.c-4.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require';
+const DATABASE_URL = process.env.DATABASE_URL;
+
+if (!DATABASE_URL) {
+  console.error('Error: DATABASE_URL 환경변수가 필요합니다');
+  console.error('실행 예: node --env-file=.env.local migrate.mjs');
+  process.exit(1);
+}
 
 const sql = neon(DATABASE_URL);
 
