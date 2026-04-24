@@ -5,7 +5,7 @@ import { Link, usePathname } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
 import {
   LayoutDashboard, Wallet, BarChart3, TrendingUp, BookOpen,
-  Eye, EyeOff, FlaskConical, Bell, Sparkles, Activity, X, Filter, Layers, GitBranch, GitCompare, Microscope, PiggyBank, PieChart, Receipt, Waves, BrainCircuit, Target, FileText, Binoculars,
+  Eye, EyeOff, FlaskConical, Bell, Sparkles, Activity, X, Filter, Layers, GitBranch, GitCompare, Microscope, PiggyBank, PieChart, Receipt, Waves, BrainCircuit, Target, FileText, Binoculars, CalendarDays,
 } from "lucide-react";
 import { InvestorQuote } from "./InvestorQuote";
 import { usePrivacy } from "@/contexts/privacy-context";
@@ -39,6 +39,7 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
         { href: "/pattern", label: "패턴분석", icon: GitBranch },
         { href: "/compare", label: "상대강도", icon: GitCompare },
         { href: "/volatility", label: t("volatility"), icon: Waves },
+        { href: "/earnings", label: "실적 캘린더", icon: CalendarDays },
         { href: "/analyst-reports", label: "증권사 리포트", icon: FileText },
       ],
     },

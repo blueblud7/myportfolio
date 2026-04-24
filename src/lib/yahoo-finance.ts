@@ -213,6 +213,58 @@ export async function getDividendCalendarEvents(
   return trySymbol(resolveYahooSymbol(ticker));
 }
 
+export async function getEarningsCalendarEvents(
+  ticker: string
+): Promise<{ earningsDate: string | null; epsEstimate: number | null } | null> {
+  if (ticker === "CASH") return null;
+
+  const trySymbol = async (symbol: string) => {
+    const result = await fetchYahooSummary(symbol, "calendarEvents");
+    if (!result?.calendarEvents) return null;
+    const cal = result.calendarEvents as Record<string, unknown>;
+    const earnings = cal.earnings as Record<string, unknown> | undefined;
+    if (!earnings) return null;
+
+    let earningsDate: string | null = null;
+    const dates = earnings.earningsDate as unknown[] | undefined;
+    if (Array.isArray(dates) && dates.length > 0) {
+      const first = dates[0];
+      if (typeof first === "string") {
+        earningsDate = new Date(first).toISOString().split("T")[0];
+      } else if (typeof first === "number") {
+        // Heuristic: sec vs ms
+        const ms = first < 10_000_000_000 ? first * 1000 : first;
+        earningsDate = new Date(ms).toISOString().split("T")[0];
+      } else if (typeof first === "object" && first !== null) {
+        const obj = first as { raw?: number; fmt?: string };
+        if (obj.fmt) earningsDate = obj.fmt;
+        else if (typeof obj.raw === "number") {
+          earningsDate = new Date(obj.raw * 1000).toISOString().split("T")[0];
+        }
+      }
+    }
+
+    let epsEstimate: number | null = null;
+    const epsAvg = earnings.earningsAverage;
+    if (typeof epsAvg === "number") epsEstimate = epsAvg;
+    else if (epsAvg && typeof epsAvg === "object" && "raw" in epsAvg) {
+      epsEstimate = (epsAvg as { raw: number }).raw;
+    }
+
+    return { earningsDate, epsEstimate };
+  };
+
+  if (/^\d[A-Z0-9]{5}$/i.test(ticker)) {
+    for (const suffix of [".KS", ".KQ"]) {
+      const result = await trySymbol(`${ticker}${suffix}`);
+      if (result?.earningsDate) return result;
+    }
+    return null;
+  }
+
+  return trySymbol(resolveYahooSymbol(ticker));
+}
+
 export async function getExchangeRate(): Promise<number> {
   const data = await fetchYahooChart("USDKRW=X");
   return (data?.meta.regularMarketPrice as number) ?? 1350;

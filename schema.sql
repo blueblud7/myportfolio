@@ -146,6 +146,14 @@ CREATE TABLE IF NOT EXISTS account_snapshots (
   UNIQUE(account_id, date)
 );
 
+CREATE TABLE IF NOT EXISTS earnings_calendar (
+  ticker TEXT PRIMARY KEY,
+  name TEXT NOT NULL DEFAULT '',
+  earnings_date TEXT,
+  eps_estimate DOUBLE PRECISION,
+  updated_at TEXT NOT NULL DEFAULT (to_char(NOW(),'YYYY-MM-DD HH24:MI:SS'))
+);
+
 CREATE TABLE IF NOT EXISTS watchlist (
   id SERIAL PRIMARY KEY,
   ticker TEXT NOT NULL UNIQUE,
