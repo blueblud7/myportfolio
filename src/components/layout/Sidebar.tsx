@@ -20,28 +20,53 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
   const pathname = usePathname();
   const { isPrivate, toggle } = usePrivacy();
 
-  const navItems = [
-    { href: "/", label: t("dashboard"), icon: LayoutDashboard },
-    { href: "/goals", label: "목표 & 섹터", icon: Target },
-    { href: "/analyst-reports", label: "증권사 리포트", icon: FileText },
-    { href: "/accounts", label: t("accounts"), icon: Wallet },
-    { href: "/reports", label: t("reports"), icon: BarChart3 },
-    { href: "/calculator", label: t("calculator"), icon: TrendingUp },
-    { href: "/diary", label: t("diary"), icon: BookOpen },
-    { href: "/quant", label: t("quant"), icon: FlaskConical },
-    { href: "/backtest", label: t("backtest"), icon: Activity },
-    { href: "/pattern", label: "패턴분석", icon: GitBranch },
-    { href: "/insights", label: t("insights"), icon: Sparkles },
-    { href: "/canslim", label: "CAN SLIM", icon: Filter },
-    { href: "/etf-flow", label: "ETF 흐름", icon: Layers },
-    { href: "/compare", label: "상대강도", icon: GitCompare },
-    { href: "/strategy-lab", label: "전략 연구소", icon: Microscope },
-    { href: "/position-lab", label: "자금관리 연구소", icon: PiggyBank },
-    { href: "/portfolio-mix", label: "포트폴리오 믹스", icon: PieChart },
-    { href: "/fomo-agents", label: "AI 투자자 에이전트", icon: BrainCircuit },
-    { href: "/volatility", label: t("volatility"), icon: Waves },
-    { href: "/budget", label: t("budget"), icon: Receipt },
-    { href: "/alerts", label: t("alerts"), icon: Bell },
+  const navSections = [
+    {
+      title: "📊 포트폴리오",
+      items: [
+        { href: "/", label: t("dashboard"), icon: LayoutDashboard },
+        { href: "/accounts", label: t("accounts"), icon: Wallet },
+        { href: "/reports", label: t("reports"), icon: BarChart3 },
+        { href: "/goals", label: "목표 & 섹터", icon: Target },
+      ],
+    },
+    {
+      title: "🔍 종목 분석",
+      items: [
+        { href: "/quant", label: t("quant"), icon: FlaskConical },
+        { href: "/canslim", label: "CAN SLIM", icon: Filter },
+        { href: "/pattern", label: "패턴분석", icon: GitBranch },
+        { href: "/compare", label: "상대강도", icon: GitCompare },
+        { href: "/volatility", label: t("volatility"), icon: Waves },
+        { href: "/analyst-reports", label: "증권사 리포트", icon: FileText },
+      ],
+    },
+    {
+      title: "🧪 전략 연구소",
+      items: [
+        { href: "/strategy-lab", label: "전략 연구소", icon: Microscope },
+        { href: "/position-lab", label: "자금관리 연구소", icon: PiggyBank },
+        { href: "/portfolio-mix", label: "포트폴리오 믹스", icon: PieChart },
+        { href: "/backtest", label: t("backtest"), icon: Activity },
+        { href: "/etf-flow", label: "ETF 흐름", icon: Layers },
+      ],
+    },
+    {
+      title: "🤖 인사이트",
+      items: [
+        { href: "/insights", label: t("insights"), icon: Sparkles },
+        { href: "/diary", label: t("diary"), icon: BookOpen },
+        { href: "/fomo-agents", label: "AI 투자자 에이전트", icon: BrainCircuit },
+      ],
+    },
+    {
+      title: "⚙️ 도구",
+      items: [
+        { href: "/calculator", label: t("calculator"), icon: TrendingUp },
+        { href: "/budget", label: t("budget"), icon: Receipt },
+        { href: "/alerts", label: t("alerts"), icon: Bell },
+      ],
+    },
   ];
 
   return (
@@ -77,29 +102,35 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
       </div>
 
       {/* Nav */}
-      <nav className="flex flex-col gap-0.5 overflow-y-auto p-3 pt-4">
-        <p className="mb-2 px-3 text-[10px] font-semibold uppercase tracking-widest text-zinc-600">메뉴</p>
-        {navItems.map((item) => {
-          const isActive =
-            item.href === "/" ? pathname === "/" || pathname === "" : pathname.includes(item.href);
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              onClick={onClose}
-              className={cn(
-                "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all",
-                isActive
-                  ? "bg-blue-500/15 text-blue-300 ring-1 ring-blue-500/20"
-                  : "text-zinc-400 hover:bg-zinc-800/70 hover:text-zinc-100"
-              )}
-            >
-              <item.icon className={cn("h-4 w-4 shrink-0", isActive ? "text-blue-400" : "")} />
-              {item.label}
-              {isActive && <span className="ml-auto h-1.5 w-1.5 rounded-full bg-blue-400" />}
-            </Link>
-          );
-        })}
+      <nav className="flex flex-col overflow-y-auto p-3 pt-4">
+        {navSections.map((section, idx) => (
+          <div key={section.title} className={cn("flex flex-col gap-0.5", idx > 0 && "mt-4")}>
+            <p className="mb-1 px-3 text-[10px] font-semibold uppercase tracking-widest text-zinc-600">
+              {section.title}
+            </p>
+            {section.items.map((item) => {
+              const isActive =
+                item.href === "/" ? pathname === "/" || pathname === "" : pathname.includes(item.href);
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  onClick={onClose}
+                  className={cn(
+                    "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all",
+                    isActive
+                      ? "bg-blue-500/15 text-blue-300 ring-1 ring-blue-500/20"
+                      : "text-zinc-400 hover:bg-zinc-800/70 hover:text-zinc-100"
+                  )}
+                >
+                  <item.icon className={cn("h-4 w-4 shrink-0", isActive ? "text-blue-400" : "")} />
+                  {item.label}
+                  {isActive && <span className="ml-auto h-1.5 w-1.5 rounded-full bg-blue-400" />}
+                </Link>
+              );
+            })}
+          </div>
+        ))}
       </nav>
 
       {/* Quote */}
