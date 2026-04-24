@@ -11,6 +11,7 @@ import { PutCallRatioWidget } from "@/components/dashboard/PutCallRatioWidget";
 import { WatchlistWidget } from "@/components/dashboard/WatchlistWidget";
 import { FomoSentimentWidget } from "@/components/dashboard/FomoSentimentWidget";
 import { TodaySignals } from "@/components/dashboard/TodaySignals";
+import { TodayWatchWidget } from "@/components/dashboard/TodayWatchWidget";
 import { useAccounts, useHoldings, useExchangeRate, useBankBalances, refreshPrices } from "@/hooks/use-api";
 
 export default function DashboardPage() {
@@ -148,7 +149,10 @@ export default function DashboardPage() {
         bankValueKrw={summary.bankValueKrw}
       />
 
-      {/* ③ Today's Signals — 시장 전체 + 내 포트폴리오 탭 */}
+      {/* ③ 오늘 챙길 것 — 실적/목표가/배당락 */}
+      <TodayWatchWidget />
+
+      {/* ④ Today's Signals — 시장 전체 + 내 포트폴리오 탭 */}
       <TodaySignals />
 
       {/* ④ 심리 지표 + P/C Ratio + Polymarket — 3열 */}
