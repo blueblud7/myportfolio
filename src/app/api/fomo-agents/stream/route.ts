@@ -1,5 +1,5 @@
 import { fetchSentimentData } from "@/lib/fomo-sentiment";
-import { AGENT_PROFILES, buildUserPrompt, runAgent, calcConsensus, setAgentsCache } from "@/lib/fomo-agents";
+import { AGENT_PROFILES, buildUserPrompt, runAgent, calcConsensus, computeContrarian, setAgentsCache } from "@/lib/fomo-agents";
 import type { AgentsResult } from "@/types/fomo";
 
 export const maxDuration = 300;
@@ -34,12 +34,13 @@ export async function GET() {
 
         const finalAgents = agents.filter((a): a is AgentsResult["agents"][number] => a !== null);
         const consensus = calcConsensus(finalAgents);
+        const contrarian = computeContrarian(consensus);
         const timestamp = new Date().toISOString();
-        const result: AgentsResult = { agents: finalAgents, consensus, timestamp };
+        const result: AgentsResult = { agents: finalAgents, consensus, contrarian, timestamp };
 
         setAgentsCache({ data: result, ts: Date.now() });
 
-        send({ type: "done", consensus, timestamp });
+        send({ type: "done", consensus, contrarian, timestamp });
       } catch (e) {
         const msg = e instanceof Error ? e.message : String(e);
         send({ type: "error", message: msg });

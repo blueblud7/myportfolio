@@ -112,12 +112,44 @@ async function fetchCnnFearGreed(): Promise<{ score: number | null; label: strin
   }
 }
 
-async function fetchYahoo(symbol: string): Promise<{ price: number; prevClose: number }> {
-  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}`;
+async function fetchYahoo(symbol: string): Promise<{ price: number; prevClose: number; price5dAgo: number }> {
+  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?range=1mo&interval=1d`;
   const res = await fetch(url, { headers: { "User-Agent": "Mozilla/5.0" }, cache: "no-store" });
   const json = await res.json();
-  const meta = json?.chart?.result?.[0]?.meta ?? {};
-  return { price: meta.regularMarketPrice ?? 0, prevClose: meta.chartPreviousClose ?? meta.regularMarketPrice ?? 1 };
+  const result = json?.chart?.result?.[0];
+  const meta = result?.meta ?? {};
+  const closes: (number | null)[] = result?.indicators?.quote?.[0]?.close ?? [];
+  const valid = closes.filter((c): c is number => typeof c === "number" && isFinite(c));
+  const price = meta.regularMarketPrice ?? valid[valid.length - 1] ?? 0;
+  const prevClose = meta.chartPreviousClose ?? valid[valid.length - 2] ?? price;
+  // 5 거래일 전 close (없으면 가장 오래된 값)
+  const price5dAgo = valid.length >= 6 ? valid[valid.length - 6] : (valid[0] ?? price);
+  return { price, prevClose, price5dAgo };
+}
+
+function buildTrendSummary(
+  kospi: { price: number; price5dAgo: number; changePct: number },
+  sp500: { price: number; price5dAgo: number; changePct: number },
+  vix: { price: number; price5dAgo: number }
+): string {
+  const k5 = kospi.price5dAgo ? ((kospi.price - kospi.price5dAgo) / kospi.price5dAgo) * 100 : 0;
+  const s5 = sp500.price5dAgo ? ((sp500.price - sp500.price5dAgo) / sp500.price5dAgo) * 100 : 0;
+  const v5 = vix.price5dAgo ? ((vix.price - vix.price5dAgo) / vix.price5dAgo) * 100 : 0;
+
+  const bits: string[] = [];
+  // SP500 해석
+  if (s5 >= 3 && sp500.changePct >= 0) bits.push("S&P500 5일 랠리 지속");
+  else if (s5 >= 3 && sp500.changePct < 0) bits.push("S&P500 랠리 후 첫 조정");
+  else if (s5 <= -3 && sp500.changePct >= 0) bits.push("S&P500 5일 하락 후 반등 시도");
+  else if (s5 <= -3) bits.push("S&P500 5일 연속 약세");
+  // KOSPI 해석
+  if (k5 >= 3 && kospi.changePct >= 0) bits.push("KOSPI 랠리 진행");
+  else if (k5 <= -3) bits.push("KOSPI 5일 조정");
+  // VIX 해석
+  if (v5 >= 15) bits.push("VIX 급등 (위험 회피 심화)");
+  else if (v5 <= -15) bits.push("VIX 하락 (공포 완화)");
+
+  return bits.length ? bits.join(" · ") : "횡보 구간";
 }
 
 export async function fetchSentimentData(): Promise<SentimentData> {
@@ -131,10 +163,10 @@ export async function fetchSentimentData(): Promise<SentimentData> {
     fetchCnnFearGreed(),
   ]);
 
-  const vix = vixData.status === "fulfilled" ? vixData.value : { price: 18.5, prevClose: 17.2 };
-  const kospi = kospiData.status === "fulfilled" ? kospiData.value : { price: 2650, prevClose: 2662 };
-  const kosdaq = kosdaqData.status === "fulfilled" ? kosdaqData.value : { price: 850, prevClose: 855 };
-  const sp500 = sp500Data.status === "fulfilled" ? sp500Data.value : { price: 5100, prevClose: 5125 };
+  const vix = vixData.status === "fulfilled" ? vixData.value : { price: 18.5, prevClose: 17.2, price5dAgo: 17.0 };
+  const kospi = kospiData.status === "fulfilled" ? kospiData.value : { price: 2650, prevClose: 2662, price5dAgo: 2680 };
+  const kosdaq = kosdaqData.status === "fulfilled" ? kosdaqData.value : { price: 850, prevClose: 855, price5dAgo: 860 };
+  const sp500 = sp500Data.status === "fulfilled" ? sp500Data.value : { price: 5100, prevClose: 5125, price5dAgo: 5080 };
   const fng = fngRes.status === "fulfilled" ? fngRes.value : null;
   const foreignNetBuy = foreignNetBuyData.status === "fulfilled" ? foreignNetBuyData.value : 0;
   const cnnFG = cnnFGData.status === "fulfilled" ? cnnFGData.value : { score: null, label: null };
@@ -142,18 +174,30 @@ export async function fetchSentimentData(): Promise<SentimentData> {
   const cryptoFG = Number(fng?.data?.[0]?.value ?? 45);
   const cryptoLabel = fng?.data?.[0]?.value_classification ?? "Fear";
 
+  const kospiChangePct = kospi.prevClose ? ((kospi.price - kospi.prevClose) / kospi.prevClose) * 100 : 0;
+  const sp500ChangePct = sp500.prevClose ? ((sp500.price - sp500.prevClose) / sp500.prevClose) * 100 : 0;
+
   const raw: SentimentData["raw"] = {
     vix: vix.price,
     vixChange: vix.price - vix.prevClose,
     cryptoFG,
     cryptoLabel,
-    kospiChangePct: kospi.prevClose ? ((kospi.price - kospi.prevClose) / kospi.prevClose) * 100 : 0,
+    kospiChangePct,
     kosdaqChangePct: kosdaq.prevClose ? ((kosdaq.price - kosdaq.prevClose) / kosdaq.prevClose) * 100 : 0,
-    sp500ChangePct: sp500.prevClose ? ((sp500.price - sp500.prevClose) / sp500.prevClose) * 100 : 0,
+    sp500ChangePct,
     foreignNetBuy,
     cnnFG: cnnFG.score,
     cnnFGLabel: cnnFG.label,
+    vix5dChangePct: vix.price5dAgo ? ((vix.price - vix.price5dAgo) / vix.price5dAgo) * 100 : 0,
+    kospi5dChangePct: kospi.price5dAgo ? ((kospi.price - kospi.price5dAgo) / kospi.price5dAgo) * 100 : 0,
+    sp5005dChangePct: sp500.price5dAgo ? ((sp500.price - sp500.price5dAgo) / sp500.price5dAgo) * 100 : 0,
   };
+
+  const trendSummary = buildTrendSummary(
+    { price: kospi.price, price5dAgo: kospi.price5dAgo, changePct: kospiChangePct },
+    { price: sp500.price, price5dAgo: sp500.price5dAgo, changePct: sp500ChangePct },
+    { price: vix.price, price5dAgo: vix.price5dAgo }
+  );
 
   const scores = calcComposite(raw);
   const labels = {
@@ -163,5 +207,5 @@ export async function fetchSentimentData(): Promise<SentimentData> {
     Overall: scoreToLabel(scores.Overall),
   };
 
-  return { ...scores, labels, raw, timestamp: new Date().toISOString() };
+  return { ...scores, labels, raw, trendSummary, timestamp: new Date().toISOString() };
 }

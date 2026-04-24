@@ -2,9 +2,29 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useFomoSentiment } from "@/hooks/use-api";
-import type { AgentAnalysis, AgentsResult, SentimentData } from "@/types/fomo";
+import type { AgentAnalysis, AgentsResult, ContrarianSignal, SentimentData, TargetSector, TimeHorizon } from "@/types/fomo";
 import { cn } from "@/lib/utils";
-import { Brain, TrendingUp, TrendingDown, Minus, RefreshCw, ChevronDown, ChevronUp } from "lucide-react";
+import { Brain, TrendingUp, TrendingDown, Minus, RefreshCw, ChevronDown, ChevronUp, AlertTriangle, Star } from "lucide-react";
+
+const SECTOR_LABEL: Record<TargetSector, string> = {
+  "Tech": "테크",
+  "Defense": "방어주",
+  "Bonds": "채권",
+  "Cash": "현금",
+  "Crypto": "크립토",
+  "KR-Large": "한국 대형",
+  "KR-Small": "한국 중소",
+  "Gold": "금",
+  "Energy": "에너지",
+  "Other": "기타",
+};
+
+const HORIZON_LABEL: Record<TimeHorizon, string> = {
+  "1w": "1주",
+  "1m": "1개월",
+  "3m": "3개월",
+  "1y": "1년",
+};
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -36,6 +56,19 @@ function fomoColor(score: number) {
 
 // ─── Components ─────────────────────────────────────────────────────────────
 
+function ConfidenceStars({ value }: { value: number }) {
+  return (
+    <span className="inline-flex items-center gap-0.5 text-yellow-500">
+      {[1, 2, 3, 4, 5].map((n) => (
+        <Star
+          key={n}
+          className={cn("h-3 w-3", n <= value ? "fill-yellow-500" : "text-muted-foreground/40")}
+        />
+      ))}
+    </span>
+  );
+}
+
 function AgentCard({ agent }: { agent: AgentAnalysis }) {
   const [expanded, setExpanded] = useState(false);
 
@@ -65,6 +98,19 @@ function AgentCard({ agent }: { agent: AgentAnalysis }) {
           </div>
         </div>
       </div>
+
+      {/* Target sector / confidence / horizon */}
+      {agent.action !== "Hold" && (
+        <div className="flex flex-wrap items-center gap-2 text-[10px]">
+          <span className="rounded-md bg-violet-500/15 px-1.5 py-0.5 font-semibold text-violet-700 dark:text-violet-300">
+            {SECTOR_LABEL[agent.targetSector]}
+          </span>
+          <span className="rounded-md bg-muted px-1.5 py-0.5 text-muted-foreground">
+            {HORIZON_LABEL[agent.timeHorizon]}
+          </span>
+          <ConfidenceStars value={agent.confidence} />
+        </div>
+      )}
 
       <div className="space-y-1.5">
         <div className="flex justify-between text-[10px] text-muted-foreground">
@@ -179,7 +225,7 @@ type SSEEvent =
   | { type: "start"; total: number }
   | { type: "thinking"; index: number; name: string }
   | { type: "agent"; index: number; agent: AgentAnalysis; completed: number; total: number }
-  | { type: "done"; consensus: AgentsResult["consensus"]; timestamp: string }
+  | { type: "done"; consensus: AgentsResult["consensus"]; contrarian: ContrarianSignal; timestamp: string }
   | { type: "error"; message: string };
 
 // ─── Page ────────────────────────────────────────────────────────────────────
@@ -192,6 +238,7 @@ export default function FomoAgentsPage() {
   const [streaming, setStreaming] = useState(false);
   const [progress, setProgress] = useState({ current: 0, total: 0, thinking: 0 });
   const [consensus, setConsensus] = useState<AgentsResult["consensus"] | null>(null);
+  const [contrarian, setContrarian] = useState<ContrarianSignal | null>(null);
   const [timestamp, setTimestamp] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -200,6 +247,7 @@ export default function FomoAgentsPage() {
     setStreaming(true);
     setAgents([]);
     setConsensus(null);
+    setContrarian(null);
     setTimestamp(null);
     setLoaded(false);
     setError(null);
@@ -266,6 +314,7 @@ export default function FomoAgentsPage() {
         setProgress((p) => ({ ...p, current: evt.completed }));
       } else if (evt.type === "done") {
         setConsensus(evt.consensus);
+        setContrarian(evt.contrarian);
         setTimestamp(evt.timestamp);
         setLoaded(true);
         setStreaming(false);
@@ -291,6 +340,7 @@ export default function FomoAgentsPage() {
           const result = data as AgentsResult;
           setAgents(result.agents);
           setConsensus(result.consensus);
+          setContrarian(result.contrarian ?? { active: false, reason: "" });
           setTimestamp(result.timestamp);
           setProgress({ current: result.agents.length, total: result.agents.length, thinking: 0 });
           setLoaded(true);
@@ -371,14 +421,68 @@ export default function FomoAgentsPage() {
 
       {/* Sentiment summary */}
       {s && (
-        <div className="grid grid-cols-4 gap-3">
-          {(["Overall", "KR", "US", "Crypto"] as const).map((m) => (
-            <div key={m} className="rounded-xl border bg-card p-3 text-center">
-              <p className="text-[10px] text-muted-foreground font-medium">{m}</p>
-              <p className="text-2xl font-black tabular-nums mt-0.5">{s[m]}</p>
-              <p className="text-[10px] text-muted-foreground mt-0.5">{s.labels[m]}</p>
+        <div className="space-y-3">
+          <div className="grid grid-cols-4 gap-3">
+            {(["Overall", "KR", "US", "Crypto"] as const).map((m) => (
+              <div key={m} className="rounded-xl border bg-card p-3 text-center">
+                <p className="text-[10px] text-muted-foreground font-medium">{m}</p>
+                <p className="text-2xl font-black tabular-nums mt-0.5">{s[m]}</p>
+                <p className="text-[10px] text-muted-foreground mt-0.5">{s.labels[m]}</p>
+              </div>
+            ))}
+          </div>
+
+          <div className="rounded-xl border bg-card p-3">
+            <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold mb-1.5">
+              5일 추세 · {s.trendSummary ?? "—"}
+            </p>
+            <div className="grid grid-cols-3 gap-3 text-xs">
+              <div>
+                <p className="text-[10px] text-muted-foreground">VIX</p>
+                <p className="font-semibold tabular-nums">
+                  {s.raw.vix.toFixed(1)}
+                  <span className={cn("ml-1 text-[10px]", s.raw.vix5dChangePct >= 0 ? "text-red-500" : "text-emerald-500")}>
+                    5d {s.raw.vix5dChangePct >= 0 ? "+" : ""}{s.raw.vix5dChangePct.toFixed(1)}%
+                  </span>
+                </p>
+              </div>
+              <div>
+                <p className="text-[10px] text-muted-foreground">KOSPI</p>
+                <p className="font-semibold tabular-nums">
+                  <span className={s.raw.kospiChangePct >= 0 ? "text-emerald-500" : "text-red-500"}>
+                    {s.raw.kospiChangePct >= 0 ? "+" : ""}{s.raw.kospiChangePct.toFixed(2)}%
+                  </span>
+                  <span className={cn("ml-1 text-[10px]", s.raw.kospi5dChangePct >= 0 ? "text-emerald-500" : "text-red-500")}>
+                    5d {s.raw.kospi5dChangePct >= 0 ? "+" : ""}{s.raw.kospi5dChangePct.toFixed(1)}%
+                  </span>
+                </p>
+              </div>
+              <div>
+                <p className="text-[10px] text-muted-foreground">S&P500</p>
+                <p className="font-semibold tabular-nums">
+                  <span className={s.raw.sp500ChangePct >= 0 ? "text-emerald-500" : "text-red-500"}>
+                    {s.raw.sp500ChangePct >= 0 ? "+" : ""}{s.raw.sp500ChangePct.toFixed(2)}%
+                  </span>
+                  <span className={cn("ml-1 text-[10px]", s.raw.sp5005dChangePct >= 0 ? "text-emerald-500" : "text-red-500")}>
+                    5d {s.raw.sp5005dChangePct >= 0 ? "+" : ""}{s.raw.sp5005dChangePct.toFixed(1)}%
+                  </span>
+                </p>
+              </div>
             </div>
-          ))}
+          </div>
+        </div>
+      )}
+
+      {/* Contrarian warning */}
+      {contrarian?.active && (
+        <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-4 flex items-start gap-3">
+          <AlertTriangle className="h-5 w-5 shrink-0 text-amber-600 dark:text-amber-400 mt-0.5" />
+          <div>
+            <p className="text-sm font-semibold text-amber-700 dark:text-amber-300 mb-0.5">
+              컨트라리안 경고
+            </p>
+            <p className="text-xs text-amber-800 dark:text-amber-200/80">{contrarian.reason}</p>
+          </div>
         </div>
       )}
 
@@ -407,13 +511,18 @@ export default function FomoAgentsPage() {
             holdPct={consensus.holdPct}
             sellPct={consensus.sellPct}
           />
-          <div className="flex justify-between text-xs text-muted-foreground pt-1">
-            <span>
-              평균 FOMO 점수:{" "}
-              <span className={cn("font-bold", fomoColor(consensus.avgFomoScore))}>
-                {consensus.avgFomoScore}/10
+          <div className="flex flex-wrap justify-between items-center gap-2 text-xs text-muted-foreground pt-1">
+            <div className="flex items-center gap-3">
+              <span>
+                평균 FOMO:{" "}
+                <span className={cn("font-bold", fomoColor(consensus.avgFomoScore))}>
+                  {consensus.avgFomoScore}/10
+                </span>
               </span>
-            </span>
+              <span>
+                평균 확신: <span className="font-bold text-foreground">{consensus.avgConfidence}/5</span>
+              </span>
+            </div>
             {timestamp && (
               <span>
                 {new Date(timestamp).toLocaleString("ko-KR", {
@@ -426,6 +535,29 @@ export default function FomoAgentsPage() {
               </span>
             )}
           </div>
+
+          {consensus.topSectors.length > 0 && (
+            <div className="pt-2 border-t border-border/50">
+              <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold mb-1.5">
+                에이전트 선호 섹터 (Hold 제외)
+              </p>
+              <div className="flex flex-wrap gap-1.5">
+                {consensus.topSectors.map((s, idx) => (
+                  <span
+                    key={s.sector}
+                    className={cn(
+                      "rounded-md px-2 py-0.5 text-[11px] font-semibold",
+                      idx === 0
+                        ? "bg-violet-500/20 text-violet-700 dark:text-violet-300"
+                        : "bg-muted text-muted-foreground"
+                    )}
+                  >
+                    {SECTOR_LABEL[s.sector]} · {s.count}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
 

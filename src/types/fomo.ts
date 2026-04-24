@@ -15,9 +15,20 @@ export interface SentimentData {
     foreignNetBuy: number;
     cnnFG: number | null;
     cnnFGLabel: string | null;
+    // 5-day trends
+    vix5dChangePct: number;
+    kospi5dChangePct: number;
+    sp5005dChangePct: number;
   };
+  trendSummary: string;
   timestamp: string;
 }
+
+export type TargetSector =
+  | "Tech" | "Defense" | "Bonds" | "Cash" | "Crypto"
+  | "KR-Large" | "KR-Small" | "Gold" | "Energy" | "Other";
+
+export type TimeHorizon = "1w" | "1m" | "3m" | "1y";
 
 export interface AgentAnalysis {
   id: string;
@@ -25,12 +36,20 @@ export interface AgentAnalysis {
   style: string;
   weight: number;
   action: "Buy" | "Hold" | "Sell";
-  fomoScore: number;
+  targetSector: TargetSector;
+  confidence: number;      // 1-5
+  timeHorizon: TimeHorizon;
+  fomoScore: number;       // 0-10
   interpretation: string;
   actionReason: string;
   warning: string;
   innerMonologue: string;
   biasesDetected: string[];
+}
+
+export interface ContrarianSignal {
+  active: boolean;
+  reason: string;
 }
 
 export interface AgentsResult {
@@ -41,6 +60,9 @@ export interface AgentsResult {
     sellPct: number;
     avgFomoScore: number;
     weightedAction: "Buy" | "Hold" | "Sell";
+    avgConfidence: number;
+    topSectors: { sector: TargetSector; count: number }[];
   };
+  contrarian: ContrarianSignal;
   timestamp: string;
 }
