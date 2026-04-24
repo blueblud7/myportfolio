@@ -5,7 +5,7 @@ import { Link, usePathname } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
 import {
   LayoutDashboard, Wallet, BarChart3, TrendingUp, BookOpen,
-  Eye, EyeOff, FlaskConical, Bell, Sparkles, Activity, X, Filter, Layers, GitBranch, GitCompare, Microscope, PiggyBank, PieChart, Receipt, Waves, BrainCircuit, Target, FileText,
+  Eye, EyeOff, FlaskConical, Bell, Sparkles, Activity, X, Filter, Layers, GitBranch, GitCompare, Microscope, PiggyBank, PieChart, Receipt, Waves, BrainCircuit, Target, FileText, Binoculars,
 } from "lucide-react";
 import { InvestorQuote } from "./InvestorQuote";
 import { usePrivacy } from "@/contexts/privacy-context";
@@ -26,6 +26,7 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
       items: [
         { href: "/", label: t("dashboard"), icon: LayoutDashboard },
         { href: "/accounts", label: t("accounts"), icon: Wallet },
+        { href: "/watchlist", label: "워치리스트", icon: Binoculars },
         { href: "/reports", label: t("reports"), icon: BarChart3 },
         { href: "/goals", label: "목표 & 섹터", icon: Target },
       ],

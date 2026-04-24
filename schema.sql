@@ -145,3 +145,15 @@ CREATE TABLE IF NOT EXISTS account_snapshots (
   date TEXT NOT NULL,
   UNIQUE(account_id, date)
 );
+
+CREATE TABLE IF NOT EXISTS watchlist (
+  id SERIAL PRIMARY KEY,
+  ticker TEXT NOT NULL UNIQUE,
+  name TEXT NOT NULL,
+  currency TEXT NOT NULL DEFAULT 'USD' CHECK(currency IN ('KRW','USD')),
+  target_buy_price DOUBLE PRECISION,
+  target_sell_price DOUBLE PRECISION,
+  tags TEXT NOT NULL DEFAULT '',
+  note TEXT NOT NULL DEFAULT '',
+  added_at TEXT NOT NULL DEFAULT (to_char(NOW(),'YYYY-MM-DD HH24:MI:SS'))
+);
