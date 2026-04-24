@@ -17,12 +17,12 @@ const CATEGORY_MAP: Record<string, string> = {
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 const REC_COLOR: Record<string, string> = {
-  "매수":   "bg-emerald-500/20 text-emerald-400",
-  "BUY":    "bg-emerald-500/20 text-emerald-400",
-  "중립":   "bg-zinc-500/20 text-zinc-400",
-  "HOLD":   "bg-zinc-500/20 text-zinc-400",
-  "매도":   "bg-red-500/20 text-red-400",
-  "SELL":   "bg-red-500/20 text-red-400",
+  "매수":   "bg-emerald-500/20 text-emerald-700 dark:text-emerald-400",
+  "BUY":    "bg-emerald-500/20 text-emerald-700 dark:text-emerald-400",
+  "중립":   "bg-zinc-500/15 text-zinc-600 dark:text-zinc-400",
+  "HOLD":   "bg-zinc-500/15 text-zinc-600 dark:text-zinc-400",
+  "매도":   "bg-red-500/20 text-red-700 dark:text-red-400",
+  "SELL":   "bg-red-500/20 text-red-700 dark:text-red-400",
 };
 
 function RecBadge({ rec }: { rec: string | null }) {
@@ -35,7 +35,7 @@ function CategoryBadge({ cat }: { cat: string | null }) {
   if (!cat) return null;
   const label = CATEGORY_MAP[cat] ?? cat;
   return (
-    <span className="rounded bg-zinc-700/50 px-1.5 py-0.5 text-[10px] text-zinc-400">{label}</span>
+    <span className="rounded bg-zinc-200 dark:bg-zinc-700/50 px-1.5 py-0.5 text-[10px] text-zinc-600 dark:text-zinc-400">{label}</span>
   );
 }
 
@@ -47,12 +47,12 @@ function ReportCard({ report }: { report: AnalystReport }) {
   const hasMore = lines.length > 3;
 
   return (
-    <div className="rounded-xl border border-border bg-card p-4 hover:border-zinc-600 transition-colors">
+    <div className="rounded-xl border border-border bg-card p-4 hover:border-zinc-400 dark:hover:border-zinc-600 transition-colors">
       <div className="mb-2 flex items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
           <div className="mb-1 flex flex-wrap items-center gap-1.5">
             {report.firm && (
-              <span className="flex items-center gap-0.5 text-[11px] text-zinc-500">
+              <span className="flex items-center gap-0.5 text-[11px] text-zinc-500 dark:text-zinc-500">
                 <Building2 className="h-3 w-3" />{report.firm}
               </span>
             )}
@@ -62,9 +62,9 @@ function ReportCard({ report }: { report: AnalystReport }) {
               <span className="text-[10px] text-zinc-500">목표가 {report.target_price}</span>
             )}
           </div>
-          <h3 className="text-sm font-semibold leading-snug">
+          <h3 className="text-sm font-semibold leading-snug text-foreground">
             {report.stock_name && (
-              <span className="mr-1.5 text-blue-400">[{report.stock_name}]</span>
+              <span className="mr-1.5 text-blue-600 dark:text-blue-400">[{report.stock_name}]</span>
             )}
             {report.title}
           </h3>
@@ -73,7 +73,7 @@ function ReportCard({ report }: { report: AnalystReport }) {
           <p className="text-[11px] text-zinc-500">{report.date}</p>
           {report.pdf_url && (
             <a href={report.pdf_url} target="_blank" rel="noopener noreferrer"
-              className="mt-1 inline-flex items-center gap-0.5 text-[11px] text-blue-400 hover:text-blue-300">
+              className="mt-1 inline-flex items-center gap-0.5 text-[11px] text-blue-600 dark:text-blue-400 hover:text-blue-500 dark:hover:text-blue-300">
               <ExternalLink className="h-3 w-3" /> PDF
             </a>
           )}
@@ -81,11 +81,11 @@ function ReportCard({ report }: { report: AnalystReport }) {
       </div>
 
       {summary && (
-        <div className="mt-2 rounded-lg bg-muted/40 px-3 py-2 text-[12px] text-zinc-300 leading-relaxed whitespace-pre-line">
+        <div className="mt-2 rounded-lg bg-zinc-100 dark:bg-muted/40 px-3 py-2 text-[12px] text-zinc-700 dark:text-zinc-300 leading-relaxed whitespace-pre-line">
           {expanded ? summary : preview}
           {hasMore && (
             <button onClick={() => setExpanded(!expanded)}
-              className="ml-2 text-blue-400 hover:text-blue-300">
+              className="ml-2 text-blue-600 dark:text-blue-400 hover:text-blue-500">
               {expanded ? "접기" : "더보기"}
             </button>
           )}
