@@ -60,44 +60,73 @@ async function fetchYfScreener(scrId: string, count = 7): Promise<MarketMoverIte
   }
 }
 
-// ─── KR: Naver Finance ────────────────────────────────────────────────────────
+// ─── KR: Yahoo Finance quotes for major KOSPI stocks ─────────────────────────
 
-const NAVER_HEADERS = {
-  "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) AppleWebKit/605.1.15",
-  "Accept": "application/json, text/plain, */*",
-  "Referer": "https://m.stock.naver.com/",
-};
+const KR_TICKERS = [
+  "005930.KS", // 삼성전자
+  "000660.KS", // SK하이닉스
+  "207940.KS", // 삼성바이오로직스
+  "005380.KS", // 현대차
+  "068270.KS", // 셀트리온
+  "000270.KS", // 기아
+  "005490.KS", // POSCO홀딩스
+  "035420.KS", // NAVER
+  "035720.KS", // 카카오
+  "051910.KS", // LG화학
+  "006400.KS", // 삼성SDI
+  "066570.KS", // LG전자
+  "055550.KS", // 신한지주
+  "105560.KS", // KB금융
+  "003550.KS", // LG
+  "012330.KS", // 현대모비스
+  "096770.KS", // SK이노베이션
+  "028260.KS", // 삼성물산
+  "017670.KS", // SK텔레콤
+  "086790.KS", // 하나금융지주
+  "034730.KS", // SK
+  "009150.KS", // 삼성전기
+  "011200.KS", // HMM
+  "032830.KS", // 삼성생명
+  "000810.KS", // 삼성화재
+  "373220.KS", // LG에너지솔루션
+  "247540.KS", // 에코프로비엠
+  "091990.KS", // 셀트리온헬스케어
+  "036570.KS", // 엔씨소프트
+  "003670.KS", // 포스코퓨처엠
+];
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function parseNaverItem(s: any): MarketMoverItem {
-  return {
-    ticker: String(s.itemCode ?? s.stockCode ?? s.code ?? ""),
-    name: String(s.itemName ?? s.stockName ?? s.name ?? ""),
-    price: Number(String(s.currentPrice ?? s.closePrice ?? s.price ?? "0").replace(/,/g, "")),
-    changePct: Number(String(s.fluctuationsRatio ?? s.changeRate ?? "0").replace(/[+,]/g, "")),
-    volume: Number(String(s.accumulatedTradingVolume ?? s.tradingVolume ?? s.volume ?? "0").replace(/,/g, "")),
-    avgVolume: 0,
-    currency: "KRW",
-  };
-}
-
-type NaverChangeType = "RISE" | "FALL" | "ACML_VOL";
-
-async function fetchNaverKr(changeType: NaverChangeType, count = 7): Promise<MarketMoverItem[]> {
+async function fetchKrMovers(count = 7): Promise<{ gainers: MarketMoverItem[]; losers: MarketMoverItem[]; active: MarketMoverItem[] }> {
   try {
-    const url = `https://m.stock.naver.com/api/stocks/up-down-list?marketType=KOSPI&changeType=${changeType}&pageSize=${count}&page=1`;
-    const res = await fetch(url, { headers: NAVER_HEADERS, next: { revalidate: 300 } });
-    if (!res.ok) return [];
+    const symbols = KR_TICKERS.join(",");
+    const url = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${encodeURIComponent(symbols)}&fields=symbol,shortName,regularMarketPrice,regularMarketChangePercent,regularMarketVolume,averageDailyVolume3Month,currency`;
+    const res = await fetch(url, { headers: YF_HEADERS, next: { revalidate: 300 } });
+    if (!res.ok) return { gainers: [], losers: [], active: [] };
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const json: any = await res.json();
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const list: any[] = json?.stocks ?? json?.stockList ?? json?.list ?? [];
-    return list
-      .map(parseNaverItem)
-      .filter((s) => s.ticker && s.price > 0)
-      .slice(0, count);
+    const quotes: any[] = json?.quoteResponse?.result ?? [];
+    const stocks: MarketMoverItem[] = quotes
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .map((q: any) => ({
+        ticker: String(q.symbol ?? "").replace(/\.(KS|KQ)$/, ""),
+        name: q.shortName ?? q.longName ?? q.symbol ?? "",
+        price: Number(q.regularMarketPrice ?? 0),
+        changePct: Number(q.regularMarketChangePercent ?? 0),
+        volume: Number(q.regularMarketVolume ?? 0),
+        avgVolume: Number(q.averageDailyVolume3Month ?? q.averageDailyVolume10Day ?? 0),
+        currency: q.currency ?? "KRW",
+      }))
+      .filter((q) => q.ticker && q.price > 0);
+
+    const byChange = [...stocks].sort((a, b) => b.changePct - a.changePct);
+    const byVolume = [...stocks].sort((a, b) => b.volume - a.volume);
+    return {
+      gainers: byChange.slice(0, count),
+      losers: byChange.slice(-count).reverse(),
+      active: byVolume.slice(0, count),
+    };
   } catch {
-    return [];
+    return { gainers: [], losers: [], active: [] };
   }
 }
 
@@ -113,19 +142,17 @@ export async function GET() {
 
   const [
     usGainers, usLosers, usActive,
-    krGainers, krLosers, krActive,
+    kr,
   ] = await Promise.all([
     fetchYfScreener("day_gainers"),
     fetchYfScreener("day_losers"),
     fetchYfScreener("most_actives"),
-    fetchNaverKr("RISE"),
-    fetchNaverKr("FALL"),
-    fetchNaverKr("ACML_VOL"),
+    fetchKrMovers(),
   ]);
 
   const data: MarketMoversResponse = {
     us: { gainers: usGainers, losers: usLosers, active: usActive },
-    kr: { gainers: krGainers, losers: krLosers, active: krActive },
+    kr: { gainers: kr.gainers, losers: kr.losers, active: kr.active },
     updatedAt: new Date().toISOString(),
   };
 
