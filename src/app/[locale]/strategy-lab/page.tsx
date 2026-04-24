@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import type { CashOptResult, CashOptCell } from "@/app/api/strategy-lab/cash-optimize/route";
 import {
   LineChart,
   Line,
@@ -1329,6 +1330,178 @@ export default function StrategyLabPage() {
           <p className="text-xs opacity-60">Yahoo Finance에서 주간 데이터를 가져오는 중입니다</p>
         </div>
       )}
+
+      {/* ─── 현금 비율 최적화 ─────────────────────────────────────────────── */}
+      <CashOptimizer />
     </div>
+  );
+}
+
+// ─── Cash Optimizer Component ─────────────────────────────────────────────────
+
+const CASH_RATIOS = [0, 5, 10, 15, 20, 25, 30, 40, 50];
+const VIX_TRIGGERS = [15, 18, 20, 22, 25, 28, 30, 35];
+
+function cellColor(val: number, min: number, max: number, invert = false): string {
+  if (max === min) return "bg-zinc-800";
+  const t = (val - min) / (max - min);
+  const n = invert ? 1 - t : t;
+  if (n >= 0.8) return "bg-emerald-500/40 text-emerald-200";
+  if (n >= 0.6) return "bg-emerald-500/25 text-emerald-300";
+  if (n >= 0.4) return "bg-zinc-700/60 text-zinc-300";
+  if (n >= 0.2) return "bg-red-500/20 text-red-300";
+  return "bg-red-500/35 text-red-200";
+}
+
+function CashOptimizer() {
+  const [period, setPeriod] = useState<string>("5y");
+  const [metric, setMetric] = useState<"calmar" | "sharpe" | "cagr">("calmar");
+  const [data, setData] = useState<CashOptResult | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  const run = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/strategy-lab/cash-optimize?period=${period}`);
+      setData(await res.json());
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getValue = (c: CashOptCell) =>
+    metric === "calmar" ? c.calmar : metric === "sharpe" ? c.sharpe : c.cagr;
+
+  const allVals = data?.cells.map(getValue) ?? [];
+  const minVal = Math.min(...allVals);
+  const maxVal = Math.max(...allVals);
+  const best = data
+    ? (metric === "calmar" ? data.bestByCalmar : metric === "sharpe" ? data.bestBySharpe
+      : data.cells.reduce((a, b) => (b.cagr > a.cagr ? b : a)))
+    : null;
+
+  return (
+    <Card className="border-border dark:border-zinc-800 bg-card dark:bg-zinc-900/60">
+      <CardHeader className="pb-3">
+        <CardTitle className="flex items-center gap-2 text-sm text-foreground">
+          <span>💰</span> 현금 비율 최적화 (VIX 기반)
+        </CardTitle>
+        <p className="text-xs text-muted-foreground mt-1">
+          VIX가 설정한 기준점을 초과하면 현금 비율을 높이는 전략의 최적값을 찾습니다.
+          S&P500 대비 리스크 조정 수익률을 히트맵으로 표시합니다.
+        </p>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {/* Controls */}
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex gap-1 rounded-lg bg-muted/30 p-0.5">
+            {(["1y","2y","3y","5y","10y"] as const).map(p => (
+              <button key={p} onClick={() => setPeriod(p)}
+                className={cn("rounded px-2.5 py-1 text-xs font-medium transition-colors",
+                  period === p ? "bg-background shadow text-foreground" : "text-muted-foreground hover:text-foreground")}>
+                {p.toUpperCase()}
+              </button>
+            ))}
+          </div>
+          <div className="flex gap-1 rounded-lg bg-muted/30 p-0.5">
+            {(["calmar","sharpe","cagr"] as const).map(m => (
+              <button key={m} onClick={() => setMetric(m)}
+                className={cn("rounded px-2.5 py-1 text-xs font-medium transition-colors",
+                  metric === m ? "bg-background shadow text-foreground" : "text-muted-foreground hover:text-foreground")}>
+                {m === "calmar" ? "Calmar" : m === "sharpe" ? "Sharpe" : "CAGR"}
+              </button>
+            ))}
+          </div>
+          <Button size="sm" onClick={run} disabled={loading}
+            className="bg-violet-600 hover:bg-violet-500 text-white">
+            {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Play className="h-3.5 w-3.5" />}
+            <span className="ml-1.5">분석 실행</span>
+          </Button>
+        </div>
+
+        {loading && (
+          <div className="flex items-center gap-2 py-8 justify-center text-muted-foreground">
+            <Loader2 className="h-5 w-5 animate-spin" />
+            <span className="text-sm">S&P500 + VIX 데이터 분석 중...</span>
+          </div>
+        )}
+
+        {data && !loading && (
+          <div className="space-y-4">
+            {/* Best result highlight */}
+            {best && (
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                <div className="rounded-xl bg-violet-500/10 border border-violet-500/20 p-3 col-span-2 sm:col-span-1">
+                  <p className="text-[11px] text-violet-400 font-semibold mb-0.5">최적 조합</p>
+                  <p className="text-base font-bold text-violet-200">
+                    VIX &gt; {best.vixTrigger} → {best.cashRatio}% 현금
+                  </p>
+                </div>
+                {[
+                  { label: "CAGR", val: `${best.cagr.toFixed(1)}%`, base: `${data.baseline.cagr.toFixed(1)}%` },
+                  { label: "MDD",  val: `-${best.mdd.toFixed(1)}%`, base: `-${data.baseline.mdd.toFixed(1)}%` },
+                  { label: metric === "calmar" ? "Calmar" : "Sharpe",
+                    val: metric === "calmar" ? best.calmar.toFixed(2) : best.sharpe.toFixed(2),
+                    base: metric === "calmar" ? "—" : data.baseline.sharpe.toFixed(2) },
+                ].map(({ label, val, base }) => (
+                  <div key={label} className="rounded-xl bg-muted/30 border border-border p-3">
+                    <p className="text-[11px] text-muted-foreground mb-0.5">{label}</p>
+                    <p className="text-base font-bold text-foreground">{val}</p>
+                    <p className="text-[10px] text-zinc-500">바이앤홀드 {base}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Heatmap */}
+            <div>
+              <p className="mb-2 text-xs font-semibold text-muted-foreground">
+                히트맵: {metric === "calmar" ? "Calmar Ratio" : metric === "sharpe" ? "Sharpe Ratio" : "CAGR (%)"} —
+                VIX 기준점(열) × 현금 비율(행)
+              </p>
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs border-collapse">
+                  <thead>
+                    <tr>
+                      <th className="p-1.5 text-left text-zinc-500 font-normal w-20">현금%</th>
+                      {VIX_TRIGGERS.map(v => (
+                        <th key={v} className="p-1.5 text-center text-zinc-500 font-normal">VIX&gt;{v}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {CASH_RATIOS.map(cash => (
+                      <tr key={cash}>
+                        <td className="p-1.5 font-semibold text-zinc-400">{cash}%</td>
+                        {VIX_TRIGGERS.map(vix => {
+                          const cell = data.cells.find(c => c.vixTrigger === vix && c.cashRatio === cash);
+                          if (!cell) return <td key={vix} className="p-1.5 text-center bg-zinc-800/50">—</td>;
+                          const val = getValue(cell);
+                          const isBest = best?.vixTrigger === vix && best?.cashRatio === cash;
+                          return (
+                            <td key={vix}
+                              className={cn(
+                                "p-1.5 text-center rounded transition-all tabular-nums",
+                                cellColor(val, minVal, maxVal),
+                                isBest && "ring-2 ring-violet-400 font-bold"
+                              )}>
+                              {metric === "cagr" ? `${val.toFixed(1)}%` : val.toFixed(2)}
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <p className="mt-2 text-[10px] text-zinc-600">
+                * S&P500(^GSPC) + VIX(^VIX) {period.toUpperCase()} 월간 데이터 기준 · {data.startDate} ~ {data.endDate}
+                · 보라색 테두리 = 최적값
+              </p>
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }

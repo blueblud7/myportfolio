@@ -4,7 +4,15 @@ import { useEffect, useState, useCallback } from "react";
 import { FileText, ExternalLink, Search, ChevronLeft, ChevronRight, Building2, Tag, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { AnalystReport, AnalystReportsResponse } from "@/app/api/analyst-reports/route";
-import { CATEGORY_MAP } from "@/app/api/analyst-reports/route";
+
+const CATEGORY_MAP: Record<string, string> = {
+  "Each Company":       "개별 종목",
+  "Market Status":      "시황",
+  "Investing Analysis": "투자 전략",
+  "Industry Analysis":  "산업 분석",
+  "Security Analysis":  "증권 분석",
+  "Economy Analysis":   "경제 분석",
+};
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
