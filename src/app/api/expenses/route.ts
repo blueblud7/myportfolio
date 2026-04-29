@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
+import { getSessionUser } from "@/lib/auth";
 
-// Default items seeded on first load
 const DEFAULT_ITEMS = [
   // Housing
   { name: "임대/모기지", name_en: "Rent/Mortgage", amount: 5700, type: "expense", category: "housing", sort_order: 1 },
@@ -44,8 +44,7 @@ const DEFAULT_ITEMS = [
   { name: "부업/기타 수입", name_en: "Side Income", amount: 0, type: "income", category: "income", sort_order: 102 },
 ];
 
-async function ensureTable() {
-  const sql = getDb();
+async function ensureTable(sql: ReturnType<typeof getDb>) {
   await sql`
     CREATE TABLE IF NOT EXISTS expense_items (
       id SERIAL PRIMARY KEY,
@@ -56,25 +55,34 @@ async function ensureTable() {
       type TEXT NOT NULL DEFAULT 'expense',
       category TEXT NOT NULL DEFAULT 'misc',
       sort_order INTEGER NOT NULL DEFAULT 0,
+      user_id INTEGER REFERENCES users(id),
       created_at TEXT NOT NULL DEFAULT (to_char(NOW(), 'YYYY-MM-DD HH24:MI:SS'))
     )
   `;
+  await sql`ALTER TABLE expense_items ADD COLUMN IF NOT EXISTS user_id INTEGER REFERENCES users(id)`.catch(() => {});
+  // 기존 데이터 귀속 (유저 1명이면)
+  await sql`
+    UPDATE expense_items SET user_id = (SELECT id FROM users LIMIT 1)
+    WHERE user_id IS NULL AND (SELECT COUNT(*) FROM users) = 1
+  `.catch(() => {});
 }
 
-export async function GET() {
-  await ensureTable();
-  const sql = getDb();
-  const rows = await sql`SELECT * FROM expense_items ORDER BY sort_order, id`;
+export async function GET(req: NextRequest) {
+  const user = await getSessionUser(req);
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  // Seed defaults if empty
+  const sql = getDb();
+  await ensureTable(sql);
+  const rows = await sql`SELECT * FROM expense_items WHERE user_id = ${user.id} ORDER BY sort_order, id`;
+
   if (rows.length === 0) {
     for (const item of DEFAULT_ITEMS) {
       await sql`
-        INSERT INTO expense_items (name, name_en, amount, currency, type, category, sort_order)
-        VALUES (${item.name}, ${item.name_en}, ${item.amount}, 'USD', ${item.type}, ${item.category}, ${item.sort_order})
+        INSERT INTO expense_items (name, name_en, amount, currency, type, category, sort_order, user_id)
+        VALUES (${item.name}, ${item.name_en}, ${item.amount}, 'USD', ${item.type}, ${item.category}, ${item.sort_order}, ${user.id})
       `;
     }
-    const seeded = await sql`SELECT * FROM expense_items ORDER BY sort_order, id`;
+    const seeded = await sql`SELECT * FROM expense_items WHERE user_id = ${user.id} ORDER BY sort_order, id`;
     return NextResponse.json(seeded);
   }
 
@@ -82,20 +90,25 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
-  await ensureTable();
+  const user = await getSessionUser(req);
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
   const sql = getDb();
   const { name, name_en, amount, currency, type, category, sort_order } = await req.json();
   if (!name || !type) return NextResponse.json({ error: "name and type required" }, { status: 400 });
 
   const [row] = await sql`
-    INSERT INTO expense_items (name, name_en, amount, currency, type, category, sort_order)
-    VALUES (${name}, ${name_en ?? ""}, ${amount ?? 0}, ${currency ?? "USD"}, ${type}, ${category ?? "misc"}, ${sort_order ?? 999})
+    INSERT INTO expense_items (name, name_en, amount, currency, type, category, sort_order, user_id)
+    VALUES (${name}, ${name_en ?? ""}, ${amount ?? 0}, ${currency ?? "USD"}, ${type}, ${category ?? "misc"}, ${sort_order ?? 999}, ${user.id})
     RETURNING *
   `;
   return NextResponse.json(row, { status: 201 });
 }
 
 export async function PUT(req: NextRequest) {
+  const user = await getSessionUser(req);
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
   const sql = getDb();
   const { id, name, name_en, amount, currency, type, category, sort_order } = await req.json();
   if (!id) return NextResponse.json({ error: "id required" }, { status: 400 });
@@ -105,16 +118,20 @@ export async function PUT(req: NextRequest) {
     SET name=${name}, name_en=${name_en ?? ""}, amount=${amount ?? 0},
         currency=${currency ?? "USD"}, type=${type}, category=${category ?? "misc"},
         sort_order=${sort_order ?? 999}
-    WHERE id=${id}
+    WHERE id=${id} AND user_id=${user.id}
     RETURNING *
   `;
+  if (!row) return NextResponse.json({ error: "Not found" }, { status: 404 });
   return NextResponse.json(row);
 }
 
 export async function DELETE(req: NextRequest) {
+  const user = await getSessionUser(req);
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
   const sql = getDb();
   const { id } = await req.json();
   if (!id) return NextResponse.json({ error: "id required" }, { status: 400 });
-  await sql`DELETE FROM expense_items WHERE id=${id}`;
+  await sql`DELETE FROM expense_items WHERE id=${id} AND user_id=${user.id}`;
   return NextResponse.json({ deleted: true });
 }

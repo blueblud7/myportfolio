@@ -3,21 +3,39 @@ import { getDb } from "@/lib/db";
 import { getCachedExchangeRate } from "@/lib/exchange-rate";
 import { getSessionUser } from "@/lib/auth";
 
-async function ensureTable() {
-  const sql = getDb();
+async function ensureTable(sql: ReturnType<typeof getDb>) {
   await sql`
     CREATE TABLE IF NOT EXISTS annual_goals (
       id SERIAL PRIMARY KEY,
-      year INTEGER NOT NULL UNIQUE,
+      year INTEGER NOT NULL,
       return_target_pct NUMERIC NOT NULL,
       value_target_usd NUMERIC,
       start_value_usd NUMERIC,
       note TEXT,
+      user_id INTEGER REFERENCES users(id),
       created_at TIMESTAMPTZ DEFAULT NOW()
     )
   `;
   await sql`ALTER TABLE annual_goals ADD COLUMN IF NOT EXISTS value_target_usd NUMERIC`.catch(() => {});
   await sql`ALTER TABLE annual_goals ADD COLUMN IF NOT EXISTS start_value_usd NUMERIC`.catch(() => {});
+  await sql`ALTER TABLE annual_goals ADD COLUMN IF NOT EXISTS user_id INTEGER REFERENCES users(id)`.catch(() => {});
+  // 기존 UNIQUE(year) → UNIQUE(user_id, year) 마이그레이션
+  await sql`
+    DO $$
+    BEGIN
+      IF EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'annual_goals_year_key' AND conrelid = 'annual_goals'::regclass) THEN
+        ALTER TABLE annual_goals DROP CONSTRAINT annual_goals_year_key;
+      END IF;
+      IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'annual_goals_user_id_year_key' AND conrelid = 'annual_goals'::regclass) THEN
+        ALTER TABLE annual_goals ADD CONSTRAINT annual_goals_user_id_year_key UNIQUE (user_id, year);
+      END IF;
+    END $$;
+  `.catch(() => {});
+  // 기존 데이터 귀속 (유저 1명이면)
+  await sql`
+    UPDATE annual_goals SET user_id = (SELECT id FROM users LIMIT 1)
+    WHERE user_id IS NULL AND (SELECT COUNT(*) FROM users) = 1
+  `.catch(() => {});
 }
 
 type GoalRow = {
@@ -33,12 +51,12 @@ export async function GET(req: NextRequest) {
   const user = await getSessionUser(req);
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  await ensureTable();
   const sql = getDb();
+  await ensureTable(sql);
   const year = new Date().getFullYear();
 
   const [goals, startSnaps, latestSnaps, exchangeRate] = await Promise.all([
-    sql`SELECT * FROM annual_goals ORDER BY year DESC`.then((r) => r as unknown as GoalRow[]),
+    sql`SELECT * FROM annual_goals WHERE user_id = ${user.id} ORDER BY year DESC`.then((r) => r as unknown as GoalRow[]),
     sql`
       SELECT total_krw, date FROM snapshots
       WHERE date >= ${`${year}-01-01`} AND user_id = ${user.id}
@@ -54,7 +72,6 @@ export async function GET(req: NextRequest) {
 
   const currentGoal = goals.find((g) => g.year === year) ?? null;
 
-  // 연초값: goal에 수동 입력값 있으면 우선, 없으면 스냅샷
   const snapshotStartKrw = startSnaps[0]?.total_krw ? Number(startSnaps[0].total_krw) : null;
   const snapshotStartUsd = snapshotStartKrw ? snapshotStartKrw / exchangeRate : null;
   const startUsd: number | null =
@@ -91,8 +108,8 @@ export async function POST(req: NextRequest) {
   const user = await getSessionUser(req);
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  await ensureTable();
   const sql = getDb();
+  await ensureTable(sql);
   const body = (await req.json()) as {
     year: number;
     returnTargetPct?: number;
@@ -104,7 +121,6 @@ export async function POST(req: NextRequest) {
   const { year, note } = body;
   const startValueUsd = body.startValueUsd ?? null;
 
-  // startUsd 결정: 입력값 > 스냅샷
   let resolvedStartUsd: number | null = startValueUsd;
   if (!resolvedStartUsd) {
     const exchangeRate = await getCachedExchangeRate();
@@ -126,16 +142,13 @@ export async function POST(req: NextRequest) {
     valueTargetUsd = resolvedStartUsd * (1 + returnTargetPct / 100);
   }
 
-  // valueTargetUsd만 있고 startUsd 없으면 pct=0으로 저장 (나중에 start 입력 시 재계산)
-  if (returnTargetPct === null && valueTargetUsd !== null) {
-    returnTargetPct = 0;
-  }
+  if (returnTargetPct === null && valueTargetUsd !== null) returnTargetPct = 0;
   if (returnTargetPct === null) return NextResponse.json({ error: "목표값 필요" }, { status: 400 });
 
   const rows = await sql`
-    INSERT INTO annual_goals (year, return_target_pct, value_target_usd, start_value_usd, note)
-    VALUES (${year}, ${returnTargetPct}, ${valueTargetUsd}, ${resolvedStartUsd}, ${note ?? null})
-    ON CONFLICT (year) DO UPDATE SET
+    INSERT INTO annual_goals (year, return_target_pct, value_target_usd, start_value_usd, note, user_id)
+    VALUES (${year}, ${returnTargetPct}, ${valueTargetUsd}, ${resolvedStartUsd}, ${note ?? null}, ${user.id})
+    ON CONFLICT (user_id, year) DO UPDATE SET
       return_target_pct = EXCLUDED.return_target_pct,
       value_target_usd  = EXCLUDED.value_target_usd,
       start_value_usd   = EXCLUDED.start_value_usd,
@@ -150,9 +163,8 @@ export async function DELETE(req: NextRequest) {
   const user = await getSessionUser(req);
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  await ensureTable();
   const sql = getDb();
   const year = Number(req.nextUrl.searchParams.get("year"));
-  await sql`DELETE FROM annual_goals WHERE year = ${year}`;
+  await sql`DELETE FROM annual_goals WHERE year = ${year} AND user_id = ${user.id}`;
   return NextResponse.json({ ok: true });
 }
