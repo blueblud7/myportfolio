@@ -21,14 +21,14 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
     <ThemeProvider>
       <PrivacyProvider>
         <SWRConfig value={{ revalidateOnFocus: false, dedupingInterval: 5000 }}>
-          <div className="flex min-h-screen">
+          <div className="flex h-screen overflow-hidden">
             <Sidebar
               mobileOpen={mobileMenuOpen}
               onMobileClose={() => setMobileMenuOpen(false)}
             />
-            <div className="flex-1 min-w-0 overflow-x-hidden">
+            <div className="flex-1 min-w-0 overflow-y-auto overflow-x-hidden">
               <Header onMenuToggle={() => setMobileMenuOpen((v) => !v)} />
-              <main className="min-h-screen bg-background p-3 sm:p-6">{children}</main>
+              <main className="min-h-full bg-background p-3 sm:p-6">{children}</main>
             </div>
           </div>
         </SWRConfig>
