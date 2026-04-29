@@ -1,17 +1,22 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
+import { getSessionUser } from "@/lib/auth";
 
-export async function GET() {
+export async function GET(req: NextRequest) {
+  const user = await getSessionUser(req);
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
   const sql = getDb();
 
   // Diary counts per mood
-  const moodCounts = await sql`SELECT mood, COUNT(*) as count FROM diary GROUP BY mood`;
+  const moodCounts = await sql`SELECT mood, COUNT(*) as count FROM diary WHERE user_id = ${user.id} GROUP BY mood`;
 
   // Transactions joined with diary entries by same date
   const joined = await sql`
     SELECT d.mood, t.type as tx_type, t.total_amount, t.currency
     FROM diary d
     LEFT JOIN transactions t ON t.date = d.date
+    WHERE d.user_id = ${user.id}
   `;
 
   const moods = ["great", "good", "neutral", "bad", "terrible"] as const;

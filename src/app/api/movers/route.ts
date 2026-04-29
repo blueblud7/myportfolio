@@ -1,5 +1,6 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
+import { getSessionUser } from "@/lib/auth";
 import YahooFinance from "yahoo-finance2";
 import { resolveYahooSymbol, isKoreanTicker } from "@/lib/ticker-resolver";
 
@@ -62,14 +63,9 @@ async function enrichWithYahoo(tickers: string[]): Promise<Map<string, { volSpik
   return result;
 }
 
-// 5분 캐시
-let cache: { data: MoversResponse; ts: number } | null = null;
-const CACHE_TTL = 5 * 60 * 1000;
-
-export async function GET() {
-  if (cache && Date.now() - cache.ts < CACHE_TTL) {
-    return NextResponse.json(cache.data);
-  }
+export async function GET(req: NextRequest) {
+  const user = await getSessionUser(req);
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const sql = getDb();
   const today = new Date().toISOString().split("T")[0];
@@ -83,6 +79,7 @@ export async function GET() {
     JOIN accounts a ON h.account_id = a.id
     JOIN price_history ph ON h.ticker = ph.ticker
     WHERE a.type = 'stock'
+      AND a.user_id = ${user.id}
       AND h.ticker != 'CASH'
       AND h.quantity > 0
       AND ph.date = (SELECT MAX(date) FROM price_history WHERE ticker = h.ticker)
@@ -122,6 +119,5 @@ export async function GET() {
     .sort((a, b) => Math.abs(b.changePct) - Math.abs(a.changePct));
 
   const data: MoversResponse = { movers, date: today };
-  cache = { data, ts: Date.now() };
   return NextResponse.json(data);
 }

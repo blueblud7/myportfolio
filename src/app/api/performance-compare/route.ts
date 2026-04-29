@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
+import { getSessionUser } from "@/lib/auth";
 import { getBenchmarkHistory } from "@/lib/yahoo-finance";
 import { subMonths, subDays } from "date-fns";
 import { todayPST, formatPST } from "@/lib/tz";
@@ -100,6 +101,9 @@ async function fetchAndCacheBenchmark(
 }
 
 export async function GET(request: NextRequest) {
+  const user = await getSessionUser(request);
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
   const { searchParams } = new URL(request.url);
   const type = searchParams.get("type") ?? "portfolio";
   const id = searchParams.get("id");
@@ -122,13 +126,14 @@ export async function GET(request: NextRequest) {
         END
       ) AS cost_basis
       FROM holdings h
-      WHERE h.ticker != 'CASH'
+      JOIN accounts a ON h.account_id = a.id
+      WHERE h.ticker != 'CASH' AND a.user_id = ${user.id}
     ` as { cost_basis: number | null }[];
     const costBasis = Number(costRows[0]?.cost_basis ?? 0);
 
     const snapshots = await sql`
       SELECT date, total_krw as value FROM snapshots
-      WHERE date >= ${start} AND date <= ${end}
+      WHERE date >= ${start} AND date <= ${end} AND user_id = ${user.id}
       ORDER BY date
     ` as { date: string; value: number }[];
 
@@ -137,7 +142,7 @@ export async function GET(request: NextRequest) {
 
   } else if (type === "account" && id) {
     const [account] = await sql`
-      SELECT name FROM accounts WHERE id = ${Number(id)}
+      SELECT name FROM accounts WHERE id = ${Number(id)} AND user_id = ${user.id}
     ` as { name: string }[];
     subjectName = account?.name ?? "계좌";
 
@@ -182,7 +187,11 @@ export async function GET(request: NextRequest) {
   } else if (type === "stock" && id) {
     // 종목 원가
     const [holding] = await sql`
-      SELECT name, avg_cost, currency FROM holdings WHERE ticker = ${id} LIMIT 1
+      SELECT h.name, h.avg_cost, h.currency
+      FROM holdings h
+      JOIN accounts a ON h.account_id = a.id
+      WHERE h.ticker = ${id} AND a.user_id = ${user.id}
+      LIMIT 1
     ` as { name: string; avg_cost: number; currency: string }[];
     subjectName = holding?.name ?? id;
 

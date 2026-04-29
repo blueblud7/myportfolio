@@ -1,9 +1,13 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 import { getCachedExchangeRate } from "@/lib/exchange-rate";
+import { getSessionUser } from "@/lib/auth";
 import type { ReportData } from "@/types";
 
-export async function GET() {
+export async function GET(req: NextRequest) {
+  const user = await getSessionUser(req);
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
   const sql = getDb();
   const exchangeRate = await getCachedExchangeRate();
 
@@ -21,14 +25,14 @@ export async function GET() {
     LEFT JOIN price_history p ON h.ticker=p.ticker
       AND p.date=(SELECT MAX(date) FROM price_history WHERE ticker=h.ticker)
     LEFT JOIN stock_metadata sm ON h.ticker=sm.ticker
-    WHERE a.type='stock'
+    WHERE a.type='stock' AND a.user_id=${user.id}
   ` as { ticker:string; name:string; quantity:number; avg_cost:number; currency:string;
          account_name:string; current_price:number; sector:string; annual_dividend:number; dividend_yield:number }[];
 
   const bankBalances = await sql`
     SELECT bb.balance, a.name as account_name, a.currency
     FROM bank_balances bb JOIN accounts a ON bb.account_id=a.id
-    WHERE a.type='bank'
+    WHERE a.type='bank' AND a.user_id=${user.id}
       AND bb.date=(SELECT MAX(b2.date) FROM bank_balances b2 WHERE b2.account_id=bb.account_id)
     GROUP BY bb.account_id, bb.balance, a.name, a.currency
   ` as { balance:number; account_name:string; currency:string }[];

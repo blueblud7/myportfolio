@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 import { getCachedExchangeRate } from "@/lib/exchange-rate";
+import { getSessionUser } from "@/lib/auth";
 
 async function ensureTable() {
   const sql = getDb();
@@ -28,7 +29,10 @@ type GoalRow = {
   note: string | null;
 };
 
-export async function GET() {
+export async function GET(req: NextRequest) {
+  const user = await getSessionUser(req);
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
   await ensureTable();
   const sql = getDb();
   const year = new Date().getFullYear();
@@ -37,11 +41,12 @@ export async function GET() {
     sql`SELECT * FROM annual_goals ORDER BY year DESC`.then((r) => r as unknown as GoalRow[]),
     sql`
       SELECT total_krw, date FROM snapshots
-      WHERE date >= ${`${year}-01-01`}
+      WHERE date >= ${`${year}-01-01`} AND user_id = ${user.id}
       ORDER BY date ASC LIMIT 1
     `.then((r) => r as unknown as { total_krw: number; date: string }[]),
     sql`
       SELECT total_krw, date FROM snapshots
+      WHERE user_id = ${user.id}
       ORDER BY date DESC LIMIT 1
     `.then((r) => r as unknown as { total_krw: number; date: string }[]),
     getCachedExchangeRate(),
@@ -83,6 +88,9 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
+  const user = await getSessionUser(req);
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
   await ensureTable();
   const sql = getDb();
   const body = (await req.json()) as {
@@ -102,7 +110,7 @@ export async function POST(req: NextRequest) {
     const exchangeRate = await getCachedExchangeRate();
     const snaps = await sql`
       SELECT total_krw FROM snapshots
-      WHERE date >= ${`${year}-01-01`}
+      WHERE date >= ${`${year}-01-01`} AND user_id = ${user.id}
       ORDER BY date ASC LIMIT 1
     `.then((r) => r as unknown as { total_krw: number }[]);
     const startKrw = snaps[0]?.total_krw ? Number(snaps[0].total_krw) : null;
@@ -139,6 +147,9 @@ export async function POST(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
+  const user = await getSessionUser(req);
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
   await ensureTable();
   const sql = getDb();
   const year = Number(req.nextUrl.searchParams.get("year"));

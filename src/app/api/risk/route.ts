@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 import { subMonths, subYears } from "date-fns";
 import { formatPST } from "@/lib/tz";
+import { getSessionUser } from "@/lib/auth";
 import type { RiskMetrics } from "@/types";
 
 const RISK_FREE_RATE = 0.035; // 연 3.5%
@@ -113,13 +114,16 @@ function calcMetrics(rows: { date: string; total_krw: number }[]): RiskMetrics {
 }
 
 export async function GET(req: NextRequest) {
+  const user = await getSessionUser(req);
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
   const period = new URL(req.url).searchParams.get("period") ?? "1Y";
   const startDate = getPeriodStart(period);
   const sql = getDb();
 
   const rows = startDate
-    ? await sql`SELECT date, total_krw FROM snapshots WHERE date >= ${startDate} ORDER BY date ASC` as { date: string; total_krw: number }[]
-    : await sql`SELECT date, total_krw FROM snapshots ORDER BY date ASC` as { date: string; total_krw: number }[];
+    ? await sql`SELECT date, total_krw FROM snapshots WHERE date >= ${startDate} AND user_id = ${user.id} ORDER BY date ASC` as { date: string; total_krw: number }[]
+    : await sql`SELECT date, total_krw FROM snapshots WHERE user_id = ${user.id} ORDER BY date ASC` as { date: string; total_krw: number }[];
 
   const metrics = calcMetrics(rows);
   return NextResponse.json(metrics);

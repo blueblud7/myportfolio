@@ -1,15 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 import { getCachedExchangeRate } from "@/lib/exchange-rate";
+import { getSessionUser } from "@/lib/auth";
 import type { RebalancingSummary, RebalancingAccount, RebalancingAction } from "@/types";
 
 export async function GET(req: NextRequest) {
+  const user = await getSessionUser(req);
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
   const tolerance = Number(new URL(req.url).searchParams.get("tolerance") ?? 5);
   const sql = getDb();
   const exchangeRate = await getCachedExchangeRate();
 
   // 모든 계좌 조회
-  const accounts = await sql`SELECT * FROM accounts ORDER BY id` as {
+  const accounts = await sql`SELECT * FROM accounts WHERE user_id = ${user.id} ORDER BY id` as {
     id: number; name: string; type: string; currency: string; target_pct: number;
   }[];
 
@@ -24,8 +28,10 @@ export async function GET(req: NextRequest) {
            ELSE COALESCE(p.price, h.avg_cost)
       END as current_price
     FROM holdings h
+    JOIN accounts a ON h.account_id = a.id
     LEFT JOIN price_history p ON h.ticker=p.ticker
       AND p.date=(SELECT MAX(date) FROM price_history WHERE ticker=h.ticker)
+    WHERE a.user_id = ${user.id}
   ` as { account_id: number; quantity: number; avg_cost: number; currency: string; ticker: string; current_price: number }[];
 
   for (const h of holdings) {
@@ -43,6 +49,7 @@ export async function GET(req: NextRequest) {
     WHERE bb.date = (
       SELECT MAX(b2.date) FROM bank_balances b2 WHERE b2.account_id = bb.account_id
     )
+      AND a.user_id = ${user.id}
   ` as { account_id: number; balance: number; currency: string }[];
 
   for (const b of bankRows) {
@@ -97,11 +104,14 @@ export async function GET(req: NextRequest) {
 
 /** 계좌별 목표 비중 일괄 업데이트 */
 export async function PUT(req: NextRequest) {
+  const user = await getSessionUser(req);
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
   // body: [{ id, target_pct }, ...]
   const updates = await req.json() as { id: number; target_pct: number }[];
   const sql = getDb();
   for (const u of updates) {
-    await sql`UPDATE accounts SET target_pct=${u.target_pct} WHERE id=${u.id}`;
+    await sql`UPDATE accounts SET target_pct=${u.target_pct} WHERE id=${u.id} AND user_id=${user.id}`;
   }
   return NextResponse.json({ success: true });
 }

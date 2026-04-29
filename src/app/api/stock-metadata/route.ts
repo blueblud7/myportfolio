@@ -1,10 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 import { getStockMetadataFromYahoo } from "@/lib/yahoo-finance";
+import { getSessionUser } from "@/lib/auth";
 
-export async function POST() {
+export async function POST(req: NextRequest) {
+  const user = await getSessionUser(req);
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
   const sql = getDb();
-  const rows = await sql`SELECT DISTINCT ticker FROM holdings WHERE ticker != 'CASH'` as { ticker: string }[];
+  const rows = await sql`
+    SELECT DISTINCT h.ticker
+    FROM holdings h
+    JOIN accounts a ON h.account_id = a.id
+    WHERE h.ticker != 'CASH' AND a.user_id = ${user.id}
+  ` as { ticker: string }[];
   let success = 0, failed = 0;
   for (const { ticker } of rows) {
     const meta = await getStockMetadataFromYahoo(ticker);

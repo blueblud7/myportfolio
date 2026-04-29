@@ -1,5 +1,6 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
+import { getSessionUser } from "@/lib/auth";
 
 export interface EarningsAlert {
   ticker: string;
@@ -42,15 +43,21 @@ function daysUntil(dateStr: string | null): number | null {
   return Math.round((target - today) / MS_PER_DAY);
 }
 
-export async function GET() {
+export async function GET(req: NextRequest) {
+  const user = await getSessionUser(req);
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
   const sql = getDb();
 
   // ── Earnings (D ≤ 7) from holdings ∪ watchlist ───────────────────────────
   const earningsRaw = await sql`
     WITH sources AS (
-      SELECT DISTINCT ticker, 'holding'::text AS src FROM holdings WHERE ticker <> 'CASH'
+      SELECT DISTINCT h.ticker, 'holding'::text AS src
+      FROM holdings h
+      JOIN accounts a ON h.account_id = a.id
+      WHERE h.ticker <> 'CASH' AND a.user_id = ${user.id}
       UNION
-      SELECT DISTINCT ticker, 'watchlist'::text AS src FROM watchlist
+      SELECT DISTINCT ticker, 'watchlist'::text AS src FROM watchlist WHERE user_id = ${user.id}
     ),
     grouped AS (
       SELECT ticker, STRING_AGG(DISTINCT src, ',') AS srcs FROM sources GROUP BY ticker
@@ -80,7 +87,8 @@ export async function GET() {
     FROM watchlist w
     LEFT JOIN price_history p ON w.ticker = p.ticker
       AND p.date = (SELECT MAX(date) FROM price_history WHERE ticker = w.ticker)
-    WHERE COALESCE(p.price, 0) > 0
+    WHERE w.user_id = ${user.id}
+      AND COALESCE(p.price, 0) > 0
       AND (
         (w.target_buy_price IS NOT NULL AND p.price <= w.target_buy_price)
         OR
@@ -116,8 +124,9 @@ export async function GET() {
   const divRaw = await sql`
     SELECT DISTINCT h.ticker, h.name, d.ex_dividend_date, d.per_share_amount
     FROM holdings h
+    JOIN accounts a ON h.account_id = a.id
     JOIN dividend_schedule d ON h.ticker = d.ticker
-    WHERE h.ticker <> 'CASH' AND d.ex_dividend_date IS NOT NULL
+    WHERE h.ticker <> 'CASH' AND d.ex_dividend_date IS NOT NULL AND a.user_id = ${user.id}
   ` as { ticker: string; name: string; ex_dividend_date: string; per_share_amount: number }[];
 
   const dividends: DividendAlert[] = [];

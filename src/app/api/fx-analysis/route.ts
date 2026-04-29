@@ -1,7 +1,11 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
+import { getSessionUser } from "@/lib/auth";
 
-export async function GET() {
+export async function GET(req: NextRequest) {
+  const user = await getSessionUser(req);
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
   const sql = getDb();
 
   // Get all USD holdings with latest price
@@ -13,7 +17,7 @@ export async function GET() {
     JOIN accounts a ON a.id = h.account_id AND a.currency = 'USD'
     LEFT JOIN price_history ph ON ph.ticker = h.ticker
       AND ph.date = (SELECT MAX(date) FROM price_history WHERE ticker = h.ticker)
-    WHERE h.ticker != 'CASH'
+    WHERE h.ticker != 'CASH' AND a.user_id = ${user.id}
   `;
 
   if (holdings.length === 0) {

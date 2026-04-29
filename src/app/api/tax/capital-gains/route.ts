@@ -1,25 +1,31 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 import { getCachedExchangeRate } from "@/lib/exchange-rate";
+import { getSessionUser } from "@/lib/auth";
 import type { CapitalGainsSummary, CapitalGainsTx, CapitalGainsHolding } from "@/types";
 
 const DEDUCTION_KRW = 2_500_000; // 250만원 기본공제
 const TAX_RATE = 0.22;           // 22% (지방세 포함)
 
 export async function GET(req: NextRequest) {
+  const user = await getSessionUser(req);
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
   const year = Number(new URL(req.url).searchParams.get("year")) || new Date().getFullYear();
   const sql = getDb();
   const exchangeRate = await getCachedExchangeRate();
 
   // 해당 연도의 USD sell 거래 목록
   const sellTxs = await sql`
-    SELECT id, ticker, name, quantity, price, date
-    FROM transactions
-    WHERE type = 'sell'
-      AND currency = 'USD'
-      AND date >= ${`${year}-01-01`}
-      AND date <= ${`${year}-12-31`}
-    ORDER BY date ASC
+    SELECT t.id, t.ticker, t.name, t.quantity, t.price, t.date
+    FROM transactions t
+    JOIN accounts a ON t.account_id = a.id
+    WHERE t.type = 'sell'
+      AND t.currency = 'USD'
+      AND t.date >= ${`${year}-01-01`}
+      AND t.date <= ${`${year}-12-31`}
+      AND a.user_id = ${user.id}
+    ORDER BY t.date ASC
   ` as { id: number; ticker: string; name: string; quantity: number; price: number; date: string }[];
 
   // 각 sell 거래의 avg_cost 계산: 해당 거래 이전까지의 buy 거래들의 가중평균
@@ -28,13 +34,15 @@ export async function GET(req: NextRequest) {
   for (const sell of sellTxs) {
     // 이 sell 거래 이전의 buy 거래들로 avg_cost 계산
     const buys = await sql`
-      SELECT quantity, price FROM transactions
-      WHERE ticker = ${sell.ticker}
-        AND currency = 'USD'
-        AND type = 'buy'
-        AND date <= ${sell.date}
-        AND id < ${sell.id}
-      ORDER BY date ASC
+      SELECT t.quantity, t.price FROM transactions t
+      JOIN accounts a ON t.account_id = a.id
+      WHERE t.ticker = ${sell.ticker}
+        AND t.currency = 'USD'
+        AND t.type = 'buy'
+        AND t.date <= ${sell.date}
+        AND t.id < ${sell.id}
+        AND a.user_id = ${user.id}
+      ORDER BY t.date ASC
     ` as { quantity: number; price: number }[];
 
     let avgCost = 0;
@@ -45,7 +53,10 @@ export async function GET(req: NextRequest) {
     } else {
       // buy 기록이 없으면 현재 holdings avg_cost 사용
       const holding = await sql`
-        SELECT avg_cost FROM holdings WHERE ticker = ${sell.ticker} AND currency = 'USD' LIMIT 1
+        SELECT h.avg_cost FROM holdings h
+        JOIN accounts a ON h.account_id = a.id
+        WHERE h.ticker = ${sell.ticker} AND h.currency = 'USD' AND a.user_id = ${user.id}
+        LIMIT 1
       ` as { avg_cost: number }[];
       avgCost = holding.length > 0 ? holding[0].avg_cost : 0;
     }
@@ -75,10 +86,12 @@ export async function GET(req: NextRequest) {
     SELECT h.id, h.ticker, h.name, h.quantity, h.avg_cost,
       COALESCE(p.price, h.avg_cost) as current_price
     FROM holdings h
+    JOIN accounts a ON h.account_id = a.id
     LEFT JOIN price_history p ON h.ticker = p.ticker
       AND p.date = (SELECT MAX(date) FROM price_history WHERE ticker = h.ticker)
     WHERE h.currency = 'USD'
       AND h.ticker != 'CASH'
+      AND a.user_id = ${user.id}
     ORDER BY h.name
   ` as { id: number; ticker: string; name: string; quantity: number; avg_cost: number; current_price: number }[];
 

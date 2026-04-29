@@ -1,6 +1,7 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 import { getEarningsCalendarEvents } from "@/lib/yahoo-finance";
+import { getSessionUser } from "@/lib/auth";
 
 export const maxDuration = 60;
 
@@ -13,13 +14,19 @@ export interface EarningsCalendarItem {
   source: "holding" | "watchlist" | "both";
 }
 
-export async function GET() {
+export async function GET(req: NextRequest) {
+  const user = await getSessionUser(req);
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
   const sql = getDb();
   const rows = await sql`
     WITH sources AS (
-      SELECT DISTINCT ticker, name, 'holding'::text AS src FROM holdings WHERE ticker <> 'CASH'
+      SELECT DISTINCT h.ticker, h.name, 'holding'::text AS src
+      FROM holdings h
+      JOIN accounts a ON h.account_id = a.id
+      WHERE h.ticker <> 'CASH' AND a.user_id = ${user.id}
       UNION
-      SELECT DISTINCT ticker, name, 'watchlist'::text AS src FROM watchlist
+      SELECT DISTINCT ticker, name, 'watchlist'::text AS src FROM watchlist WHERE user_id = ${user.id}
     ),
     grouped AS (
       SELECT

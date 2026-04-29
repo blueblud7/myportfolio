@@ -1,5 +1,6 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
+import { getSessionUser } from "@/lib/auth";
 import { getCachedExchangeRate } from "@/lib/exchange-rate";
 import { getDividendCalendarEvents } from "@/lib/yahoo-finance";
 import { isKoreanTicker } from "@/lib/ticker-resolver";
@@ -20,7 +21,10 @@ function estimatePaymentMonths(frequency: string, exDividendDate: string | null)
   return [4];
 }
 
-export async function GET() {
+export async function GET(req: NextRequest) {
+  const user = await getSessionUser(req);
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
   const sql = getDb();
   const exchangeRate = await getCachedExchangeRate();
 
@@ -30,6 +34,7 @@ export async function GET() {
     JOIN accounts a ON h.account_id=a.id
     LEFT JOIN stock_metadata sm ON h.ticker=sm.ticker
     WHERE a.type='stock' AND h.ticker!='CASH' AND COALESCE(sm.annual_dividend,0)>0
+      AND a.user_id = ${user.id}
   ` as { ticker:string; name:string; quantity:number; currency:string; annual_dividend:number }[];
 
   const tickerMap = new Map<string,{ name:string; quantity:number; currency:string; annual_dividend:number }>();
