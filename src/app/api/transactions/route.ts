@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
+import { getSessionUser } from "@/lib/auth";
 import type { Transaction } from "@/types";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -30,21 +31,32 @@ async function syncHoldings(sql: any, tx: Transaction) {
       }
     }
   }
-  // dividend/deposit/withdrawal → holdings 변경 없음
 }
 
 export async function GET(req: NextRequest) {
+  const user = await getSessionUser(req);
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const accountId = new URL(req.url).searchParams.get("account_id");
   const sql = getDb();
 
   const rows = accountId
-    ? await sql`SELECT * FROM transactions WHERE account_id=${accountId} ORDER BY date DESC, id DESC`
-    : await sql`SELECT * FROM transactions ORDER BY date DESC, id DESC`;
+    ? await sql`
+        SELECT t.* FROM transactions t
+        JOIN accounts a ON t.account_id = a.id
+        WHERE t.account_id=${accountId} AND a.user_id=${user.id}
+        ORDER BY t.date DESC, t.id DESC`
+    : await sql`
+        SELECT t.* FROM transactions t
+        JOIN accounts a ON t.account_id = a.id
+        WHERE a.user_id=${user.id}
+        ORDER BY t.date DESC, t.id DESC`;
 
   return NextResponse.json(rows);
 }
 
 export async function POST(req: NextRequest) {
+  const user = await getSessionUser(req);
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const body = await req.json();
   const { account_id, type, ticker, name, quantity, price, fees, currency, date, note } = body;
 
@@ -52,8 +64,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "account_id, type, date required" }, { status: 400 });
 
   const sql = getDb();
-  const totalAmount = (quantity ?? 0) * (price ?? 0) + (fees ?? 0);
+  const owns = await sql`SELECT id FROM accounts WHERE id=${account_id} AND user_id=${user.id}`;
+  if (owns.length === 0) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
+  const totalAmount = (quantity ?? 0) * (price ?? 0) + (fees ?? 0);
   const [tx] = await sql`
     INSERT INTO transactions (account_id, type, ticker, name, quantity, price, fees, total_amount, currency, date, note)
     VALUES (
@@ -65,15 +79,21 @@ export async function POST(req: NextRequest) {
   `;
 
   await syncHoldings(sql, tx as Transaction);
-
   return NextResponse.json(tx, { status: 201 });
 }
 
 export async function PUT(req: NextRequest) {
+  const user = await getSessionUser(req);
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const { id, date, note } = await req.json();
   if (!id) return NextResponse.json({ error: "id required" }, { status: 400 });
-
   const sql = getDb();
+  const owns = await sql`
+    SELECT t.id FROM transactions t
+    JOIN accounts a ON t.account_id = a.id
+    WHERE t.id=${id} AND a.user_id=${user.id}
+  `;
+  if (owns.length === 0) return NextResponse.json({ error: "Not found" }, { status: 404 });
   const [tx] = await sql`
     UPDATE transactions SET date=${date}, note=${note ?? ""}
     WHERE id=${id} RETURNING *
@@ -82,10 +102,17 @@ export async function PUT(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
+  const user = await getSessionUser(req);
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const id = new URL(req.url).searchParams.get("id");
   if (!id) return NextResponse.json({ error: "id required" }, { status: 400 });
-
   const sql = getDb();
+  const owns = await sql`
+    SELECT t.id FROM transactions t
+    JOIN accounts a ON t.account_id = a.id
+    WHERE t.id=${id} AND a.user_id=${user.id}
+  `;
+  if (owns.length === 0) return NextResponse.json({ error: "Not found" }, { status: 404 });
   await sql`DELETE FROM transactions WHERE id=${id}`;
   return NextResponse.json({ success: true });
 }

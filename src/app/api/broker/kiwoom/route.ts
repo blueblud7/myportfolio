@@ -1,20 +1,34 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
+import { getSessionUser } from "@/lib/auth";
 import { getKiwoomToken, getKiwoomHoldings } from "@/lib/kiwoom";
 
+async function verifyAccountOwnership(sql: ReturnType<typeof getDb>, accountId: number, userId: number) {
+  const rows = await sql`SELECT id FROM accounts WHERE id=${accountId} AND user_id=${userId}`;
+  return rows.length > 0;
+}
+
 export async function GET(req: NextRequest) {
+  const user = await getSessionUser(req);
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const accountId = req.nextUrl.searchParams.get("account_id");
   if (!accountId) return NextResponse.json({ error: "account_id 필요" }, { status: 400 });
   const sql = getDb();
+  if (!await verifyAccountOwnership(sql, Number(accountId), user.id))
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
   const rows = await sql`SELECT id, account_id, broker, account_number, last_synced_at FROM broker_credentials WHERE account_id=${Number(accountId)}`;
   return NextResponse.json(rows[0] ?? null);
 }
 
 export async function POST(req: NextRequest) {
+  const user = await getSessionUser(req);
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const { account_id, app_key, secret_key, account_number } = await req.json();
   if (!account_id || !app_key || !secret_key || !account_number)
     return NextResponse.json({ error: "필수 항목 누락" }, { status: 400 });
   const sql = getDb();
+  if (!await verifyAccountOwnership(sql, account_id, user.id))
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
   await sql`
     INSERT INTO broker_credentials (account_id, broker, app_key, secret_key, account_number)
     VALUES (${account_id}, 'kiwoom', ${app_key}, ${secret_key}, ${account_number})
@@ -24,17 +38,25 @@ export async function POST(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
+  const user = await getSessionUser(req);
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const accountId = req.nextUrl.searchParams.get("account_id");
   if (!accountId) return NextResponse.json({ error: "account_id 필요" }, { status: 400 });
   const sql = getDb();
+  if (!await verifyAccountOwnership(sql, Number(accountId), user.id))
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
   await sql`DELETE FROM broker_credentials WHERE account_id=${Number(accountId)}`;
   return NextResponse.json({ ok: true });
 }
 
 export async function PATCH(req: NextRequest) {
+  const user = await getSessionUser(req);
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const { account_id } = await req.json();
   if (!account_id) return NextResponse.json({ error: "account_id 필요" }, { status: 400 });
   const sql = getDb();
+  if (!await verifyAccountOwnership(sql, account_id, user.id))
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
   const rows = await sql`SELECT * FROM broker_credentials WHERE account_id=${Number(account_id)}`;
   const creds = rows[0] as { app_key: string; secret_key: string; account_number: string } | undefined;
   if (!creds) return NextResponse.json({ error: "API 키가 설정되지 않았습니다" }, { status: 404 });

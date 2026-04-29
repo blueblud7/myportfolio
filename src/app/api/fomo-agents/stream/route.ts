@@ -1,10 +1,14 @@
+import { NextRequest, NextResponse } from "next/server";
 import { fetchSentimentData } from "@/lib/fomo-sentiment";
 import { AGENT_PROFILES, buildUserPrompt, runAgent, calcConsensus, computeContrarian, setAgentsCache } from "@/lib/fomo-agents";
 import type { AgentsResult } from "@/types/fomo";
+import { getSessionUser } from "@/lib/auth";
 
 export const maxDuration = 300;
 
-export async function GET() {
+export async function GET(req: NextRequest) {
+  const user = await getSessionUser(req);
+  if (!user) return new NextResponse("Unauthorized", { status: 401 });
   const encoder = new TextEncoder();
 
   const stream = new ReadableStream({

@@ -1,5 +1,7 @@
 import crypto from "crypto";
 import { SignJWT, jwtVerify } from "jose";
+import type { NextRequest } from "next/server";
+import { getDb } from "./db";
 
 export const SESSION_COOKIE = "session";
 
@@ -33,4 +35,17 @@ export async function verifySessionToken(token: string): Promise<string | null> 
   } catch {
     return null;
   }
+}
+
+export async function getSessionUser(
+  req: NextRequest
+): Promise<{ id: number; username: string } | null> {
+  const token = req.cookies.get(SESSION_COOKIE)?.value;
+  if (!token) return null;
+  const username = await verifySessionToken(token);
+  if (!username) return null;
+  const sql = getDb();
+  const rows = await sql`SELECT id, username FROM users WHERE username = ${username}`;
+  const user = rows[0] as { id: number; username: string } | undefined;
+  return user ?? null;
 }

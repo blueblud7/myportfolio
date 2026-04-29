@@ -2,10 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 import OpenAI from "openai";
 import { getDb } from "@/lib/db";
 import { getLatestExchangeRate } from "@/lib/exchange-rate";
+import { getSessionUser } from "@/lib/auth";
 
 const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 export async function POST(req: NextRequest) {
+  const user = await getSessionUser(req);
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   try {
     const { question } = await req.json();
     const sql = getDb();

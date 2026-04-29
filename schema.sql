@@ -7,6 +7,9 @@ CREATE TABLE IF NOT EXISTS accounts (
   currency TEXT NOT NULL DEFAULT 'KRW' CHECK(currency IN ('KRW', 'USD')),
   broker TEXT NOT NULL DEFAULT '',
   target_pct DOUBLE PRECISION NOT NULL DEFAULT 0,
+  owner TEXT,
+  sort_order INTEGER,
+  user_id INTEGER REFERENCES users(id),
   created_at TEXT NOT NULL DEFAULT (to_char(NOW(), 'YYYY-MM-DD HH24:MI:SS'))
 );
 
@@ -49,7 +52,9 @@ CREATE TABLE IF NOT EXISTS snapshots (
   stock_krw DOUBLE PRECISION NOT NULL DEFAULT 0,
   bank_krw DOUBLE PRECISION NOT NULL DEFAULT 0,
   exchange_rate DOUBLE PRECISION NOT NULL DEFAULT 0,
-  date TEXT NOT NULL UNIQUE
+  date TEXT NOT NULL,
+  user_id INTEGER REFERENCES users(id),
+  UNIQUE(user_id, date)
 );
 
 CREATE TABLE IF NOT EXISTS exchange_rates (
@@ -76,6 +81,7 @@ CREATE TABLE IF NOT EXISTS diary (
   date TEXT NOT NULL,
   mood TEXT NOT NULL DEFAULT 'neutral',
   tags TEXT NOT NULL DEFAULT '',
+  user_id INTEGER REFERENCES users(id),
   created_at TEXT NOT NULL DEFAULT (to_char(NOW(), 'YYYY-MM-DD HH24:MI:SS')),
   updated_at TEXT NOT NULL DEFAULT (to_char(NOW(), 'YYYY-MM-DD HH24:MI:SS'))
 );
@@ -135,6 +141,7 @@ CREATE TABLE IF NOT EXISTS price_alerts (
   currency TEXT NOT NULL DEFAULT 'USD',
   note TEXT NOT NULL DEFAULT '',
   is_active BOOLEAN NOT NULL DEFAULT true,
+  user_id INTEGER REFERENCES users(id),
   created_at TEXT NOT NULL DEFAULT (to_char(NOW(),'YYYY-MM-DD HH24:MI:SS'))
 );
 
@@ -156,12 +163,14 @@ CREATE TABLE IF NOT EXISTS earnings_calendar (
 
 CREATE TABLE IF NOT EXISTS watchlist (
   id SERIAL PRIMARY KEY,
-  ticker TEXT NOT NULL UNIQUE,
+  ticker TEXT NOT NULL,
   name TEXT NOT NULL,
   currency TEXT NOT NULL DEFAULT 'USD' CHECK(currency IN ('KRW','USD')),
   target_buy_price DOUBLE PRECISION,
   target_sell_price DOUBLE PRECISION,
   tags TEXT NOT NULL DEFAULT '',
   note TEXT NOT NULL DEFAULT '',
-  added_at TEXT NOT NULL DEFAULT (to_char(NOW(),'YYYY-MM-DD HH24:MI:SS'))
+  user_id INTEGER REFERENCES users(id),
+  added_at TEXT NOT NULL DEFAULT (to_char(NOW(),'YYYY-MM-DD HH24:MI:SS')),
+  UNIQUE(user_id, ticker)
 );
