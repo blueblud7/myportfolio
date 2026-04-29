@@ -26,8 +26,7 @@ export function Header({ onMenuToggle }: { onMenuToggle?: () => void }) {
 
   const handleLogout = async () => {
     await fetch("/api/auth/logout", { method: "POST" });
-    router.push("/login");
-    router.refresh();
+    window.location.href = "/login";
   };
 
   return (

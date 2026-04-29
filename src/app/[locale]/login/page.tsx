@@ -37,8 +37,7 @@ export default function LoginPage() {
     });
 
     if (res.ok) {
-      router.push("/");
-      router.refresh();
+      window.location.href = "/";
     } else {
       const data = await res.json();
       setError(data.error ?? (mode === "login" ? "로그인 실패" : "회원가입 실패"));
