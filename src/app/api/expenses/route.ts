@@ -4,25 +4,25 @@ import { getSessionUser } from "@/lib/auth";
 
 const DEFAULT_ITEMS = [
   // Housing
-  { name: "임대/모기지", name_en: "Rent/Mortgage", amount: 5700, type: "expense", category: "housing", sort_order: 1 },
-  { name: "공과금", name_en: "Utilities", amount: 300, type: "expense", category: "housing", sort_order: 2 },
+  { name: "임대/모기지", name_en: "Rent/Mortgage", amount: 0, type: "expense", category: "housing", sort_order: 1 },
+  { name: "공과금", name_en: "Utilities", amount: 0, type: "expense", category: "housing", sort_order: 2 },
   { name: "HOA", name_en: "HOA", amount: 0, type: "expense", category: "housing", sort_order: 3 },
   { name: "집 유지보수", name_en: "Home Maintenance", amount: 0, type: "expense", category: "housing", sort_order: 4 },
   // Food
-  { name: "식료품", name_en: "Groceries", amount: 1500, type: "expense", category: "food", sort_order: 10 },
-  { name: "외식", name_en: "Dining Out", amount: 500, type: "expense", category: "food", sort_order: 11 },
+  { name: "식료품", name_en: "Groceries", amount: 0, type: "expense", category: "food", sort_order: 10 },
+  { name: "외식", name_en: "Dining Out", amount: 0, type: "expense", category: "food", sort_order: 11 },
   // Transportation
   { name: "자동차 할부", name_en: "Car Payment", amount: 0, type: "expense", category: "transportation", sort_order: 20 },
-  { name: "자동차 보험", name_en: "Car Insurance", amount: 250, type: "expense", category: "transportation", sort_order: 21 },
-  { name: "주유비", name_en: "Gas", amount: 300, type: "expense", category: "transportation", sort_order: 22 },
+  { name: "자동차 보험", name_en: "Car Insurance", amount: 0, type: "expense", category: "transportation", sort_order: 21 },
+  { name: "주유비", name_en: "Gas", amount: 0, type: "expense", category: "transportation", sort_order: 22 },
   // Healthcare
-  { name: "건강보험", name_en: "Health Insurance", amount: 600, type: "expense", category: "healthcare", sort_order: 30 },
-  { name: "의료비", name_en: "Medical Expenses", amount: 300, type: "expense", category: "healthcare", sort_order: 31 },
+  { name: "건강보험", name_en: "Health Insurance", amount: 0, type: "expense", category: "healthcare", sort_order: 30 },
+  { name: "의료비", name_en: "Medical Expenses", amount: 0, type: "expense", category: "healthcare", sort_order: 31 },
   { name: "치과/시력", name_en: "Dental/Vision", amount: 0, type: "expense", category: "healthcare", sort_order: 32 },
   { name: "생명보험", name_en: "Life Insurance", amount: 0, type: "expense", category: "healthcare", sort_order: 33 },
   // Communication & Subscriptions
-  { name: "휴대폰 + 인터넷", name_en: "Cell Phone + Internet", amount: 170, type: "expense", category: "communication", sort_order: 40 },
-  { name: "구독 서비스", name_en: "Subscriptions", amount: 200, type: "expense", category: "communication", sort_order: 41 },
+  { name: "휴대폰 + 인터넷", name_en: "Cell Phone + Internet", amount: 0, type: "expense", category: "communication", sort_order: 40 },
+  { name: "구독 서비스", name_en: "Subscriptions", amount: 0, type: "expense", category: "communication", sort_order: 41 },
   // Education & Personal
   { name: "교육", name_en: "Education", amount: 0, type: "expense", category: "education", sort_order: 50 },
   { name: "의류/쇼핑", name_en: "Clothing/Shopping", amount: 0, type: "expense", category: "personal", sort_order: 60 },
@@ -37,9 +37,9 @@ const DEFAULT_ITEMS = [
   { name: "세금/회계사", name_en: "Tax/Accountant", amount: 0, type: "expense", category: "savings", sort_order: 81 },
   { name: "선물/기부", name_en: "Gifts/Donations", amount: 0, type: "expense", category: "savings", sort_order: 82 },
   // Misc
-  { name: "기타", name_en: "Misc", amount: 1000, type: "expense", category: "misc", sort_order: 90 },
+  { name: "기타", name_en: "Misc", amount: 0, type: "expense", category: "misc", sort_order: 90 },
   // Income
-  { name: "급여", name_en: "Salary", amount: 8000, type: "income", category: "income", sort_order: 100 },
+  { name: "급여", name_en: "Salary", amount: 0, type: "income", category: "income", sort_order: 100 },
   { name: "회사 보험 혜택", name_en: "Insurance (Company)", amount: 0, type: "income", category: "income", sort_order: 101 },
   { name: "부업/기타 수입", name_en: "Side Income", amount: 0, type: "income", category: "income", sort_order: 102 },
 ];
@@ -60,10 +60,10 @@ async function ensureTable(sql: ReturnType<typeof getDb>) {
     )
   `;
   await sql`ALTER TABLE expense_items ADD COLUMN IF NOT EXISTS user_id INTEGER REFERENCES users(id)`.catch(() => {});
-  // 기존 데이터 귀속 (유저 1명이면)
+  // 기존 데이터 귀속 (user_id 없는 행은 최초 가입 유저에게)
   await sql`
-    UPDATE expense_items SET user_id = (SELECT id FROM users LIMIT 1)
-    WHERE user_id IS NULL AND (SELECT COUNT(*) FROM users) = 1
+    UPDATE expense_items SET user_id = (SELECT id FROM users ORDER BY id LIMIT 1)
+    WHERE user_id IS NULL
   `.catch(() => {});
 }
 
