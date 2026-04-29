@@ -47,7 +47,7 @@ function PCRCard({ data, t }: { data: PCRData; t: (key: string) => string }) {
         <span className={cn("text-xs font-medium", sent.color)}>{sent.key ? t(sent.key) : "—"}</span>
       </div>
       <div className="flex items-end gap-2">
-        <span className={cn("text-2xl font-mono font-bold", sent.color)}>
+        <span className={cn("text-xl sm:text-2xl font-mono font-bold", sent.color)}>
           {data.pcr !== null ? data.pcr.toFixed(2) : "—"}
         </span>
         <span className="pb-0.5 text-[10px] text-muted-foreground">

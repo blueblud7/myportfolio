@@ -4,8 +4,10 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Sparkles, Send, RefreshCw, History, Trash2, ChevronDown, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
+import FomoAgentsPage from "../fomo-agents/page";
 
 interface HistoryItem {
   id: number;
@@ -132,6 +134,13 @@ export default function InsightsPage() {
 
   return (
     <div className="space-y-6">
+      <Tabs defaultValue="portfolio">
+        <TabsList>
+          <TabsTrigger value="portfolio">AI 포트폴리오</TabsTrigger>
+          <TabsTrigger value="agents">AI 투자자 에이전트</TabsTrigger>
+        </TabsList>
+        <TabsContent value="portfolio" className="mt-6">
+        <div className="space-y-6">
       <div className="flex items-center gap-3">
         <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-500/20">
           <Sparkles className="h-5 w-5 text-violet-400" />
@@ -334,6 +343,12 @@ export default function InsightsPage() {
           </CardContent>
         </Card>
       )}
+        </div>
+        </TabsContent>
+        <TabsContent value="agents" className="mt-6">
+          <FomoAgentsPage />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

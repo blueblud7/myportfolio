@@ -182,14 +182,28 @@ export default function AccountsPage() {
     setDropIndex(null);
   };
 
+  const totalDailyChange = useMemo(() => {
+    if (!dailyChanges || filteredAccounts.length === 0) return null;
+    let totalChange = 0;
+    let totalPrev = 0;
+    for (const account of filteredAccounts) {
+      const daily = dailyChanges.find((d) => d.account_id === account.id);
+      if (!daily || daily.prev_value === null) continue;
+      totalChange += daily.daily_change; // already in KRW
+      totalPrev += daily.prev_value;     // already in KRW
+    }
+    if (totalPrev === 0) return null;
+    return { change: totalChange, pct: (totalChange / totalPrev) * 100 };
+  }, [dailyChanges, filteredAccounts]);
+
   const isEmpty = !Array.isArray(orderedAccounts) || orderedAccounts.length === 0;
   const isFilteredEmpty = filteredAccounts.length === 0;
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <h1 className="text-2xl font-bold">{t("title")}</h1>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-2 sm:gap-3">
+          <h1 className="text-xl sm:text-2xl font-bold">{t("title")}</h1>
           <div className="flex rounded-md border overflow-hidden text-sm">
             {(["KRW", "USD"] as const).map((cur) => (
               <button
@@ -207,7 +221,7 @@ export default function AccountsPage() {
             ))}
           </div>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {/* 뷰 모드 토글 */}
           <div className="flex rounded-md border overflow-hidden">
             <button
@@ -219,6 +233,7 @@ export default function AccountsPage() {
                   : "text-muted-foreground hover:bg-muted/50"
               )}
               title="카드형"
+              aria-label="카드형 보기"
             >
               <LayoutGrid className="h-4 w-4" />
             </button>
@@ -231,17 +246,18 @@ export default function AccountsPage() {
                   : "text-muted-foreground hover:bg-muted/50"
               )}
               title="리스트형"
+              aria-label="리스트형 보기"
             >
               <List className="h-4 w-4" />
             </button>
           </div>
-          <Button variant="outline" onClick={handleRefreshAll} disabled={refreshing}>
-            <RefreshCw className={cn("mr-2 h-4 w-4", refreshing && "animate-spin")} />
-            {refreshing ? t("refreshing") : t("refreshAll")}
+          <Button variant="outline" size="sm" onClick={handleRefreshAll} disabled={refreshing}>
+            <RefreshCw className={cn("h-4 w-4 sm:mr-2", refreshing && "animate-spin")} />
+            <span className="hidden sm:inline">{refreshing ? t("refreshing") : t("refreshAll")}</span>
           </Button>
-          <Button onClick={() => { setEditingAccount(null); setFormOpen(true); }}>
-            <Plus className="mr-2 h-4 w-4" />
-            {t("newAccount")}
+          <Button size="sm" onClick={() => { setEditingAccount(null); setFormOpen(true); }}>
+            <Plus className="h-4 w-4 sm:mr-2" />
+            <span className="hidden sm:inline">{t("newAccount")}</span>
           </Button>
         </div>
       </div>
@@ -320,6 +336,21 @@ export default function AccountsPage() {
       <AccountsOverview currency={currency} ownerFilter={ownerFilter} accounts={filteredAccounts} />
 
       <AccountTrendChart currency={currency} exchangeRate={exchangeRate} />
+
+      {totalDailyChange && (
+        <div className="flex items-center justify-between rounded-lg border bg-card px-4 py-2.5 text-sm">
+          <span className="text-muted-foreground">오늘 전체 변화</span>
+          <span className={cn("font-semibold tabular-nums", gainLossColor(totalDailyChange.change))}>
+            <Money
+              value={currency === "USD" ? totalDailyChange.change / exchangeRate : totalDailyChange.change}
+              currency={currency === "USD" ? "USD" : undefined}
+            />
+            <span className="ml-1.5 text-xs font-medium opacity-80">
+              {formatPercent(totalDailyChange.pct)}
+            </span>
+          </span>
+        </div>
+      )}
 
       {isEmpty ? (
         <Card>
@@ -446,8 +477,8 @@ export default function AccountsPage() {
         </div>
       ) : (
         /* 리스트형 뷰 */
-        <div className="rounded-xl border bg-card overflow-hidden">
-          <table className="w-full text-sm">
+        <div className="rounded-xl border bg-card overflow-x-auto">
+          <table className="w-full min-w-[480px] text-sm">
             <thead>
               <tr className="border-b bg-muted/30 text-xs text-muted-foreground">
                 <th className="w-6 px-3 py-2" />

@@ -119,8 +119,39 @@
 @layer base {
   * {
     @apply border-border outline-ring/50;
+    -webkit-tap-highlight-color: transparent;
+  }
+  /* flex/grid 자식 수평 넘침 방지 */
+  .flex > *, .grid > * {
+    min-width: 0;
+  }
+  html {
+    scroll-behavior: smooth;
+    overflow-x: hidden;
   }
   body {
     @apply bg-background text-foreground;
+    overflow-x: hidden;
   }
+  /* iOS 포커스 자동 줌 방지 (font-size < 16px 이면 줌됨) */
+  @media screen and (max-width: 768px) {
+    input, textarea, select {
+      font-size: 16px !important;
+    }
+  }
+}
+
+/* 가로 스크롤 영역 스크롤바 숨김 (모바일 카드 스트립용) */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+/* 모바일에서 가로 스크롤 끝 단에 그라디언트 페이드 힌트 */
+.scroll-fade-x {
+  -webkit-mask-image: linear-gradient(to right, black 0, black calc(100% - 1.5rem), transparent 100%);
+  mask-image: linear-gradient(to right, black 0, black calc(100% - 1.5rem), transparent 100%);
 }

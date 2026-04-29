@@ -31,23 +31,24 @@ export function Header({ onMenuToggle }: { onMenuToggle?: () => void }) {
   };
 
   return (
-    <header className="sticky top-0 z-20 flex h-14 items-center justify-between border-b bg-background/80 px-4 sm:px-6 backdrop-blur-md">
+    <header className="sticky top-0 z-20 flex h-14 items-center justify-between border-b bg-background/80 px-3 sm:px-6 backdrop-blur-md">
       <div className="flex items-center gap-2">
         {/* 모바일에서만 보이는 햄버거 버튼 */}
         <button
           onClick={onMenuToggle}
-          className="flex h-8 w-8 items-center justify-center rounded-md border text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground lg:hidden"
+          className="flex h-9 w-9 items-center justify-center rounded-md border text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground lg:hidden"
+          aria-label="메뉴 열기"
         >
           <Menu className="h-4 w-4" />
         </button>
       </div>
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-1.5 sm:gap-3">
         <LanguageSwitcher />
 
-        {/* 환율 pill */}
-        <div className="flex items-center gap-1.5 rounded-full border bg-muted/50 px-3 py-1 text-xs">
-          <span className="text-muted-foreground font-medium">USD/KRW</span>
-          <span className="font-mono font-semibold">
+        {/* 환율 pill — 모바일에서는 라벨 숨김 */}
+        <div className="flex items-center gap-1 sm:gap-1.5 rounded-full border bg-muted/50 px-2 sm:px-3 py-1 text-xs">
+          <span className="hidden sm:inline text-muted-foreground font-medium">USD/KRW</span>
+          <span className="font-mono font-semibold whitespace-nowrap">
             {isLoading ? "···" : `₩${data?.rate.toLocaleString("ko-KR", { maximumFractionDigits: 2 })}`}
           </span>
           <button
@@ -55,6 +56,7 @@ export function Header({ onMenuToggle }: { onMenuToggle?: () => void }) {
             disabled={refreshing || isLoading}
             className="ml-0.5 rounded-full p-0.5 text-muted-foreground hover:text-foreground transition-colors disabled:opacity-40"
             title="환율 새로고침"
+            aria-label="환율 새로고침"
           >
             <RefreshCw className={cn("h-3 w-3", refreshing && "animate-spin")} />
           </button>
@@ -63,8 +65,9 @@ export function Header({ onMenuToggle }: { onMenuToggle?: () => void }) {
         {/* 테마 토글 */}
         <button
           onClick={toggleTheme}
-          className="flex h-7 w-7 items-center justify-center rounded-full border text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+          className="flex h-8 w-8 sm:h-7 sm:w-7 items-center justify-center rounded-full border text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
           title={theme === "dark" ? "라이트 모드" : "다크 모드"}
+          aria-label={theme === "dark" ? "라이트 모드" : "다크 모드"}
         >
           {theme === "dark" ? <Sun className="h-3.5 w-3.5" /> : <Moon className="h-3.5 w-3.5" />}
         </button>
@@ -72,8 +75,9 @@ export function Header({ onMenuToggle }: { onMenuToggle?: () => void }) {
         {/* 로그아웃 */}
         <button
           onClick={handleLogout}
-          className="flex h-7 w-7 items-center justify-center rounded-full border text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+          className="flex h-8 w-8 sm:h-7 sm:w-7 items-center justify-center rounded-full border text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
           title="로그아웃"
+          aria-label="로그아웃"
         >
           <LogOut className="h-3.5 w-3.5" />
         </button>

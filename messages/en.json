@@ -33,22 +33,7 @@
     "bankLabel": "Bank",
     "byCurrency": "Allocation by Type",
     "byAccount": "Allocation by Account",
-    "polymarket": "Prediction Market (Polymarket)",
     "putCallRatio": "Put/Call Ratio"
-  },
-  "WatchlistWidget": {
-    "title": "Watchlist",
-    "add": "Add",
-    "addBtn": "OK",
-    "placeholder": "e.g. AAPL, 005930",
-    "empty": "Add tickers with the + Add button",
-    "noData": "No data",
-    "revenueGrowth": "Rev Growth",
-    "opMargin": "Op Margin",
-    "epsGrowth": "EPS Growth",
-    "pe": "PE(F)",
-    "peg": "PEG",
-    "marketCap": "Mkt Cap"
   },
   "SummaryCards": {
     "totalAssets": "Total Assets",
@@ -535,14 +520,7 @@
     "title": "Account Asset Trend",
     "noData": "No snapshot data. Visit the dashboard to record today's data."
   },
-  "Polymarket": {
-    "noResults": "No results found.",
-    "noData": "Could not load prediction data.",
-    "searchPlaceholder": "Search events... (e.g. bitcoin, election, fed)",
-    "searchResults": "Search results",
-    "autoRefresh": "5 min refresh"
-  },
-  "PutCallRatio": {
+"PutCallRatio": {
     "description": "PCR > 1.2 Fear (contrarian buy) · < 0.7 Greed (contrarian sell) · CBOE delayed data",
     "fear": "Fear",
     "decline": "Bearish",

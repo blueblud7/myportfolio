@@ -5,7 +5,7 @@ import { Link, usePathname } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
 import {
   LayoutDashboard, Wallet, BarChart3, TrendingUp, BookOpen,
-  Eye, EyeOff, FlaskConical, Bell, Sparkles, Activity, X, Filter, Layers, GitBranch, GitCompare, Microscope, PiggyBank, PieChart, Receipt, Waves, BrainCircuit, Target, FileText, Binoculars, CalendarDays,
+  Eye, EyeOff, FlaskConical, Bell, Sparkles, Activity, X, Layers, Microscope, PieChart, Receipt, Binoculars, CalendarDays,
 } from "lucide-react";
 import { InvestorQuote } from "./InvestorQuote";
 import { usePrivacy } from "@/contexts/privacy-context";
@@ -27,28 +27,21 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
         { href: "/", label: t("dashboard"), icon: LayoutDashboard },
         { href: "/accounts", label: t("accounts"), icon: Wallet },
         { href: "/watchlist", label: "워치리스트", icon: Binoculars },
-        { href: "/reports", label: t("reports"), icon: BarChart3 },
-        { href: "/goals", label: "목표 & 섹터", icon: Target },
+        { href: "/reports", label: "리포트 & 목표", icon: BarChart3 },
       ],
     },
     {
       title: "🔍 종목 분석",
       items: [
         { href: "/quant", label: t("quant"), icon: FlaskConical },
-        { href: "/canslim", label: "CAN SLIM", icon: Filter },
-        { href: "/pattern", label: "패턴분석", icon: GitBranch },
-        { href: "/compare", label: "상대강도", icon: GitCompare },
-        { href: "/volatility", label: t("volatility"), icon: Waves },
-        { href: "/earnings", label: "실적 캘린더", icon: CalendarDays },
-        { href: "/analyst-reports", label: "증권사 리포트", icon: FileText },
+        { href: "/earnings", label: "실적 & 리포트", icon: CalendarDays },
       ],
     },
     {
       title: "🧪 전략 연구소",
       items: [
         { href: "/strategy-lab", label: "전략 연구소", icon: Microscope },
-        { href: "/position-lab", label: "자금관리 연구소", icon: PiggyBank },
-        { href: "/portfolio-mix", label: "포트폴리오 믹스", icon: PieChart },
+        { href: "/portfolio-mix", label: "포트폴리오 & 자금관리", icon: PieChart },
         { href: "/backtest", label: t("backtest"), icon: Activity },
         { href: "/etf-flow", label: "ETF 흐름", icon: Layers },
       ],
@@ -56,9 +49,8 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
     {
       title: "🤖 인사이트",
       items: [
-        { href: "/insights", label: t("insights"), icon: Sparkles },
+        { href: "/insights", label: "AI 인사이트", icon: Sparkles },
         { href: "/diary", label: t("diary"), icon: BookOpen },
-        { href: "/fomo-agents", label: "AI 투자자 에이전트", icon: BrainCircuit },
       ],
     },
     {

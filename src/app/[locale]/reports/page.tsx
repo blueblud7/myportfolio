@@ -26,6 +26,7 @@ import { BenchmarkComparison } from "@/components/reports/BenchmarkComparison";
 import { RiskDashboard } from "@/components/reports/RiskDashboard";
 import { RebalancingDashboard } from "@/components/rebalancing/RebalancingDashboard";
 import { FxAnalysis } from "@/components/reports/FxAnalysis";
+import GoalsPage from "../goals/page";
 
 const MASK = "•••••";
 
@@ -171,6 +172,7 @@ export default function ReportsPage() {
           <TabsTrigger value="risk">{tRisk("title")}</TabsTrigger>
           <TabsTrigger value="rebalancing">{tReb("title")}</TabsTrigger>
           <TabsTrigger value="fx">{tFx("title")}</TabsTrigger>
+          <TabsTrigger value="goals">목표 &amp; 섹터</TabsTrigger>
         </TabsList>
 
         <TabsContent value="risk" className="mt-6">
@@ -481,6 +483,10 @@ export default function ReportsPage() {
           )}
         </CardContent>
       </Card>
+        </TabsContent>
+
+        <TabsContent value="goals" className="mt-6">
+          <GoalsPage />
         </TabsContent>
       </Tabs>
     </div>

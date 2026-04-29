@@ -6,9 +6,7 @@ import { SummaryCards } from "@/components/dashboard/SummaryCards";
 import { TotalAssetChart } from "@/components/dashboard/TotalAssetChart";
 import { AllocationChart } from "@/components/dashboard/AllocationChart";
 import { MarketIndices } from "@/components/dashboard/MarketIndices";
-import { PolymarketWidget } from "@/components/dashboard/PolymarketWidget";
 import { PutCallRatioWidget } from "@/components/dashboard/PutCallRatioWidget";
-import { WatchlistWidget } from "@/components/dashboard/WatchlistWidget";
 import { FomoSentimentWidget } from "@/components/dashboard/FomoSentimentWidget";
 import { TodaySignals } from "@/components/dashboard/TodaySignals";
 import { TodayWatchWidget } from "@/components/dashboard/TodayWatchWidget";
@@ -132,8 +130,8 @@ export default function DashboardPage() {
   }, [summary, t]);
 
   return (
-    <div className="space-y-5">
-      <h1 className="text-2xl font-bold">{t("title")}</h1>
+    <div className="space-y-4 sm:space-y-5">
+      <h1 className="text-xl sm:text-2xl font-bold">{t("title")}</h1>
 
       {/* ① 시장 지수 — 맨 위 */}
       <MarketIndices />
@@ -155,16 +153,12 @@ export default function DashboardPage() {
       {/* ④ Today's Signals — 시장 전체 + 내 포트폴리오 탭 */}
       <TodaySignals />
 
-      {/* ④ 심리 지표 + P/C Ratio + Polymarket — 3열 */}
-      <div className="grid gap-4 lg:grid-cols-3">
+      {/* ④ 심리 지표 + P/C Ratio — 2열 */}
+      <div className="grid gap-4 lg:grid-cols-2">
         <FomoSentimentWidget />
         <div className="rounded-xl border bg-card p-4">
           <h2 className="mb-3 text-sm font-semibold">{t("putCallRatio")}</h2>
           <PutCallRatioWidget />
-        </div>
-        <div className="rounded-xl border bg-card p-4">
-          <h2 className="mb-3 text-sm font-semibold">{t("polymarket")}</h2>
-          <PolymarketWidget />
         </div>
       </div>
 
@@ -177,7 +171,6 @@ export default function DashboardPage() {
         <AllocationChart title={t("byAccount")} data={allocationByAccount} />
       </div>
 
-      <WatchlistWidget />
     </div>
   );
 }

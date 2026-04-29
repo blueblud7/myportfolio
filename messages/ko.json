@@ -33,22 +33,7 @@
     "bankLabel": "은행",
     "byCurrency": "자산 구성 (유형별)",
     "byAccount": "자산 구성 (계좌별)",
-    "polymarket": "예측 시장 (Polymarket)",
     "putCallRatio": "풋/콜 레이시오"
-  },
-  "WatchlistWidget": {
-    "title": "관심 종목",
-    "add": "추가",
-    "addBtn": "확인",
-    "placeholder": "예: AAPL, 005930",
-    "empty": "+ 추가 버튼으로 관심 종목을 등록하세요",
-    "noData": "데이터 없음",
-    "revenueGrowth": "매출성장",
-    "opMargin": "영업이익률",
-    "epsGrowth": "EPS성장",
-    "pe": "PER(F)",
-    "peg": "PEG",
-    "marketCap": "시총"
   },
   "SummaryCards": {
     "totalAssets": "총 자산",
@@ -535,14 +520,7 @@
     "title": "계좌별 자산 추이",
     "noData": "스냅샷 데이터가 없습니다. 대시보드를 방문하면 오늘 데이터가 기록됩니다."
   },
-  "Polymarket": {
-    "noResults": "검색 결과가 없습니다.",
-    "noData": "예측 데이터를 불러올 수 없습니다.",
-    "searchPlaceholder": "이벤트 검색... (예: bitcoin, election, fed)",
-    "searchResults": "검색 결과",
-    "autoRefresh": "5분 갱신"
-  },
-  "PutCallRatio": {
+"PutCallRatio": {
     "description": "PCR > 1.2 공포(역발상 매수) · < 0.7 탐욕(역발상 매도) · CBOE 지연 데이터",
     "fear": "공포",
     "decline": "하락심리",

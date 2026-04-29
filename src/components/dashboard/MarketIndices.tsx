@@ -41,7 +41,7 @@ export function MarketIndices() {
 
   if (isLoading || !data) {
     return (
-      <div className="flex gap-2 overflow-x-auto pb-1">
+      <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-1 -mx-3 px-3 sm:mx-0 sm:px-0">
         {Array.from({ length: 8 }).map((_, i) => (
           <div key={i} className="h-14 w-36 shrink-0 animate-pulse rounded-lg border bg-muted/40" />
         ))}
@@ -50,7 +50,7 @@ export function MarketIndices() {
   }
 
   return (
-    <div className="flex gap-2 overflow-x-auto pb-1">
+    <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-1 -mx-3 px-3 sm:mx-0 sm:px-0">
       {data.map((idx) => {
         const chg = idx.changePct ?? 0;
         const up = chg > 0;

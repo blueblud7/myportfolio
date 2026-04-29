@@ -3,7 +3,9 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { CalendarDays, RefreshCw, Briefcase, Eye } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { EarningsCalendarItem } from "@/app/api/earnings-calendar/route";
+import AnalystReportsPage from "../analyst-reports/page";
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
@@ -119,6 +121,13 @@ export default function EarningsCalendarPage() {
 
   return (
     <div className="space-y-5">
+      <Tabs defaultValue="earnings">
+        <TabsList>
+          <TabsTrigger value="earnings">실적 캘린더</TabsTrigger>
+          <TabsTrigger value="reports">증권사 리포트</TabsTrigger>
+        </TabsList>
+        <TabsContent value="earnings" className="mt-6">
+        <div className="space-y-5">
       <div className="flex items-start justify-between gap-3 flex-wrap">
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-purple-500/20">
@@ -198,6 +207,12 @@ export default function EarningsCalendarPage() {
           ))}
         </div>
       )}
+        </div>
+        </TabsContent>
+        <TabsContent value="reports" className="mt-6">
+          <AnalystReportsPage />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

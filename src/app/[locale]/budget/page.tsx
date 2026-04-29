@@ -215,7 +215,7 @@ export default function BudgetPage() {
     type: "expense" | "income",
     total: number
   ) => (
-    <div className="overflow-hidden rounded-xl border bg-card">
+    <div className="rounded-xl border bg-card">
       <div className="flex items-center justify-between border-b px-4 py-3">
         <h2 className="font-semibold">
           {title}
@@ -231,7 +231,8 @@ export default function BudgetPage() {
           추가
         </button>
       </div>
-      <table className="w-full text-sm">
+      <div className="overflow-x-auto">
+      <table className="w-full min-w-[520px] text-sm">
         <thead>
           <tr className="border-b text-xs text-muted-foreground">
             <th className="px-3 py-2 text-left font-medium">항목</th>
@@ -299,6 +300,7 @@ export default function BudgetPage() {
           )}
         </tbody>
       </table>
+      </div>
     </div>
   );
 

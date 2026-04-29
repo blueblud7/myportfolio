@@ -8,11 +8,13 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import {
   Play, Loader2, PieChart, Trophy, ShieldAlert, TrendingUp,
   TrendingDown, ChevronUp, ChevronDown, AlertTriangle,
 } from "lucide-react";
+import PositionLabPage from "../position-lab/page";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -863,6 +865,13 @@ export default function PortfolioMixPage() {
 
   return (
     <div className="mx-auto max-w-7xl space-y-6 px-4 py-6">
+      <Tabs defaultValue="mix">
+        <TabsList>
+          <TabsTrigger value="mix">포트폴리오 믹스</TabsTrigger>
+          <TabsTrigger value="position">자금관리 연구소</TabsTrigger>
+        </TabsList>
+        <TabsContent value="mix" className="mt-6">
+        <div className="space-y-6">
       {/* Header */}
       <div className="flex items-start gap-3">
         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-violet-500/15">
@@ -1044,6 +1053,12 @@ export default function PortfolioMixPage() {
           </div>
         </div>
       )}
+        </div>
+        </TabsContent>
+        <TabsContent value="position" className="mt-6">
+          <PositionLabPage />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

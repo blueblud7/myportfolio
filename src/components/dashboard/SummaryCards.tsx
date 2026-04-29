@@ -105,11 +105,11 @@ function MetricChart({ cardType }: { cardType: CardType }) {
       </div>
 
       {chartData.length === 0 ? (
-        <div className="flex h-[250px] items-center justify-center text-muted-foreground text-sm">
+        <div className="flex h-[200px] sm:h-[250px] items-center justify-center text-muted-foreground text-sm">
           데이터 없음
         </div>
       ) : (
-        <ResponsiveContainer width="100%" height={250}>
+        <ResponsiveContainer width="100%" height={220} minHeight={180}>
           {cardType === "stockbank" ? (
             <AreaChart data={chartData}>
               <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
@@ -183,20 +183,20 @@ function StatCard({
   return (
     <div
       className={cn(
-        "relative overflow-hidden rounded-xl border bg-card p-4 shadow-sm",
+        "relative overflow-hidden rounded-xl border bg-card p-3 sm:p-4 shadow-sm",
         accent && `border-l-4 ${accent}`,
-        onClick && "cursor-pointer hover:bg-muted/40 transition-colors"
+        onClick && "cursor-pointer hover:bg-muted/40 transition-colors active:scale-[0.99]"
       )}
       onClick={onClick}
     >
-      <div className="mb-3 flex items-center justify-between gap-2">
+      <div className="mb-2 sm:mb-3 flex items-center justify-between gap-2">
         <p className="text-xs font-medium text-muted-foreground truncate">{label}</p>
-        <div className={cn("flex h-8 w-8 shrink-0 items-center justify-center rounded-lg", iconBg)}>
+        <div className={cn("flex h-7 w-7 sm:h-8 sm:w-8 shrink-0 items-center justify-center rounded-lg", iconBg)}>
           {icon}
         </div>
       </div>
-      <p className="truncate text-lg font-bold tracking-tight">{value}</p>
-      <p className="mt-0.5 truncate text-xs text-muted-foreground">{sub}</p>
+      <p className="truncate text-base sm:text-lg font-bold tracking-tight">{value}</p>
+      <p className="mt-0.5 truncate text-[11px] sm:text-xs text-muted-foreground">{sub}</p>
     </div>
   );
 }
@@ -259,7 +259,7 @@ export function SummaryCards({
           </div>
         </div>
 
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-2 gap-2 sm:gap-4 lg:grid-cols-4">
           <StatCard
             label={t("totalAssets")}
             value={fmt(totalKrw)}
