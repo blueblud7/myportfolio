@@ -73,6 +73,27 @@ async function ensureTable(sql: ReturnType<typeof getDb>) {
   await sql`ALTER TABLE expense_items ADD COLUMN IF NOT EXISTS amount_enc TEXT`;
   await sql`ALTER TABLE expense_items ALTER COLUMN amount DROP NOT NULL`.catch(() => {});
 
+  // 일회성 마이그레이션: 중복 제거 (같은 user_id, name, type, category에서 가장 오래된 것만 남김)
+  const [dedupDone] = await sql`SELECT name FROM _migrations WHERE name = 'dedup_expenses_v1'` as { name: string }[];
+  if (!dedupDone) {
+    await sql`
+      DELETE FROM expense_items a
+      USING expense_items b
+      WHERE a.user_id = b.user_id
+        AND a.name = b.name
+        AND a.type = b.type
+        AND a.category = b.category
+        AND a.id > b.id
+    `;
+    await sql`INSERT INTO _migrations (name) VALUES ('dedup_expenses_v1')`;
+  }
+
+  // race condition 방지용 unique constraint
+  await sql`
+    CREATE UNIQUE INDEX IF NOT EXISTS expense_items_unique_per_user
+    ON expense_items (user_id, name, type, category)
+  `.catch(() => {});
+
   // 일회성 마이그레이션: amount → amount_enc
   const [encDone] = await sql`SELECT name FROM _migrations WHERE name = 'encrypt_expenses_v1'` as { name: string }[];
   if (!encDone) {
@@ -129,6 +150,7 @@ export async function GET(req: NextRequest) {
       await sql`
         INSERT INTO expense_items (name, name_en, amount_enc, currency, type, category, sort_order, user_id)
         VALUES (${item.name}, ${item.name_en}, ${encryptNum(item.amount)}, 'USD', ${item.type}, ${item.category}, ${item.sort_order}, ${user.id})
+        ON CONFLICT (user_id, name, type, category) DO NOTHING
       `;
     }
     const seeded = await sql`SELECT * FROM expense_items WHERE user_id = ${user.id} ORDER BY sort_order, id` as ExpenseRow[];
