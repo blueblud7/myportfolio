@@ -12,6 +12,24 @@ export async function POST(req: NextRequest) {
   try {
     const { question } = await req.json();
     const sql = getDb();
+
+    // 일 1회 제한 (OpenAI 비용 통제)
+    const recent = await sql`
+      SELECT created_at FROM insight_history
+      WHERE user_id = ${user.id} AND created_at > NOW() - INTERVAL '24 hours'
+      ORDER BY created_at DESC LIMIT 1
+    ` as { created_at: string }[];
+    if (recent.length > 0) {
+      const lastUtc = recent[0].created_at.endsWith("Z") ? recent[0].created_at : recent[0].created_at + "Z";
+      const nextAt = new Date(new Date(lastUtc).getTime() + 24 * 60 * 60 * 1000);
+      const nextStr = nextAt.toLocaleString("ko-KR", {
+        timeZone: "Asia/Seoul", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit"
+      });
+      return NextResponse.json({
+        error: `포트폴리오 분석은 24시간에 1회 가능합니다. 다음 분석 가능: ${nextStr} (히스토리에서 기존 결과 확인 가능)`,
+      }, { status: 429 });
+    }
+
     const exchangeRate = await getLatestExchangeRate();
 
     // 포트폴리오 데이터 수집
