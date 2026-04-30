@@ -1,5 +1,6 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
+import { getSessionUser } from "@/lib/auth";
 
 export interface AccountDailyChange {
   account_id: number;
@@ -10,20 +11,24 @@ export interface AccountDailyChange {
   daily_change_pct: number; // %
 }
 
-export async function GET() {
+export async function GET(req: NextRequest) {
+  const user = await getSessionUser(req);
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
   const sql = getDb();
 
-  // 계좌별 최신 스냅샷 + 바로 전 스냅샷을 LAG()으로 가져옴
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const rows: any[] = await sql`
     WITH ranked AS (
       SELECT
-        account_id,
-        value_krw,
-        date,
-        LAG(value_krw) OVER (PARTITION BY account_id ORDER BY date) AS prev_value,
-        ROW_NUMBER()   OVER (PARTITION BY account_id ORDER BY date DESC) AS rn
-      FROM account_snapshots
+        s.account_id,
+        s.value_krw,
+        s.date,
+        LAG(s.value_krw) OVER (PARTITION BY s.account_id ORDER BY s.date) AS prev_value,
+        ROW_NUMBER()     OVER (PARTITION BY s.account_id ORDER BY s.date DESC) AS rn
+      FROM account_snapshots s
+      JOIN accounts a ON a.id = s.account_id
+      WHERE a.user_id = ${user.id}
     )
     SELECT account_id, date, value_krw AS current_value, prev_value
     FROM ranked
