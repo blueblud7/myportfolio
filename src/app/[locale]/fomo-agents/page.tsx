@@ -329,12 +329,10 @@ export default function FomoAgentsPage() {
   const [isUserAdmin, setIsUserAdmin] = useState(false);
   const [generatedAt, setGeneratedAt] = useState<string | null>(null);
 
-  // 어드민 여부 확인
+  // 어드민 여부 — 백엔드 판정 결과 사용 (UI 힌트용. 실제 권한은 /api/fomo-agents/stream에서 재검증)
   useEffect(() => {
     fetch("/api/me").then((r) => r.json()).then((d) => {
-      const username = d?.currentUser?.username;
-      // 클라에서는 정확한 admin 판정 불가하므로 백엔드에 따로 의존. 여기선 hint만.
-      if (username === "blueming" || username === "admin") setIsUserAdmin(true);
+      if (d?.isAdmin === true) setIsUserAdmin(true);
     }).catch(() => {});
   }, []);
 
