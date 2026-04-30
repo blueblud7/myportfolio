@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
-import { getEarningsHistory } from "@/lib/yahoo-finance";
+import { getEarningsHistory, type EarningsQuarter } from "@/lib/yahoo-finance";
+import { getFinnhubEarnings } from "@/lib/finnhub";
 import { getSessionUser } from "@/lib/auth";
 
 export const maxDuration = 60;
@@ -85,15 +86,34 @@ export async function POST(req: NextRequest) {
   let updated = 0;
   let totalQuarters = 0;
   const failed: string[] = [];
+  const sources: { yahoo: number; finnhub: number } = { yahoo: 0, finnhub: 0 };
 
   await Promise.allSettled(
     tickers.map(async ({ ticker }) => {
       try {
-        const history = await getEarningsHistory(ticker);
-        if (!history || history.length === 0) {
+        let history: EarningsQuarter[] | null = await getEarningsHistory(ticker);
+        let source: "yahoo" | "finnhub" | null = history && history.length > 0 ? "yahoo" : null;
+
+        // Fallback: Finnhub (Yahoo가 빈 응답 주는 종목용)
+        if (!source) {
+          const finn = await getFinnhubEarnings(ticker);
+          if (finn && finn.length > 0) {
+            history = finn.map((f): EarningsQuarter => ({
+              quarter: `${f.quarter}Q${f.year}`,
+              date: f.period ?? null,
+              epsActual: f.actual,
+              epsEstimate: f.estimate,
+              surprisePct: f.surprisePercent,
+            }));
+            source = "finnhub";
+          }
+        }
+
+        if (!history || history.length === 0 || !source) {
           failed.push(ticker);
           return;
         }
+        sources[source]++;
         let inserted = 0;
         for (const q of history) {
           if (!q.quarter) continue;
@@ -121,5 +141,5 @@ export async function POST(req: NextRequest) {
     })
   );
 
-  return NextResponse.json({ updated, failed, total: tickers.length, totalQuarters });
+  return NextResponse.json({ updated, failed, total: tickers.length, totalQuarters, sources });
 }
