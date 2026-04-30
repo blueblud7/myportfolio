@@ -5,7 +5,7 @@ import { Link, usePathname } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
 import {
   LayoutDashboard, Wallet, BarChart3, TrendingUp, BookOpen,
-  Eye, EyeOff, FlaskConical, Bell, Sparkles, Activity, X, Layers, Microscope, PieChart, Receipt, Binoculars, FileText,
+  Eye, EyeOff, FlaskConical, Bell, Sparkles, Activity, X, Layers, Microscope, PieChart, Receipt, Binoculars, FileText, CalendarDays,
 } from "lucide-react";
 import { InvestorQuote } from "./InvestorQuote";
 import { usePrivacy } from "@/contexts/privacy-context";
@@ -35,6 +35,7 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
       items: [
         { href: "/quant", label: t("quant"), icon: FlaskConical },
         { href: "/analyst-reports", label: "증권사 리포트", icon: FileText },
+        { href: "/earnings", label: "실적 (Earnings)", icon: CalendarDays },
       ],
     },
     {

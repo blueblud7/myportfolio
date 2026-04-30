@@ -265,6 +265,70 @@ export async function getEarningsCalendarEvents(
   return trySymbol(resolveYahooSymbol(ticker));
 }
 
+export interface EarningsQuarter {
+  quarter: string;        // e.g. "2025Q4" or raw fmt like "4Q2025"
+  date: string | null;    // YYYY-MM-DD
+  epsActual: number | null;
+  epsEstimate: number | null;
+  surprisePct: number | null;
+}
+
+export async function getEarningsHistory(ticker: string): Promise<EarningsQuarter[] | null> {
+  if (ticker === "CASH") return null;
+
+  const trySymbol = async (symbol: string): Promise<EarningsQuarter[] | null> => {
+    const result = await fetchYahooSummary(symbol, "earningsHistory");
+    if (!result?.earningsHistory) return null;
+    const eh = result.earningsHistory as { history?: unknown[] };
+    if (!Array.isArray(eh.history)) return null;
+
+    const num = (v: unknown): number | null => {
+      if (typeof v === "number") return v;
+      if (v && typeof v === "object" && "raw" in v) {
+        const r = (v as { raw: unknown }).raw;
+        return typeof r === "number" ? r : null;
+      }
+      return null;
+    };
+    const fmt = (v: unknown): string | null => {
+      if (typeof v === "string") return v;
+      if (v && typeof v === "object" && "fmt" in v) {
+        const f = (v as { fmt: unknown }).fmt;
+        return typeof f === "string" ? f : null;
+      }
+      return null;
+    };
+
+    return eh.history
+      .map((row): EarningsQuarter | null => {
+        if (!row || typeof row !== "object") return null;
+        const r = row as Record<string, unknown>;
+        const epsActual = num(r.epsActual);
+        const epsEstimate = num(r.epsEstimate);
+        const surprisePct = num(r.surprisePercent);
+        const quarter = fmt(r.quarter) ?? "";
+        const dateRaw = fmt(r.quarter);
+        // quarter often comes as "4Q2024" or ISO date — normalize to YYYY-MM-DD if ISO
+        let date: string | null = null;
+        if (dateRaw && /^\d{4}-\d{2}-\d{2}/.test(dateRaw)) {
+          date = dateRaw.slice(0, 10);
+        }
+        return { quarter, date, epsActual, epsEstimate, surprisePct };
+      })
+      .filter((q): q is EarningsQuarter => q !== null);
+  };
+
+  if (/^\d[A-Z0-9]{5}$/i.test(ticker)) {
+    for (const suffix of [".KS", ".KQ"]) {
+      const result = await trySymbol(`${ticker}${suffix}`);
+      if (result && result.length > 0) return result;
+    }
+    return null;
+  }
+
+  return trySymbol(resolveYahooSymbol(ticker));
+}
+
 export async function getExchangeRate(): Promise<number> {
   const data = await fetchYahooChart("USDKRW=X");
   return (data?.meta.regularMarketPrice as number) ?? 1350;
