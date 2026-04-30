@@ -126,8 +126,9 @@ export async function POST(req: NextRequest) {
   const userPrompt = `## 다가오는 실적 발표\n${upcomingText}\n\n## 최근 4분기 실적 결과\n${resultsText}`;
 
   const message = await client.chat.completions.create({
-    model: "gpt-5-nano",
-    max_completion_tokens: 4000,
+    model: "gpt-4o-mini",
+    max_tokens: 2000,
+    temperature: 0.7,
     messages: [
       { role: "system", content: systemPrompt },
       { role: "user", content: userPrompt },
