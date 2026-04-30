@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 import { getCachedExchangeRate } from "@/lib/exchange-rate";
 import { getSessionUser } from "@/lib/auth";
+import { decryptNum } from "@/lib/crypto";
 import type { RebalancingSummary, RebalancingAccount, RebalancingAction } from "@/types";
 
 export async function GET(req: NextRequest) {
@@ -41,6 +42,7 @@ export async function GET(req: NextRequest) {
     valueMap[h.account_id] = (valueMap[h.account_id] ?? 0) + valueKrw;
   }
 
+  await sql`ALTER TABLE bank_balances ADD COLUMN IF NOT EXISTS balance_enc TEXT`.catch(() => {});
   // 은행 계좌: 가장 최근 잔고
   const bankRows = await sql`
     SELECT bb.account_id, bb.balance, bb.balance_enc, a.currency
@@ -52,7 +54,6 @@ export async function GET(req: NextRequest) {
       AND a.user_id = ${user.id}
   ` as { account_id: number; balance: number | null; balance_enc: string | null; currency: string }[];
 
-  const { decryptNum } = await import("@/lib/crypto");
   for (const b of bankRows) {
     const balance = b.balance_enc !== null ? (decryptNum(b.balance_enc) ?? 0) : (b.balance ?? 0);
     const valueKrw = b.currency === "USD" ? balance * exchangeRate : balance;

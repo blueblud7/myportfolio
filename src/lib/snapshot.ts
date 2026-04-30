@@ -39,6 +39,7 @@ export async function createDailySnapshot(userId: number): Promise<boolean> {
     stockKrw += h.currency === "USD" ? value * exchangeRate : value;
   }
 
+  await sql`ALTER TABLE bank_balances ADD COLUMN IF NOT EXISTS balance_enc TEXT`.catch(() => {});
   const bankAccounts = await sql`
     SELECT bb.balance, bb.balance_enc, a.currency
     FROM bank_balances bb

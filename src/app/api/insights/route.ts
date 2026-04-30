@@ -3,6 +3,7 @@ import OpenAI from "openai";
 import { getDb } from "@/lib/db";
 import { getLatestExchangeRate } from "@/lib/exchange-rate";
 import { getSessionUser } from "@/lib/auth";
+import { decryptNum } from "@/lib/crypto";
 
 const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
@@ -50,6 +51,7 @@ export async function POST(req: NextRequest) {
 
     const accounts = await sql`SELECT name, type, currency FROM accounts WHERE user_id = ${user.id} ORDER BY name`;
 
+    await sql`ALTER TABLE bank_balances ADD COLUMN IF NOT EXISTS balance_enc TEXT`.catch(() => {});
     const bankRows = await sql`
       SELECT bb.balance, bb.balance_enc, a.name, a.currency
       FROM bank_balances bb
@@ -59,7 +61,6 @@ export async function POST(req: NextRequest) {
       GROUP BY bb.account_id, bb.balance, bb.balance_enc, a.name, a.currency
     ` as { balance: number | null; balance_enc: string | null; name: string; currency: string }[];
 
-    const { decryptNum } = await import("@/lib/crypto");
     const bankBalances = bankRows.map(r => ({
       balance: r.balance_enc !== null ? (decryptNum(r.balance_enc) ?? 0) : (r.balance ?? 0),
       name: r.name,

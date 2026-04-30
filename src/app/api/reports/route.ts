@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 import { getCachedExchangeRate } from "@/lib/exchange-rate";
 import { getSessionUser } from "@/lib/auth";
+import { decryptNum } from "@/lib/crypto";
 import type { ReportData } from "@/types";
 
 export async function GET(req: NextRequest) {
@@ -10,6 +11,9 @@ export async function GET(req: NextRequest) {
 
   const sql = getDb();
   const exchangeRate = await getCachedExchangeRate();
+
+  // bank_balances 암호화 컬럼 보장 (bank 페이지 안 들렀어도 안전)
+  await sql`ALTER TABLE bank_balances ADD COLUMN IF NOT EXISTS balance_enc TEXT`.catch(() => {});
 
   const holdings = await sql`
     SELECT h.*, a.name as account_name, a.currency as account_currency, a.type as account_type,
@@ -36,9 +40,8 @@ export async function GET(req: NextRequest) {
       AND bb.date=(SELECT MAX(b2.date) FROM bank_balances b2 WHERE b2.account_id=bb.account_id)
     GROUP BY bb.account_id, bb.balance, bb.balance_enc, a.name, a.currency
   ` as { balance: number | null; balance_enc: string | null; account_name: string; currency: string }[];
-  const { decryptNum: _decryptBalNum } = await import("@/lib/crypto");
   const bankBalances = bankRows.map(r => ({
-    balance: r.balance_enc !== null ? (_decryptBalNum(r.balance_enc) ?? 0) : (r.balance ?? 0),
+    balance: r.balance_enc !== null ? (decryptNum(r.balance_enc) ?? 0) : (r.balance ?? 0),
     account_name: r.account_name,
     currency: r.currency,
   }));
