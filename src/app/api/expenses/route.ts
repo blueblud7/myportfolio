@@ -65,6 +65,19 @@ async function ensureTable(sql: ReturnType<typeof getDb>) {
     UPDATE expense_items SET user_id = (SELECT id FROM users ORDER BY id LIMIT 1)
     WHERE user_id IS NULL
   `.catch(() => {});
+  // 일회성 마이그레이션 테이블
+  await sql`CREATE TABLE IF NOT EXISTS _migrations (name TEXT PRIMARY KEY, ran_at TIMESTAMPTZ DEFAULT NOW())`.catch(() => {});
+  // 첫 번째 유저 외 expense_items 초기화 (구버전 기본값으로 시딩된 데이터 정리)
+  await sql`
+    DO $$
+    BEGIN
+      IF NOT EXISTS (SELECT 1 FROM _migrations WHERE name = 'reset_non_owner_expenses_v1') THEN
+        DELETE FROM expense_items
+        WHERE user_id != (SELECT id FROM users ORDER BY id LIMIT 1);
+        INSERT INTO _migrations (name) VALUES ('reset_non_owner_expenses_v1');
+      END IF;
+    END $$;
+  `.catch(() => {});
 }
 
 export async function GET(req: NextRequest) {
