@@ -16,6 +16,14 @@ async function ensureSchema(sql: ReturnType<typeof getDb>) {
   await sql`ALTER TABLE diary ADD COLUMN IF NOT EXISTS title_enc TEXT`;
   await sql`ALTER TABLE diary ADD COLUMN IF NOT EXISTS tags_enc TEXT`;
 
+  // 레거시 평문 컬럼 NOT NULL 제거 (이제 _enc 컬럼에만 저장하므로)
+  await sql`ALTER TABLE diary ALTER COLUMN title DROP NOT NULL`.catch(() => {});
+  await sql`ALTER TABLE diary ALTER COLUMN content DROP NOT NULL`.catch(() => {});
+  await sql`ALTER TABLE diary ALTER COLUMN mood DROP NOT NULL`.catch(() => {});
+  await sql`ALTER TABLE diary ALTER COLUMN tags DROP NOT NULL`.catch(() => {});
+  await sql`ALTER TABLE diary ALTER COLUMN created_at DROP NOT NULL`.catch(() => {});
+  await sql`ALTER TABLE diary ALTER COLUMN updated_at DROP NOT NULL`.catch(() => {});
+
   // 일회성 마이그레이션: 기존 평문 → 암호화
   await sql`CREATE TABLE IF NOT EXISTS _migrations (name TEXT PRIMARY KEY, ran_at TIMESTAMPTZ DEFAULT NOW())`;
   const [done] = await sql`SELECT name FROM _migrations WHERE name = 'encrypt_diary_v1'` as { name: string }[];
@@ -69,15 +77,18 @@ export async function POST(req: NextRequest) {
   const sql = getDb();
   await ensureSchema(sql);
 
+  const now = new Date().toISOString().replace("T", " ").slice(0, 19);
   const [entry] = await sql`
-    INSERT INTO diary (date, user_id, title_enc, content_enc, mood_enc, tags_enc)
+    INSERT INTO diary (date, user_id, title_enc, content_enc, mood_enc, tags_enc, created_at, updated_at)
     VALUES (
       ${date},
       ${user.id},
       ${encrypt(String(title).trim())},
       ${encrypt(content ?? "")},
       ${encrypt(mood ?? "neutral")},
-      ${encrypt(tags ?? "")}
+      ${encrypt(tags ?? "")},
+      ${now},
+      ${now}
     )
     RETURNING *
   ` as DiaryRow[];
