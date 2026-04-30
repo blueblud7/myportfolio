@@ -23,19 +23,21 @@ export async function POST(req: NextRequest) {
       JOIN accounts a ON h.account_id = a.id
       LEFT JOIN price_history p ON h.ticker = p.ticker
         AND p.date = (SELECT MAX(date) FROM price_history WHERE ticker = h.ticker)
+      WHERE a.user_id = ${user.id}
       ORDER BY a.name, h.ticker
     ` as {
       ticker: string; name: string; quantity: number; avg_cost: number; currency: string;
       account_name: string; account_type: string; current_price: number;
     }[];
 
-    const accounts = await sql`SELECT name, type, currency FROM accounts ORDER BY name`;
+    const accounts = await sql`SELECT name, type, currency FROM accounts WHERE user_id = ${user.id} ORDER BY name`;
 
     const bankBalances = await sql`
       SELECT bb.balance, a.name, a.currency
       FROM bank_balances bb
       JOIN accounts a ON bb.account_id = a.id
-      WHERE bb.date = (SELECT MAX(b2.date) FROM bank_balances b2 WHERE b2.account_id = bb.account_id)
+      WHERE a.user_id = ${user.id}
+        AND bb.date = (SELECT MAX(b2.date) FROM bank_balances b2 WHERE b2.account_id = bb.account_id)
       GROUP BY bb.account_id, bb.balance, a.name, a.currency
     ` as { balance: number; name: string; currency: string }[];
 

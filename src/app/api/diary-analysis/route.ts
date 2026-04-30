@@ -16,6 +16,7 @@ export async function GET(req: NextRequest) {
     SELECT d.mood, t.type as tx_type, t.total_amount, t.currency
     FROM diary d
     LEFT JOIN transactions t ON t.date = d.date
+      AND t.account_id IN (SELECT id FROM accounts WHERE user_id = ${user.id})
     WHERE d.user_id = ${user.id}
   `;
 
