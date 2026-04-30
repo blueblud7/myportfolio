@@ -276,46 +276,51 @@ export interface EarningsQuarter {
 export async function getEarningsHistory(ticker: string): Promise<EarningsQuarter[] | null> {
   if (ticker === "CASH") return null;
 
+  const num = (v: unknown): number | null => {
+    if (typeof v === "number") return v;
+    if (v && typeof v === "object" && "raw" in v) {
+      const r = (v as { raw: unknown }).raw;
+      return typeof r === "number" ? r : null;
+    }
+    return null;
+  };
+
   const trySymbol = async (symbol: string): Promise<EarningsQuarter[] | null> => {
-    const result = await fetchYahooSummary(symbol, "earningsHistory");
-    if (!result?.earningsHistory) return null;
-    const eh = result.earningsHistory as { history?: unknown[] };
-    if (!Array.isArray(eh.history)) return null;
+    // 1차: earnings 모듈 (earningsChart.quarterly — 가장 안정적, 인증 불필요)
+    const result = await fetchYahooSummary(symbol, "earnings");
+    if (!result?.earnings) return null;
 
-    const num = (v: unknown): number | null => {
-      if (typeof v === "number") return v;
-      if (v && typeof v === "object" && "raw" in v) {
-        const r = (v as { raw: unknown }).raw;
-        return typeof r === "number" ? r : null;
-      }
-      return null;
+    const earnings = result.earnings as {
+      earningsChart?: { quarterly?: unknown[] };
     };
-    const fmt = (v: unknown): string | null => {
-      if (typeof v === "string") return v;
-      if (v && typeof v === "object" && "fmt" in v) {
-        const f = (v as { fmt: unknown }).fmt;
-        return typeof f === "string" ? f : null;
-      }
-      return null;
-    };
+    const quarterly = earnings.earningsChart?.quarterly;
+    if (!Array.isArray(quarterly) || quarterly.length === 0) return null;
 
-    return eh.history
+    const parsed = quarterly
       .map((row): EarningsQuarter | null => {
         if (!row || typeof row !== "object") return null;
         const r = row as Record<string, unknown>;
-        const epsActual = num(r.epsActual);
-        const epsEstimate = num(r.epsEstimate);
-        const surprisePct = num(r.surprisePercent);
-        const quarter = fmt(r.quarter) ?? "";
-        const dateRaw = fmt(r.quarter);
-        // quarter often comes as "4Q2024" or ISO date — normalize to YYYY-MM-DD if ISO
-        let date: string | null = null;
-        if (dateRaw && /^\d{4}-\d{2}-\d{2}/.test(dateRaw)) {
-          date = dateRaw.slice(0, 10);
-        }
-        return { quarter, date, epsActual, epsEstimate, surprisePct };
+        const quarter = typeof r.date === "string" ? r.date : "";
+        if (!quarter) return null;
+
+        const actual = num(r.actual);
+        const estimate = num(r.estimate);
+        const surprisePct =
+          actual !== null && estimate !== null && estimate !== 0
+            ? ((actual - estimate) / Math.abs(estimate)) * 100
+            : null;
+
+        return {
+          quarter,         // "1Q2024" 등
+          date: null,
+          epsActual: actual,
+          epsEstimate: estimate,
+          surprisePct,
+        };
       })
       .filter((q): q is EarningsQuarter => q !== null);
+
+    return parsed.length > 0 ? parsed : null;
   };
 
   if (/^\d[A-Z0-9]{5}$/i.test(ticker)) {

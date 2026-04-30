@@ -83,31 +83,43 @@ export async function POST(req: NextRequest) {
   ` as { ticker: string; name: string }[];
 
   let updated = 0;
+  let totalQuarters = 0;
   const failed: string[] = [];
 
-  await Promise.all(
+  await Promise.allSettled(
     tickers.map(async ({ ticker }) => {
-      const history = await getEarningsHistory(ticker);
-      if (!history || history.length === 0) {
+      try {
+        const history = await getEarningsHistory(ticker);
+        if (!history || history.length === 0) {
+          failed.push(ticker);
+          return;
+        }
+        let inserted = 0;
+        for (const q of history) {
+          if (!q.quarter) continue;
+          await sql`
+            INSERT INTO earnings_results (ticker, quarter, reported_date, eps_actual, eps_estimate, surprise_pct, updated_at)
+            VALUES (${ticker}, ${q.quarter}, ${q.date}, ${q.epsActual}, ${q.epsEstimate}, ${q.surprisePct}, NOW())
+            ON CONFLICT (ticker, quarter) DO UPDATE SET
+              reported_date = EXCLUDED.reported_date,
+              eps_actual = EXCLUDED.eps_actual,
+              eps_estimate = EXCLUDED.eps_estimate,
+              surprise_pct = EXCLUDED.surprise_pct,
+              updated_at = EXCLUDED.updated_at
+          `;
+          inserted++;
+        }
+        if (inserted > 0) {
+          updated++;
+          totalQuarters += inserted;
+        } else {
+          failed.push(ticker);
+        }
+      } catch {
         failed.push(ticker);
-        return;
       }
-      for (const q of history) {
-        if (!q.quarter) continue;
-        await sql`
-          INSERT INTO earnings_results (ticker, quarter, reported_date, eps_actual, eps_estimate, surprise_pct, updated_at)
-          VALUES (${ticker}, ${q.quarter}, ${q.date}, ${q.epsActual}, ${q.epsEstimate}, ${q.surprisePct}, NOW())
-          ON CONFLICT (ticker, quarter) DO UPDATE SET
-            reported_date = EXCLUDED.reported_date,
-            eps_actual = EXCLUDED.eps_actual,
-            eps_estimate = EXCLUDED.eps_estimate,
-            surprise_pct = EXCLUDED.surprise_pct,
-            updated_at = EXCLUDED.updated_at
-        `;
-      }
-      updated++;
     })
   );
 
-  return NextResponse.json({ updated, failed, total: tickers.length });
+  return NextResponse.json({ updated, failed, total: tickers.length, totalQuarters });
 }

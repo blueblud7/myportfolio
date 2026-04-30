@@ -213,8 +213,9 @@ function ResultsTab() {
     setRefreshing(true); setRefreshMsg("");
     try {
       const res = await fetch("/api/earnings-results", { method: "POST" });
-      const data: { updated: number; failed: string[]; total: number } = await res.json();
-      setRefreshMsg(`${data.total}개 중 ${data.updated}개 업데이트${data.failed.length ? ` · 실패: ${data.failed.join(", ")}` : ""}`);
+      const data: { updated: number; failed: string[]; total: number; totalQuarters?: number } = await res.json();
+      const q = data.totalQuarters ? ` · ${data.totalQuarters}개 분기` : "";
+      setRefreshMsg(`${data.total}개 중 ${data.updated}개 종목${q}${data.failed.length ? ` · 실패: ${data.failed.join(", ")}` : ""}`);
       await load();
     } catch { setRefreshMsg("갱신 실패"); }
     finally { setRefreshing(false); }
