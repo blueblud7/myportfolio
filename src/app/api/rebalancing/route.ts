@@ -3,6 +3,7 @@ import { getDb } from "@/lib/db";
 import { getCachedExchangeRate } from "@/lib/exchange-rate";
 import { getSessionUser } from "@/lib/auth";
 import { decryptNum } from "@/lib/crypto";
+import { decryptAccountName } from "@/lib/account-crypto";
 import type { RebalancingSummary, RebalancingAccount, RebalancingAction } from "@/types";
 
 export async function GET(req: NextRequest) {
@@ -13,10 +14,12 @@ export async function GET(req: NextRequest) {
   const sql = getDb();
   const exchangeRate = await getCachedExchangeRate();
 
+  await sql`ALTER TABLE accounts ADD COLUMN IF NOT EXISTS name_enc TEXT`.catch(() => {});
   // 모든 계좌 조회
-  const accounts = await sql`SELECT * FROM accounts WHERE user_id = ${user.id} ORDER BY id` as {
-    id: number; name: string; type: string; currency: string; target_pct: number;
+  const accountsRaw = await sql`SELECT * FROM accounts WHERE user_id = ${user.id} ORDER BY id` as {
+    id: number; name: string | null; name_enc: string | null; type: string; currency: string; target_pct: number;
   }[];
+  const accounts = accountsRaw.map(a => ({ ...a, name: decryptAccountName(a) }));
 
   // 각 계좌의 현재 가치 (KRW 환산)
   const valueMap: Record<number, number> = {};

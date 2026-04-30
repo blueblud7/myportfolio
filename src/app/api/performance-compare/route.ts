@@ -4,6 +4,7 @@ import { getSessionUser } from "@/lib/auth";
 import { getBenchmarkHistory } from "@/lib/yahoo-finance";
 import { subMonths, subDays } from "date-fns";
 import { todayPST, formatPST } from "@/lib/tz";
+import { decryptAccountName } from "@/lib/account-crypto";
 import type { PerformancePoint, PerformanceCompareResponse } from "@/types";
 
 const BENCHMARK_SYMBOLS: Record<string, string> = {
@@ -141,10 +142,11 @@ export async function GET(request: NextRequest) {
     subjectName = "포트폴리오";
 
   } else if (type === "account" && id) {
+    await sql`ALTER TABLE accounts ADD COLUMN IF NOT EXISTS name_enc TEXT`.catch(() => {});
     const [account] = await sql`
-      SELECT name FROM accounts WHERE id = ${Number(id)} AND user_id = ${user.id}
-    ` as { name: string }[];
-    subjectName = account?.name ?? "계좌";
+      SELECT name, name_enc FROM accounts WHERE id = ${Number(id)} AND user_id = ${user.id}
+    ` as { name: string | null; name_enc: string | null }[];
+    subjectName = decryptAccountName(account) || "계좌";
 
     // 계좌 원가 (현재 환율 기준)
     const costRows = await sql`

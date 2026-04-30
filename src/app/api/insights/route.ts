@@ -4,6 +4,7 @@ import { getDb } from "@/lib/db";
 import { getLatestExchangeRate } from "@/lib/exchange-rate";
 import { getSessionUser } from "@/lib/auth";
 import { decryptNum } from "@/lib/crypto";
+import { decryptJoinedAccountName, decryptAccountName } from "@/lib/account-crypto";
 
 const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
@@ -33,37 +34,44 @@ export async function POST(req: NextRequest) {
 
     const exchangeRate = await getLatestExchangeRate();
 
+    await sql`ALTER TABLE accounts ADD COLUMN IF NOT EXISTS name_enc TEXT`.catch(() => {});
+    await sql`ALTER TABLE bank_balances ADD COLUMN IF NOT EXISTS balance_enc TEXT`.catch(() => {});
+
     // 포트폴리오 데이터 수집
-    const holdings = await sql`
+    const holdingsRaw = await sql`
       SELECT h.ticker, h.name, h.quantity, h.avg_cost, h.currency,
-             a.name as account_name, a.type as account_type,
+             a.name as account_name, a.name_enc as account_name_enc, a.type as account_type,
              COALESCE(p.price, h.avg_cost) as current_price
       FROM holdings h
       JOIN accounts a ON h.account_id = a.id
       LEFT JOIN price_history p ON h.ticker = p.ticker
         AND p.date = (SELECT MAX(date) FROM price_history WHERE ticker = h.ticker)
       WHERE a.user_id = ${user.id}
-      ORDER BY a.name, h.ticker
+      ORDER BY a.id, h.ticker
     ` as {
       ticker: string; name: string; quantity: number; avg_cost: number; currency: string;
-      account_name: string; account_type: string; current_price: number;
+      account_name: string | null; account_name_enc: string | null;
+      account_type: string; current_price: number;
     }[];
+    const holdings = holdingsRaw.map(h => ({ ...h, account_name: decryptJoinedAccountName(h) }));
 
-    const accounts = await sql`SELECT name, type, currency FROM accounts WHERE user_id = ${user.id} ORDER BY name`;
+    const accountsRaw = await sql`SELECT name, name_enc, type, currency FROM accounts WHERE user_id = ${user.id} ORDER BY id` as {
+      name: string | null; name_enc: string | null; type: string; currency: string;
+    }[];
+    const accounts = accountsRaw.map(a => ({ ...a, name: decryptAccountName(a) }));
 
-    await sql`ALTER TABLE bank_balances ADD COLUMN IF NOT EXISTS balance_enc TEXT`.catch(() => {});
     const bankRows = await sql`
-      SELECT bb.balance, bb.balance_enc, a.name, a.currency
+      SELECT bb.balance, bb.balance_enc, a.name, a.name_enc, a.currency
       FROM bank_balances bb
       JOIN accounts a ON bb.account_id = a.id
       WHERE a.user_id = ${user.id}
         AND bb.date = (SELECT MAX(b2.date) FROM bank_balances b2 WHERE b2.account_id = bb.account_id)
-      GROUP BY bb.account_id, bb.balance, bb.balance_enc, a.name, a.currency
-    ` as { balance: number | null; balance_enc: string | null; name: string; currency: string }[];
+      GROUP BY bb.account_id, bb.balance, bb.balance_enc, a.name, a.name_enc, a.currency
+    ` as { balance: number | null; balance_enc: string | null; name: string | null; name_enc: string | null; currency: string }[];
 
     const bankBalances = bankRows.map(r => ({
       balance: r.balance_enc !== null ? (decryptNum(r.balance_enc) ?? 0) : (r.balance ?? 0),
-      name: r.name,
+      name: decryptAccountName(r),
       currency: r.currency,
     }));
 

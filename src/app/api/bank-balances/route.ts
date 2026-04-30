@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 import { getSessionUser } from "@/lib/auth";
 import { encrypt, encryptNum, decryptNum, tryDecrypt } from "@/lib/crypto";
+import { decryptJoinedAccountName } from "@/lib/account-crypto";
 
 async function ensureSchema(sql: ReturnType<typeof getDb>) {
   await sql`ALTER TABLE bank_balances ADD COLUMN IF NOT EXISTS balance_enc TEXT`;
@@ -35,7 +36,8 @@ interface BankBalanceRow {
   date: string;
   note: string | null;
   note_enc: string | null;
-  account_name?: string;
+  account_name?: string | null;
+  account_name_enc?: string | null;
   currency?: string;
 }
 
@@ -44,6 +46,8 @@ function decryptRow(r: BankBalanceRow) {
     ...r,
     balance: r.balance_enc !== null ? decryptNum(r.balance_enc) ?? 0 : (r.balance ?? 0),
     note: r.note_enc !== null ? tryDecrypt(r.note_enc) : r.note,
+    account_name: r.account_name !== undefined || r.account_name_enc !== undefined
+      ? decryptJoinedAccountName(r) : undefined,
   };
 }
 
@@ -64,7 +68,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json(rows.map(decryptRow));
   }
   const rows = await sql`
-    SELECT bb.*, a.name as account_name, a.currency
+    SELECT bb.*, a.name as account_name, a.name_enc as account_name_enc, a.currency
     FROM bank_balances bb JOIN accounts a ON bb.account_id=a.id
     WHERE a.user_id=${user.id}
     ORDER BY bb.date DESC
