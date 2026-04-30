@@ -43,17 +43,19 @@ export async function GET(req: NextRequest) {
 
   // 은행 계좌: 가장 최근 잔고
   const bankRows = await sql`
-    SELECT bb.account_id, bb.balance, a.currency
+    SELECT bb.account_id, bb.balance, bb.balance_enc, a.currency
     FROM bank_balances bb
     JOIN accounts a ON bb.account_id = a.id
     WHERE bb.date = (
       SELECT MAX(b2.date) FROM bank_balances b2 WHERE b2.account_id = bb.account_id
     )
       AND a.user_id = ${user.id}
-  ` as { account_id: number; balance: number; currency: string }[];
+  ` as { account_id: number; balance: number | null; balance_enc: string | null; currency: string }[];
 
+  const { decryptNum } = await import("@/lib/crypto");
   for (const b of bankRows) {
-    const valueKrw = b.currency === "USD" ? b.balance * exchangeRate : b.balance;
+    const balance = b.balance_enc !== null ? (decryptNum(b.balance_enc) ?? 0) : (b.balance ?? 0);
+    const valueKrw = b.currency === "USD" ? balance * exchangeRate : balance;
     valueMap[b.account_id] = (valueMap[b.account_id] ?? 0) + valueKrw;
   }
 

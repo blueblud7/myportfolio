@@ -1,6 +1,7 @@
 import { getDb } from "./db";
 import { getLatestExchangeRate } from "./exchange-rate";
 import { todayPST } from "./tz";
+import { decryptNum } from "./crypto";
 
 async function initSnapshotColumn(sql: ReturnType<typeof getDb>) {
   await sql`ALTER TABLE snapshots ADD COLUMN IF NOT EXISTS user_id INTEGER REFERENCES users(id)`;
@@ -39,17 +40,18 @@ export async function createDailySnapshot(userId: number): Promise<boolean> {
   }
 
   const bankAccounts = await sql`
-    SELECT bb.balance, a.currency
+    SELECT bb.balance, bb.balance_enc, a.currency
     FROM bank_balances bb
     JOIN accounts a ON bb.account_id = a.id
     WHERE a.type = 'bank' AND a.user_id = ${userId}
       AND bb.date = (SELECT MAX(b2.date) FROM bank_balances b2 WHERE b2.account_id = bb.account_id)
-    GROUP BY bb.account_id, bb.balance, a.currency
-  ` as { balance: number; currency: string }[];
+    GROUP BY bb.account_id, bb.balance, bb.balance_enc, a.currency
+  ` as { balance: number | null; balance_enc: string | null; currency: string }[];
 
   let bankKrw = 0;
   for (const b of bankAccounts) {
-    bankKrw += b.currency === "USD" ? b.balance * exchangeRate : b.balance;
+    const bal = b.balance_enc !== null ? (decryptNum(b.balance_enc) ?? 0) : (b.balance ?? 0);
+    bankKrw += b.currency === "USD" ? bal * exchangeRate : bal;
   }
 
   const totalKrw = stockKrw + bankKrw;
@@ -96,12 +98,13 @@ export async function createAccountSnapshots(userId: number): Promise<void> {
       }
     } else {
       const [latest] = await sql`
-        SELECT balance FROM bank_balances
+        SELECT balance, balance_enc FROM bank_balances
         WHERE account_id = ${acct.id}
         ORDER BY date DESC LIMIT 1
-      ` as { balance: number }[];
+      ` as { balance: number | null; balance_enc: string | null }[];
       if (latest) {
-        valueKrw = acct.currency === "USD" ? latest.balance * exchangeRate : latest.balance;
+        const bal = latest.balance_enc !== null ? (decryptNum(latest.balance_enc) ?? 0) : (latest.balance ?? 0);
+        valueKrw = acct.currency === "USD" ? bal * exchangeRate : bal;
       }
     }
 

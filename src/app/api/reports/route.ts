@@ -29,13 +29,19 @@ export async function GET(req: NextRequest) {
   ` as { ticker:string; name:string; quantity:number; avg_cost:number; currency:string;
          account_name:string; current_price:number; sector:string; annual_dividend:number; dividend_yield:number }[];
 
-  const bankBalances = await sql`
-    SELECT bb.balance, a.name as account_name, a.currency
+  const bankRows = await sql`
+    SELECT bb.balance, bb.balance_enc, a.name as account_name, a.currency
     FROM bank_balances bb JOIN accounts a ON bb.account_id=a.id
     WHERE a.type='bank' AND a.user_id=${user.id}
       AND bb.date=(SELECT MAX(b2.date) FROM bank_balances b2 WHERE b2.account_id=bb.account_id)
-    GROUP BY bb.account_id, bb.balance, a.name, a.currency
-  ` as { balance:number; account_name:string; currency:string }[];
+    GROUP BY bb.account_id, bb.balance, bb.balance_enc, a.name, a.currency
+  ` as { balance: number | null; balance_enc: string | null; account_name: string; currency: string }[];
+  const { decryptNum: _decryptBalNum } = await import("@/lib/crypto");
+  const bankBalances = bankRows.map(r => ({
+    balance: r.balance_enc !== null ? (_decryptBalNum(r.balance_enc) ?? 0) : (r.balance ?? 0),
+    account_name: r.account_name,
+    currency: r.currency,
+  }));
 
   const byCurrency: Record<string,number> = {};
   const byAccount: Record<string,number> = {};

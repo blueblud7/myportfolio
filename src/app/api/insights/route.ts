@@ -50,14 +50,21 @@ export async function POST(req: NextRequest) {
 
     const accounts = await sql`SELECT name, type, currency FROM accounts WHERE user_id = ${user.id} ORDER BY name`;
 
-    const bankBalances = await sql`
-      SELECT bb.balance, a.name, a.currency
+    const bankRows = await sql`
+      SELECT bb.balance, bb.balance_enc, a.name, a.currency
       FROM bank_balances bb
       JOIN accounts a ON bb.account_id = a.id
       WHERE a.user_id = ${user.id}
         AND bb.date = (SELECT MAX(b2.date) FROM bank_balances b2 WHERE b2.account_id = bb.account_id)
-      GROUP BY bb.account_id, bb.balance, a.name, a.currency
-    ` as { balance: number; name: string; currency: string }[];
+      GROUP BY bb.account_id, bb.balance, bb.balance_enc, a.name, a.currency
+    ` as { balance: number | null; balance_enc: string | null; name: string; currency: string }[];
+
+    const { decryptNum } = await import("@/lib/crypto");
+    const bankBalances = bankRows.map(r => ({
+      balance: r.balance_enc !== null ? (decryptNum(r.balance_enc) ?? 0) : (r.balance ?? 0),
+      name: r.name,
+      currency: r.currency,
+    }));
 
     // 포트폴리오 요약 계산
     let totalStockKrw = 0;
