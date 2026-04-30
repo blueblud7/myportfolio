@@ -127,7 +127,7 @@ export async function POST(req: NextRequest) {
 
   const message = await client.chat.completions.create({
     model: "gpt-5-nano",
-    max_completion_tokens: 1200,
+    max_completion_tokens: 4000,
     messages: [
       { role: "system", content: systemPrompt },
       { role: "user", content: userPrompt },
@@ -135,6 +135,12 @@ export async function POST(req: NextRequest) {
   });
 
   const text = message.choices[0]?.message?.content ?? "";
+  const finishReason = message.choices[0]?.finish_reason;
+  if (!text || text.trim().length === 0) {
+    return NextResponse.json({
+      error: `AI가 빈 응답을 반환했습니다 (finish_reason: ${finishReason}). 다시 시도해주세요.`
+    }, { status: 502 });
+  }
 
   await sql`
     INSERT INTO earnings_insights_cache (user_id, content, generated_at)
