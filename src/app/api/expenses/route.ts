@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 import { getSessionUser } from "@/lib/auth";
+import { encryptNum, decryptNum } from "@/lib/crypto";
 
 const DEFAULT_ITEMS = [
   // Housing
@@ -67,6 +68,20 @@ async function ensureTable(sql: ReturnType<typeof getDb>) {
   `.catch(() => {});
   // 일회성 마이그레이션 테이블
   await sql`CREATE TABLE IF NOT EXISTS _migrations (name TEXT PRIMARY KEY, ran_at TIMESTAMPTZ DEFAULT NOW())`.catch(() => {});
+
+  // amount 암호화 컬럼 + 평문 NOT NULL 제거
+  await sql`ALTER TABLE expense_items ADD COLUMN IF NOT EXISTS amount_enc TEXT`;
+  await sql`ALTER TABLE expense_items ALTER COLUMN amount DROP NOT NULL`.catch(() => {});
+
+  // 일회성 마이그레이션: amount → amount_enc
+  const [encDone] = await sql`SELECT name FROM _migrations WHERE name = 'encrypt_expenses_v1'` as { name: string }[];
+  if (!encDone) {
+    const rows = await sql`SELECT id, amount FROM expense_items WHERE amount_enc IS NULL` as { id: number; amount: number | null }[];
+    for (const r of rows) {
+      await sql`UPDATE expense_items SET amount_enc = ${encryptNum(r.amount)} WHERE id = ${r.id}`;
+    }
+    await sql`INSERT INTO _migrations (name) VALUES ('encrypt_expenses_v1')`;
+  }
   // 첫 번째 유저 외 expense_items 초기화 (구버전 기본값으로 시딩된 데이터 정리)
   await sql`
     DO $$
@@ -80,26 +95,47 @@ async function ensureTable(sql: ReturnType<typeof getDb>) {
   `.catch(() => {});
 }
 
+interface ExpenseRow {
+  id: number;
+  name: string;
+  name_en: string;
+  amount: number | null;
+  amount_enc: string | null;
+  currency: string;
+  type: string;
+  category: string;
+  sort_order: number;
+  user_id: number;
+  created_at: string;
+}
+
+function decryptExpense(r: ExpenseRow) {
+  return {
+    ...r,
+    amount: r.amount_enc !== null ? decryptNum(r.amount_enc) ?? 0 : (r.amount ?? 0),
+  };
+}
+
 export async function GET(req: NextRequest) {
   const user = await getSessionUser(req);
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const sql = getDb();
   await ensureTable(sql);
-  const rows = await sql`SELECT * FROM expense_items WHERE user_id = ${user.id} ORDER BY sort_order, id`;
+  const rows = await sql`SELECT * FROM expense_items WHERE user_id = ${user.id} ORDER BY sort_order, id` as ExpenseRow[];
 
   if (rows.length === 0) {
     for (const item of DEFAULT_ITEMS) {
       await sql`
-        INSERT INTO expense_items (name, name_en, amount, currency, type, category, sort_order, user_id)
-        VALUES (${item.name}, ${item.name_en}, ${item.amount}, 'USD', ${item.type}, ${item.category}, ${item.sort_order}, ${user.id})
+        INSERT INTO expense_items (name, name_en, amount_enc, currency, type, category, sort_order, user_id)
+        VALUES (${item.name}, ${item.name_en}, ${encryptNum(item.amount)}, 'USD', ${item.type}, ${item.category}, ${item.sort_order}, ${user.id})
       `;
     }
-    const seeded = await sql`SELECT * FROM expense_items WHERE user_id = ${user.id} ORDER BY sort_order, id`;
-    return NextResponse.json(seeded);
+    const seeded = await sql`SELECT * FROM expense_items WHERE user_id = ${user.id} ORDER BY sort_order, id` as ExpenseRow[];
+    return NextResponse.json(seeded.map(decryptExpense));
   }
 
-  return NextResponse.json(rows);
+  return NextResponse.json(rows.map(decryptExpense));
 }
 
 export async function POST(req: NextRequest) {
@@ -107,15 +143,16 @@ export async function POST(req: NextRequest) {
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const sql = getDb();
+  await ensureTable(sql);
   const { name, name_en, amount, currency, type, category, sort_order } = await req.json();
   if (!name || !type) return NextResponse.json({ error: "name and type required" }, { status: 400 });
 
   const [row] = await sql`
-    INSERT INTO expense_items (name, name_en, amount, currency, type, category, sort_order, user_id)
-    VALUES (${name}, ${name_en ?? ""}, ${amount ?? 0}, ${currency ?? "USD"}, ${type}, ${category ?? "misc"}, ${sort_order ?? 999}, ${user.id})
+    INSERT INTO expense_items (name, name_en, amount_enc, currency, type, category, sort_order, user_id)
+    VALUES (${name}, ${name_en ?? ""}, ${encryptNum(Number(amount ?? 0))}, ${currency ?? "USD"}, ${type}, ${category ?? "misc"}, ${sort_order ?? 999}, ${user.id})
     RETURNING *
-  `;
-  return NextResponse.json(row, { status: 201 });
+  ` as ExpenseRow[];
+  return NextResponse.json(decryptExpense(row), { status: 201 });
 }
 
 export async function PUT(req: NextRequest) {
@@ -123,19 +160,20 @@ export async function PUT(req: NextRequest) {
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const sql = getDb();
+  await ensureTable(sql);
   const { id, name, name_en, amount, currency, type, category, sort_order } = await req.json();
   if (!id) return NextResponse.json({ error: "id required" }, { status: 400 });
 
   const [row] = await sql`
     UPDATE expense_items
-    SET name=${name}, name_en=${name_en ?? ""}, amount=${amount ?? 0},
+    SET name=${name}, name_en=${name_en ?? ""}, amount_enc=${encryptNum(Number(amount ?? 0))},
         currency=${currency ?? "USD"}, type=${type}, category=${category ?? "misc"},
         sort_order=${sort_order ?? 999}
     WHERE id=${id} AND user_id=${user.id}
     RETURNING *
-  `;
+  ` as ExpenseRow[];
   if (!row) return NextResponse.json({ error: "Not found" }, { status: 404 });
-  return NextResponse.json(row);
+  return NextResponse.json(decryptExpense(row));
 }
 
 export async function DELETE(req: NextRequest) {
