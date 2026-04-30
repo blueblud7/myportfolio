@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { SWRConfig } from "swr";
 import { Sidebar } from "./Sidebar";
 import { Header } from "./Header";
+import { GlobalFooterDisclaimer } from "./Disclaimer";
 import { PrivacyProvider } from "@/contexts/privacy-context";
 import { ThemeProvider } from "@/contexts/theme-context";
 
@@ -28,7 +29,8 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
             />
             <div className="flex-1 min-w-0 overflow-y-auto overflow-x-hidden">
               <Header onMenuToggle={() => setMobileMenuOpen((v) => !v)} />
-              <main className="min-h-full bg-background p-3 sm:p-6">{children}</main>
+              <main className="bg-background p-3 sm:p-6">{children}</main>
+              <GlobalFooterDisclaimer />
             </div>
           </div>
         </SWRConfig>

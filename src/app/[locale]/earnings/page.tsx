@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import { CalendarDays, RefreshCw, Briefcase, Eye, TrendingUp, TrendingDown, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { AIDisclaimer } from "@/components/layout/Disclaimer";
 import type { EarningsCalendarItem } from "@/app/api/earnings-calendar/route";
 import type { EarningsResultRow } from "@/app/api/earnings-results/route";
 
@@ -369,8 +370,11 @@ function InsightsTab() {
           <p className="mt-2 text-[11px] text-muted-foreground/70">먼저 [일정]·[결과] 탭에서 데이터를 갱신해두세요.</p>
         </div>
       ) : (
-        <div className="rounded-xl border border-border bg-card p-5">
-          <MarkdownRenderer text={content} />
+        <div className="space-y-3">
+          <div className="rounded-xl border border-border bg-card p-5">
+            <MarkdownRenderer text={content} />
+          </div>
+          <AIDisclaimer />
         </div>
       )}
     </div>

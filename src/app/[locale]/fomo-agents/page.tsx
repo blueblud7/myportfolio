@@ -5,6 +5,7 @@ import { useFomoSentiment } from "@/hooks/use-api";
 import type { AgentAnalysis, AgentsResult, ContrarianSignal, SentimentData, TargetSector, TimeHorizon } from "@/types/fomo";
 import { cn } from "@/lib/utils";
 import { Brain, TrendingUp, TrendingDown, Minus, RefreshCw, ChevronDown, ChevronUp, AlertTriangle, Star } from "lucide-react";
+import { AIDisclaimer } from "@/components/layout/Disclaimer";
 
 const SECTOR_LABEL: Record<TargetSector, string> = {
   "Tech": "테크",
@@ -593,6 +594,8 @@ export default function FomoAgentsPage() {
           ))}
         </div>
       )}
+
+      {agents.length > 0 && <AIDisclaimer className="mt-2" />}
     </div>
   );
 }
