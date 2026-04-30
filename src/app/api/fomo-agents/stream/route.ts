@@ -1,11 +1,23 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { fetchSentimentData } from "@/lib/fomo-sentiment";
-import { AGENT_PROFILES, buildUserPrompt, runAgent, calcConsensus, computeContrarian, setAgentsCache } from "@/lib/fomo-agents";
+import { AGENT_PROFILES, buildUserPrompt, runAgent, calcConsensus, computeContrarian } from "@/lib/fomo-agents";
+import { writeFomoCache } from "@/lib/fomo-agents-cache";
+import { getSessionUser } from "@/lib/auth";
+import { isAdmin } from "@/lib/admin";
 import type { AgentsResult } from "@/types/fomo";
 
 export const maxDuration = 300;
 
-export async function GET() {
+export async function GET(req: NextRequest) {
+  // 수동 실행은 admin만 — 일반 유저는 자동 캐시(/api/fomo-agents) 사용
+  const user = await getSessionUser(req);
+  if (!user || !isAdmin(user.username)) {
+    return NextResponse.json(
+      { error: "관리자만 수동 실행 가능합니다. 일반 분석은 매일 자동으로 갱신됩니다." },
+      { status: 403 }
+    );
+  }
+
   const encoder = new TextEncoder();
 
   const stream = new ReadableStream({
@@ -39,7 +51,7 @@ export async function GET() {
         const timestamp = new Date().toISOString();
         const result: AgentsResult = { agents: finalAgents, consensus, contrarian, timestamp };
 
-        setAgentsCache({ data: result, ts: Date.now() });
+        await writeFomoCache(result);
 
         send({ type: "done", consensus, contrarian, timestamp });
       } catch (e) {

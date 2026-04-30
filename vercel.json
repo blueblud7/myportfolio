@@ -1,0 +1,8 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/fomo-agents",
+      "schedule": "0 21 * * *"
+    }
+  ]
+}

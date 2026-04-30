@@ -326,7 +326,19 @@ export default function FomoAgentsPage() {
     }
   }, []);
 
-  // On mount: check cache first
+  const [isUserAdmin, setIsUserAdmin] = useState(false);
+  const [generatedAt, setGeneratedAt] = useState<string | null>(null);
+
+  // 어드민 여부 확인
+  useEffect(() => {
+    fetch("/api/me").then((r) => r.json()).then((d) => {
+      const username = d?.currentUser?.username;
+      // 클라에서는 정확한 admin 판정 불가하므로 백엔드에 따로 의존. 여기선 hint만.
+      if (username === "blueming" || username === "admin") setIsUserAdmin(true);
+    }).catch(() => {});
+  }, []);
+
+  // 마운트 시 DB 캐시만 읽음 (자동 stream 트리거 안 함)
   useEffect(() => {
     fetch("/api/fomo-agents")
       .then((r) => r.json())
@@ -338,25 +350,22 @@ export default function FomoAgentsPage() {
           "consensus" in data &&
           "timestamp" in data
         ) {
-          const result = data as AgentsResult;
+          const result = data as AgentsResult & { generated_at?: string };
           setAgents(result.agents);
           setConsensus(result.consensus);
           setContrarian(result.contrarian ?? { active: false, reason: "" });
           setTimestamp(result.timestamp);
+          setGeneratedAt(result.generated_at ?? result.timestamp);
           setProgress({ current: result.agents.length, total: result.agents.length, thinking: 0 });
           setLoaded(true);
-        } else {
-          // { cached: false } or any non-result → stream
-          startStream();
         }
+        // 캐시 없으면 그냥 빈 상태 — admin이 수동 실행하거나 다음 cron 기다림
       })
-      .catch(() => {
-        startStream();
-      });
-  }, [startStream]);
+      .catch(() => {});
+  }, []);
 
   const handleRefresh = async () => {
-    await fetch("/api/fomo-agents", { method: "DELETE" });
+    if (!isUserAdmin) return; // 일반 유저는 트리거 불가
     startStream();
   };
 
@@ -378,17 +387,25 @@ export default function FomoAgentsPage() {
             <h1 className="text-2xl font-bold">AI 투자자 에이전트</h1>
           </div>
           <p className="mt-1 text-sm text-muted-foreground">
-            12개 투자자 페르소나가 현재 시장을 분석합니다 · gpt-5-nano · 30분 캐시
+            투자자 페르소나가 현재 시장을 분석합니다 · 매일 새벽 6시(KST) 자동 갱신
+            {generatedAt && (
+              <span className="ml-2 text-foreground/70">
+                · 마지막 분석: {new Date(generatedAt).toLocaleString("ko-KR", { timeZone: "Asia/Seoul", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" })}
+              </span>
+            )}
           </p>
         </div>
-        <button
-          onClick={handleRefresh}
-          disabled={streaming}
-          className="flex items-center gap-1.5 rounded-lg border bg-card px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors disabled:opacity-40"
-        >
-          <RefreshCw className={cn("h-3.5 w-3.5", streaming && "animate-spin")} />
-          새로고침
-        </button>
+        {isUserAdmin && (
+          <button
+            onClick={handleRefresh}
+            disabled={streaming}
+            className="flex items-center gap-1.5 rounded-lg border bg-card px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors disabled:opacity-40"
+            title="Admin only — 즉시 재분석"
+          >
+            <RefreshCw className={cn("h-3.5 w-3.5", streaming && "animate-spin")} />
+            수동 갱신
+          </button>
+        )}
       </div>
 
       {/* Progress section */}
@@ -574,12 +591,15 @@ export default function FomoAgentsPage() {
         </div>
       )}
 
-      {/* Initial loading state (before stream starts) */}
+      {/* 캐시 없을 때 — 다음 cron 안내 */}
       {!loaded && !streaming && !error && (
         <div className="flex flex-col items-center justify-center py-20 text-center space-y-2">
           <Brain className="h-10 w-10 text-muted-foreground/40" />
-          <p className="text-muted-foreground text-sm">에이전트 분석을 불러오는 중...</p>
-          <p className="text-muted-foreground/60 text-xs">OPENAI_API_KEY가 설정되어 있어야 합니다.</p>
+          <p className="text-muted-foreground text-sm">아직 분석 결과가 없습니다.</p>
+          <p className="text-muted-foreground/60 text-xs">
+            매일 새벽 6시(KST) 자동 갱신됩니다.
+            {isUserAdmin && " 우측 상단 '수동 갱신'으로 즉시 실행 가능."}
+          </p>
         </div>
       )}
 

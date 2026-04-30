@@ -273,7 +273,7 @@ export async function runAgent(
   try {
     const res = await client.chat.completions.create({
       model: "gpt-5-nano",
-      max_completion_tokens: 8000,
+      max_completion_tokens: 3000,
       response_format: { type: "json_object" },
       messages: [
         { role: "system", content: buildSystemPrompt(profile) },

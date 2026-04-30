@@ -1,18 +1,18 @@
 import { NextResponse } from "next/server";
-import { agentsCache, setAgentsCache } from "@/lib/fomo-agents";
+import { readFomoCache } from "@/lib/fomo-agents-cache";
 
-export const maxDuration = 60;
-
-const CACHE_TTL = 30 * 60 * 1000; // 30분
+export const maxDuration = 30;
 
 export async function GET() {
-  if (agentsCache && Date.now() - agentsCache.ts < CACHE_TTL) {
-    return NextResponse.json(agentsCache.data);
+  const cache = await readFomoCache();
+  if (!cache) {
+    return NextResponse.json({
+      cached: false,
+      message: "아직 분석 결과 없음 — 다음 자동 갱신(매일 새벽 6시 KST)을 기다리거나 admin이 수동 실행",
+    });
   }
-  return NextResponse.json({ cached: false });
-}
-
-export async function DELETE() {
-  setAgentsCache(null);
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({
+    ...cache.data,
+    generated_at: cache.generated_at,
+  });
 }
