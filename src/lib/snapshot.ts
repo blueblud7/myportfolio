@@ -2,6 +2,7 @@ import { getDb } from "./db";
 import { getLatestExchangeRate } from "./exchange-rate";
 import { todayPST } from "./tz";
 import { decryptNum } from "./crypto";
+import { decryptHoldingFields } from "./holdings-crypto";
 
 async function initSnapshotColumn(sql: ReturnType<typeof getDb>) {
   await sql`ALTER TABLE snapshots ADD COLUMN IF NOT EXISTS user_id INTEGER REFERENCES users(id)`;
@@ -21,21 +22,36 @@ export async function createDailySnapshot(userId: number): Promise<boolean> {
 
   const exchangeRate = await getLatestExchangeRate();
 
-  const holdings = await sql`
-    SELECT h.ticker, h.quantity, h.currency,
-           CASE WHEN h.manual_price IS NOT NULL AND h.manual_price > 0 THEN h.manual_price
-                ELSE COALESCE(p.price, h.avg_cost)
-           END as current_price
+  await sql`ALTER TABLE holdings ADD COLUMN IF NOT EXISTS quantity_enc TEXT`.catch(() => {});
+  await sql`ALTER TABLE holdings ADD COLUMN IF NOT EXISTS avg_cost_enc TEXT`.catch(() => {});
+  await sql`ALTER TABLE holdings ADD COLUMN IF NOT EXISTS manual_price_enc TEXT`.catch(() => {});
+  const holdingsRaw = await sql`
+    SELECT h.ticker, h.currency,
+           h.quantity, h.quantity_enc, h.avg_cost, h.avg_cost_enc,
+           h.manual_price, h.manual_price_enc,
+           COALESCE(p.price, 0) as price_market
     FROM holdings h
     JOIN accounts a ON h.account_id = a.id
     LEFT JOIN price_history p ON h.ticker = p.ticker
       AND p.date = (SELECT MAX(date) FROM price_history WHERE ticker = h.ticker)
     WHERE a.type = 'stock' AND a.user_id = ${userId}
-  ` as { ticker: string; quantity: number; currency: string; current_price: number }[];
+  ` as { ticker: string; currency: string;
+         quantity: number | null; quantity_enc: string | null;
+         avg_cost: number | null; avg_cost_enc: string | null;
+         manual_price: number | null; manual_price_enc: string | null;
+         price_market: number }[];
 
   let stockKrw = 0;
-  for (const h of holdings) {
-    const value = h.quantity * h.current_price;
+  for (const h of holdingsRaw) {
+    const d = decryptHoldingFields(h);
+    const qty = d.quantity ?? 0;
+    const cost = d.avg_cost ?? 0;
+    const manual = d.manual_price;
+    const price =
+      h.ticker === "CASH" ? cost :
+      manual !== null && manual !== undefined && manual > 0 ? manual :
+      (h.price_market || cost);
+    const value = qty * price;
     stockKrw += h.currency === "USD" ? value * exchangeRate : value;
   }
 
@@ -82,19 +98,31 @@ export async function createAccountSnapshots(userId: number): Promise<void> {
     let valueKrw = 0;
 
     if (acct.type === "stock") {
-      const holdings = await sql`
-        SELECT h.quantity, h.currency,
-               CASE WHEN h.manual_price IS NOT NULL AND h.manual_price > 0 THEN h.manual_price
-                    ELSE COALESCE(p.price, h.avg_cost)
-               END as current_price
+      const holdingsRaw = await sql`
+        SELECT h.ticker, h.currency,
+               h.quantity, h.quantity_enc, h.avg_cost, h.avg_cost_enc,
+               h.manual_price, h.manual_price_enc,
+               COALESCE(p.price, 0) as price_market
         FROM holdings h
         LEFT JOIN price_history p ON h.ticker = p.ticker
           AND p.date = (SELECT MAX(date) FROM price_history WHERE ticker = h.ticker)
         WHERE h.account_id = ${acct.id}
-      ` as { quantity: number; currency: string; current_price: number }[];
+      ` as { ticker: string; currency: string;
+             quantity: number | null; quantity_enc: string | null;
+             avg_cost: number | null; avg_cost_enc: string | null;
+             manual_price: number | null; manual_price_enc: string | null;
+             price_market: number }[];
 
-      for (const h of holdings) {
-        const val = h.quantity * h.current_price;
+      for (const h of holdingsRaw) {
+        const d = decryptHoldingFields(h);
+        const qty = d.quantity ?? 0;
+        const cost = d.avg_cost ?? 0;
+        const manual = d.manual_price;
+        const price =
+          h.ticker === "CASH" ? cost :
+          manual !== null && manual !== undefined && manual > 0 ? manual :
+          (h.price_market || cost);
+        const val = qty * price;
         valueKrw += h.currency === "USD" ? val * exchangeRate : val;
       }
     } else {

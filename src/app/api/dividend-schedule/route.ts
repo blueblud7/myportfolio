@@ -5,6 +5,7 @@ import { getCachedExchangeRate } from "@/lib/exchange-rate";
 import { getDividendCalendarEvents } from "@/lib/yahoo-finance";
 import { isKoreanTicker } from "@/lib/ticker-resolver";
 import { format, subDays } from "date-fns";
+import { decryptNum } from "@/lib/crypto";
 import type { DividendScheduleResponse, DividendScheduleItem } from "@/types";
 
 function estimatePaymentMonths(frequency: string, exDividendDate: string | null): number[] {
@@ -28,14 +29,19 @@ export async function GET(req: NextRequest) {
   const sql = getDb();
   const exchangeRate = await getCachedExchangeRate();
 
-  const holdings = await sql`
-    SELECT h.ticker, h.name, h.quantity, h.currency, COALESCE(sm.annual_dividend,0) as annual_dividend
+  await sql`ALTER TABLE holdings ADD COLUMN IF NOT EXISTS quantity_enc TEXT`.catch(() => {});
+  const holdingsRaw = await sql`
+    SELECT h.ticker, h.name, h.quantity, h.quantity_enc, h.currency, COALESCE(sm.annual_dividend,0) as annual_dividend
     FROM holdings h
     JOIN accounts a ON h.account_id=a.id
     LEFT JOIN stock_metadata sm ON h.ticker=sm.ticker
     WHERE a.type='stock' AND h.ticker!='CASH' AND COALESCE(sm.annual_dividend,0)>0
       AND a.user_id = ${user.id}
-  ` as { ticker:string; name:string; quantity:number; currency:string; annual_dividend:number }[];
+  ` as { ticker:string; name:string; quantity:number | null; quantity_enc: string | null; currency:string; annual_dividend:number }[];
+  const holdings = holdingsRaw.map(h => ({
+    ...h,
+    quantity: h.quantity_enc ? (decryptNum(h.quantity_enc) ?? 0) : (h.quantity ?? 0),
+  }));
 
   const tickerMap = new Map<string,{ name:string; quantity:number; currency:string; annual_dividend:number }>();
   for (const h of holdings) {

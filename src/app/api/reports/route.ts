@@ -4,6 +4,7 @@ import { getCachedExchangeRate } from "@/lib/exchange-rate";
 import { getSessionUser } from "@/lib/auth";
 import { decryptNum } from "@/lib/crypto";
 import { decryptJoinedAccountName } from "@/lib/account-crypto";
+import { decryptHoldingFields } from "@/lib/holdings-crypto";
 import type { ReportData } from "@/types";
 
 export async function GET(req: NextRequest) {
@@ -16,13 +17,13 @@ export async function GET(req: NextRequest) {
   // 암호화 컬럼 보장 (각 페이지 안 들렀어도 안전)
   await sql`ALTER TABLE bank_balances ADD COLUMN IF NOT EXISTS balance_enc TEXT`.catch(() => {});
   await sql`ALTER TABLE accounts ADD COLUMN IF NOT EXISTS name_enc TEXT`.catch(() => {});
+  await sql`ALTER TABLE holdings ADD COLUMN IF NOT EXISTS quantity_enc TEXT`.catch(() => {});
+  await sql`ALTER TABLE holdings ADD COLUMN IF NOT EXISTS avg_cost_enc TEXT`.catch(() => {});
+  await sql`ALTER TABLE holdings ADD COLUMN IF NOT EXISTS manual_price_enc TEXT`.catch(() => {});
 
   const holdingsRaw = await sql`
     SELECT h.*, a.name as account_name, a.name_enc as account_name_enc, a.currency as account_currency, a.type as account_type,
-      CASE WHEN h.ticker='CASH' THEN h.avg_cost
-           WHEN h.manual_price IS NOT NULL AND h.manual_price>0 THEN h.manual_price
-           ELSE COALESCE(p.price, h.avg_cost)
-      END as current_price,
+      COALESCE(p.price, 0) as price_market,
       COALESCE(sm.sector,'') as sector,
       COALESCE(sm.annual_dividend,0) as annual_dividend,
       COALESCE(sm.dividend_yield,0) as dividend_yield
@@ -32,10 +33,28 @@ export async function GET(req: NextRequest) {
       AND p.date=(SELECT MAX(date) FROM price_history WHERE ticker=h.ticker)
     LEFT JOIN stock_metadata sm ON h.ticker=sm.ticker
     WHERE a.type='stock' AND a.user_id=${user.id}
-  ` as { ticker:string; name:string; quantity:number; avg_cost:number; currency:string;
+  ` as { ticker:string; name:string;
+         quantity:number | null; quantity_enc:string | null;
+         avg_cost:number | null; avg_cost_enc:string | null;
+         manual_price:number | null; manual_price_enc:string | null;
+         currency:string;
          account_name:string | null; account_name_enc:string | null;
-         current_price:number; sector:string; annual_dividend:number; dividend_yield:number }[];
-  const holdings = holdingsRaw.map(h => ({ ...h, account_name: decryptJoinedAccountName(h) }));
+         price_market:number; sector:string; annual_dividend:number; dividend_yield:number }[];
+  const holdings = holdingsRaw.map(h => {
+    const d = decryptHoldingFields(h);
+    const manual = d.manual_price;
+    const current_price =
+      manual !== null && manual !== undefined && manual > 0 ? manual :
+      h.ticker === "CASH" ? (d.avg_cost ?? 0) :
+      (h.price_market || (d.avg_cost ?? 0));
+    return {
+      ...h,
+      quantity: d.quantity ?? 0,
+      avg_cost: d.avg_cost ?? 0,
+      account_name: decryptJoinedAccountName(h),
+      current_price,
+    };
+  });
 
   const bankRows = await sql`
     SELECT bb.balance, bb.balance_enc, a.name as account_name, a.name_enc as account_name_enc, a.currency

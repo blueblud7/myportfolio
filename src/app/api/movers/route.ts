@@ -3,6 +3,7 @@ import { getDb } from "@/lib/db";
 import { getSessionUser } from "@/lib/auth";
 import YahooFinance from "yahoo-finance2";
 import { resolveYahooSymbol, isKoreanTicker } from "@/lib/ticker-resolver";
+import { decryptNum } from "@/lib/crypto";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const yf = new (YahooFinance as any)({ suppressNotices: ["yahooSurvey"] });
@@ -73,7 +74,7 @@ export async function GET(req: NextRequest) {
   type Row = { ticker: string; name: string; currency: string; change_pct: string | null; price: string };
   const rows = await sql`
     SELECT DISTINCT ON (h.ticker)
-      h.ticker, h.name, h.currency,
+      h.ticker, h.name, h.currency, h.quantity, h.quantity_enc,
       ph.change_pct, ph.price
     FROM holdings h
     JOIN accounts a ON h.account_id = a.id
@@ -81,10 +82,17 @@ export async function GET(req: NextRequest) {
     WHERE a.type = 'stock'
       AND a.user_id = ${user.id}
       AND h.ticker != 'CASH'
-      AND h.quantity > 0
       AND ph.date = (SELECT MAX(date) FROM price_history WHERE ticker = h.ticker)
     ORDER BY h.ticker, ph.date DESC
-  ` as unknown as Row[];
+  ` as unknown as (Row & { quantity: number | null; quantity_enc: string | null })[];
+
+  // 암호화된 quantity 복호화 후 quantity > 0 필터
+  const filteredByQty = (rows as (Row & { quantity: number | null; quantity_enc: string | null })[]).filter(r => {
+    const q = r.quantity_enc ? (decryptNum(r.quantity_enc) ?? 0) : (r.quantity ?? 0);
+    return q > 0;
+  });
+  rows.length = 0;
+  rows.push(...filteredByQty);
 
   // 의미있는 움직임만 필터 (|%| >= 2)
   const significant = rows.filter((r) => r.change_pct !== null && Math.abs(Number(r.change_pct)) >= 2);

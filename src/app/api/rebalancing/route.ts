@@ -4,6 +4,7 @@ import { getCachedExchangeRate } from "@/lib/exchange-rate";
 import { getSessionUser } from "@/lib/auth";
 import { decryptNum } from "@/lib/crypto";
 import { decryptAccountName } from "@/lib/account-crypto";
+import { decryptHoldingFields } from "@/lib/holdings-crypto";
 import type { RebalancingSummary, RebalancingAccount, RebalancingAction } from "@/types";
 
 export async function GET(req: NextRequest) {
@@ -24,23 +25,34 @@ export async function GET(req: NextRequest) {
   // 각 계좌의 현재 가치 (KRW 환산)
   const valueMap: Record<number, number> = {};
 
+  await sql`ALTER TABLE holdings ADD COLUMN IF NOT EXISTS quantity_enc TEXT`.catch(() => {});
+  await sql`ALTER TABLE holdings ADD COLUMN IF NOT EXISTS avg_cost_enc TEXT`.catch(() => {});
+  await sql`ALTER TABLE holdings ADD COLUMN IF NOT EXISTS manual_price_enc TEXT`.catch(() => {});
   // 주식 계좌: holdings 기준
-  const holdings = await sql`
-    SELECT h.account_id, h.quantity, h.avg_cost, h.currency, h.ticker,
-      CASE WHEN h.ticker='CASH' THEN h.avg_cost
-           WHEN h.manual_price IS NOT NULL THEN h.manual_price
-           ELSE COALESCE(p.price, h.avg_cost)
-      END as current_price
+  const holdingsRaw = await sql`
+    SELECT h.account_id, h.quantity, h.quantity_enc, h.avg_cost, h.avg_cost_enc,
+           h.manual_price, h.manual_price_enc, h.currency, h.ticker,
+           COALESCE(p.price, 0) as price_market
     FROM holdings h
     JOIN accounts a ON h.account_id = a.id
     LEFT JOIN price_history p ON h.ticker=p.ticker
       AND p.date=(SELECT MAX(date) FROM price_history WHERE ticker=h.ticker)
     WHERE a.user_id = ${user.id}
-  ` as { account_id: number; quantity: number; avg_cost: number; currency: string; ticker: string; current_price: number }[];
+  ` as { account_id: number; quantity: number | null; quantity_enc: string | null;
+         avg_cost: number | null; avg_cost_enc: string | null;
+         manual_price: number | null; manual_price_enc: string | null;
+         currency: string; ticker: string; price_market: number }[];
 
-  for (const h of holdings) {
-    const price = h.current_price || h.avg_cost;
-    const value = h.quantity * price;
+  for (const h of holdingsRaw) {
+    const d = decryptHoldingFields(h);
+    const qty = d.quantity ?? 0;
+    const cost = d.avg_cost ?? 0;
+    const manual = d.manual_price;
+    const price =
+      h.ticker === "CASH" ? cost :
+      manual !== null && manual !== undefined && manual > 0 ? manual :
+      (h.price_market || cost);
+    const value = qty * price;
     const valueKrw = h.currency === "USD" ? value * exchangeRate : value;
     valueMap[h.account_id] = (valueMap[h.account_id] ?? 0) + valueKrw;
   }

@@ -1,33 +1,40 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 import { getSessionUser } from "@/lib/auth";
+import { encrypt, encryptNum, decryptNum } from "@/lib/crypto";
 import type { Transaction } from "@/types";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function syncHoldings(sql: any, tx: Transaction) {
   if (tx.type === "buy") {
     const existing = await sql`
-      SELECT * FROM holdings WHERE account_id=${tx.account_id} AND ticker=${tx.ticker}`;
+      SELECT id, quantity, quantity_enc, avg_cost, avg_cost_enc FROM holdings
+      WHERE account_id=${tx.account_id} AND ticker=${tx.ticker}`;
     if (existing.length > 0) {
       const h = existing[0];
-      const newQty = h.quantity + tx.quantity;
-      const newAvg = (h.quantity * h.avg_cost + tx.quantity * tx.price) / newQty;
-      await sql`UPDATE holdings SET quantity=${newQty}, avg_cost=${newAvg} WHERE id=${h.id}`;
+      const curQty = h.quantity_enc ? (decryptNum(h.quantity_enc) ?? 0) : Number(h.quantity ?? 0);
+      const curAvg = h.avg_cost_enc ? (decryptNum(h.avg_cost_enc) ?? 0) : Number(h.avg_cost ?? 0);
+      const newQty = curQty + tx.quantity;
+      const newAvg = newQty > 0 ? (curQty * curAvg + tx.quantity * tx.price) / newQty : 0;
+      await sql`UPDATE holdings SET quantity_enc=${encryptNum(newQty)}, avg_cost_enc=${encryptNum(newAvg)} WHERE id=${h.id}`;
     } else {
       await sql`
-        INSERT INTO holdings (account_id, ticker, name, quantity, avg_cost, currency, note, date)
-        VALUES (${tx.account_id}, ${tx.ticker}, ${tx.name}, ${tx.quantity}, ${tx.price}, ${tx.currency}, '', ${tx.date})`;
+        INSERT INTO holdings (account_id, ticker, name, currency, date, quantity_enc, avg_cost_enc, note_enc)
+        VALUES (${tx.account_id}, ${tx.ticker}, ${tx.name}, ${tx.currency}, ${tx.date},
+                ${encryptNum(tx.quantity)}, ${encryptNum(tx.price)}, ${encrypt("")})`;
     }
   } else if (tx.type === "sell") {
     const existing = await sql`
-      SELECT * FROM holdings WHERE account_id=${tx.account_id} AND ticker=${tx.ticker}`;
+      SELECT id, quantity, quantity_enc FROM holdings
+      WHERE account_id=${tx.account_id} AND ticker=${tx.ticker}`;
     if (existing.length > 0) {
       const h = existing[0];
-      const newQty = h.quantity - tx.quantity;
+      const curQty = h.quantity_enc ? (decryptNum(h.quantity_enc) ?? 0) : Number(h.quantity ?? 0);
+      const newQty = curQty - tx.quantity;
       if (newQty <= 0.0001) {
         await sql`DELETE FROM holdings WHERE id=${h.id}`;
       } else {
-        await sql`UPDATE holdings SET quantity=${newQty} WHERE id=${h.id}`;
+        await sql`UPDATE holdings SET quantity_enc=${encryptNum(newQty)} WHERE id=${h.id}`;
       }
     }
   }

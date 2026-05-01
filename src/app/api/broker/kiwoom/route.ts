@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 import { getSessionUser } from "@/lib/auth";
 import { getKiwoomToken, getKiwoomHoldings } from "@/lib/kiwoom";
+import { encryptNum } from "@/lib/crypto";
 
 async function verifyAccountOwnership(sql: ReturnType<typeof getDb>, accountId: number, userId: number) {
   const rows = await sql`SELECT id FROM accounts WHERE id=${accountId} AND user_id=${userId}`;
@@ -67,10 +68,10 @@ export async function PATCH(req: NextRequest) {
     for (const h of rawHoldings) {
       const ex = await sql`SELECT id FROM holdings WHERE account_id=${account_id} AND ticker=${h.ticker}`;
       if (ex.length > 0) {
-        await sql`UPDATE holdings SET quantity=${h.quantity}, avg_cost=${h.avg_cost} WHERE account_id=${account_id} AND ticker=${h.ticker}`;
+        await sql`UPDATE holdings SET quantity_enc=${encryptNum(Number(h.quantity))}, avg_cost_enc=${encryptNum(Number(h.avg_cost))} WHERE account_id=${account_id} AND ticker=${h.ticker}`;
         updated++;
       } else {
-        await sql`INSERT INTO holdings (account_id, ticker, name, quantity, avg_cost, currency) VALUES (${account_id}, ${h.ticker}, ${h.name}, ${h.quantity}, ${h.avg_cost}, 'KRW')`;
+        await sql`INSERT INTO holdings (account_id, ticker, name, quantity_enc, avg_cost_enc, currency) VALUES (${account_id}, ${h.ticker}, ${h.name}, ${encryptNum(Number(h.quantity))}, ${encryptNum(Number(h.avg_cost))}, 'KRW')`;
         added++;
       }
     }

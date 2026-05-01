@@ -5,6 +5,7 @@ import { getLatestExchangeRate } from "@/lib/exchange-rate";
 import { getSessionUser } from "@/lib/auth";
 import { decryptNum } from "@/lib/crypto";
 import { decryptJoinedAccountName, decryptAccountName } from "@/lib/account-crypto";
+import { decryptHoldingFields } from "@/lib/holdings-crypto";
 
 const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
@@ -36,12 +37,17 @@ export async function POST(req: NextRequest) {
 
     await sql`ALTER TABLE accounts ADD COLUMN IF NOT EXISTS name_enc TEXT`.catch(() => {});
     await sql`ALTER TABLE bank_balances ADD COLUMN IF NOT EXISTS balance_enc TEXT`.catch(() => {});
+    await sql`ALTER TABLE holdings ADD COLUMN IF NOT EXISTS quantity_enc TEXT`.catch(() => {});
+    await sql`ALTER TABLE holdings ADD COLUMN IF NOT EXISTS avg_cost_enc TEXT`.catch(() => {});
+    await sql`ALTER TABLE holdings ADD COLUMN IF NOT EXISTS manual_price_enc TEXT`.catch(() => {});
 
     // 포트폴리오 데이터 수집
     const holdingsRaw = await sql`
-      SELECT h.ticker, h.name, h.quantity, h.avg_cost, h.currency,
+      SELECT h.ticker, h.name, h.currency,
+             h.quantity, h.quantity_enc, h.avg_cost, h.avg_cost_enc,
+             h.manual_price, h.manual_price_enc,
              a.name as account_name, a.name_enc as account_name_enc, a.type as account_type,
-             COALESCE(p.price, h.avg_cost) as current_price
+             COALESCE(p.price, 0) as price_market
       FROM holdings h
       JOIN accounts a ON h.account_id = a.id
       LEFT JOIN price_history p ON h.ticker = p.ticker
@@ -49,11 +55,29 @@ export async function POST(req: NextRequest) {
       WHERE a.user_id = ${user.id}
       ORDER BY a.id, h.ticker
     ` as {
-      ticker: string; name: string; quantity: number; avg_cost: number; currency: string;
+      ticker: string; name: string; currency: string;
+      quantity: number | null; quantity_enc: string | null;
+      avg_cost: number | null; avg_cost_enc: string | null;
+      manual_price: number | null; manual_price_enc: string | null;
       account_name: string | null; account_name_enc: string | null;
-      account_type: string; current_price: number;
+      account_type: string; price_market: number;
     }[];
-    const holdings = holdingsRaw.map(h => ({ ...h, account_name: decryptJoinedAccountName(h) }));
+    const holdings = holdingsRaw.map(h => {
+      const d = decryptHoldingFields(h);
+      const qty = d.quantity ?? 0;
+      const cost = d.avg_cost ?? 0;
+      const manual = d.manual_price;
+      const current_price =
+        h.ticker === "CASH" ? cost :
+        manual !== null && manual !== undefined && manual > 0 ? manual :
+        (h.price_market || cost);
+      return {
+        ticker: h.ticker, name: h.name, currency: h.currency,
+        quantity: qty, avg_cost: cost,
+        account_name: decryptJoinedAccountName(h),
+        account_type: h.account_type, current_price,
+      };
+    });
 
     const accountsRaw = await sql`SELECT name, name_enc, type, currency FROM accounts WHERE user_id = ${user.id} ORDER BY id` as {
       name: string | null; name_enc: string | null; type: string; currency: string;

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 import { getSessionUser } from "@/lib/auth";
+import { decryptNum } from "@/lib/crypto";
 
 export async function GET(req: NextRequest) {
   const user = await getSessionUser(req);
@@ -9,16 +10,25 @@ export async function GET(req: NextRequest) {
   const sql = getDb();
 
   // Get all USD holdings with latest price
-  const holdings = await sql`
+  const rawHoldings = await sql`
     SELECT
-      h.id, h.ticker, h.name, h.quantity, h.avg_cost, h.date as holding_date,
+      h.id, h.ticker, h.name,
+      h.quantity, h.quantity_enc, h.avg_cost, h.avg_cost_enc, h.date as holding_date,
       ph.price as current_price
     FROM holdings h
     JOIN accounts a ON a.id = h.account_id AND a.currency = 'USD'
     LEFT JOIN price_history ph ON ph.ticker = h.ticker
       AND ph.date = (SELECT MAX(date) FROM price_history WHERE ticker = h.ticker)
     WHERE h.ticker != 'CASH' AND a.user_id = ${user.id}
-  `;
+  ` as { id: number; ticker: string; name: string;
+         quantity: number | null; quantity_enc: string | null;
+         avg_cost: number | null; avg_cost_enc: string | null;
+         holding_date: string; current_price: number | null }[];
+  const holdings = rawHoldings.map(h => ({
+    ...h,
+    quantity: h.quantity_enc ? (decryptNum(h.quantity_enc) ?? 0) : (h.quantity ?? 0),
+    avg_cost: h.avg_cost_enc ? (decryptNum(h.avg_cost_enc) ?? 0) : (h.avg_cost ?? 0),
+  }));
 
   if (holdings.length === 0) {
     return NextResponse.json({ items: [], current_fx: 1350 });

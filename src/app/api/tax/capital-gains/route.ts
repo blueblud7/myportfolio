@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 import { getCachedExchangeRate } from "@/lib/exchange-rate";
 import { getSessionUser } from "@/lib/auth";
+import { decryptNum } from "@/lib/crypto";
 import type { CapitalGainsSummary, CapitalGainsTx, CapitalGainsHolding } from "@/types";
 
 const DEDUCTION_KRW = 2_500_000; // 250만원 기본공제
@@ -53,12 +54,17 @@ export async function GET(req: NextRequest) {
     } else {
       // buy 기록이 없으면 현재 holdings avg_cost 사용
       const holding = await sql`
-        SELECT h.avg_cost FROM holdings h
+        SELECT h.avg_cost, h.avg_cost_enc FROM holdings h
         JOIN accounts a ON h.account_id = a.id
         WHERE h.ticker = ${sell.ticker} AND h.currency = 'USD' AND a.user_id = ${user.id}
         LIMIT 1
-      ` as { avg_cost: number }[];
-      avgCost = holding.length > 0 ? holding[0].avg_cost : 0;
+      ` as { avg_cost: number | null; avg_cost_enc: string | null }[];
+      if (holding.length > 0) {
+        const h = holding[0];
+        avgCost = h.avg_cost_enc ? (decryptNum(h.avg_cost_enc) ?? 0) : (h.avg_cost ?? 0);
+      } else {
+        avgCost = 0;
+      }
     }
 
     const realizedGainUsd = (sell.price - avgCost) * sell.quantity;
@@ -82,9 +88,10 @@ export async function GET(req: NextRequest) {
   const taxKrw = taxableKrw * TAX_RATE;
 
   // 현재 보유 중인 USD 종목 (절세 시뮬레이션용)
-  const holdings = await sql`
-    SELECT h.id, h.ticker, h.name, h.quantity, h.avg_cost,
-      COALESCE(p.price, h.avg_cost) as current_price
+  const holdingsRaw = await sql`
+    SELECT h.id, h.ticker, h.name,
+           h.quantity, h.quantity_enc, h.avg_cost, h.avg_cost_enc,
+           COALESCE(p.price, 0) as price_market
     FROM holdings h
     JOIN accounts a ON h.account_id = a.id
     LEFT JOIN price_history p ON h.ticker = p.ticker
@@ -93,7 +100,15 @@ export async function GET(req: NextRequest) {
       AND h.ticker != 'CASH'
       AND a.user_id = ${user.id}
     ORDER BY h.name
-  ` as { id: number; ticker: string; name: string; quantity: number; avg_cost: number; current_price: number }[];
+  ` as { id: number; ticker: string; name: string;
+         quantity: number | null; quantity_enc: string | null;
+         avg_cost: number | null; avg_cost_enc: string | null;
+         price_market: number }[];
+  const holdings = holdingsRaw.map(h => {
+    const qty = h.quantity_enc ? (decryptNum(h.quantity_enc) ?? 0) : (h.quantity ?? 0);
+    const cost = h.avg_cost_enc ? (decryptNum(h.avg_cost_enc) ?? 0) : (h.avg_cost ?? 0);
+    return { ...h, quantity: qty, avg_cost: cost, current_price: h.price_market || cost };
+  });
 
   const usdHoldings: CapitalGainsHolding[] = holdings.map((h) => ({
     id: h.id,

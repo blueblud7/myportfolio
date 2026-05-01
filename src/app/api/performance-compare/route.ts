@@ -5,6 +5,7 @@ import { getBenchmarkHistory } from "@/lib/yahoo-finance";
 import { subMonths, subDays } from "date-fns";
 import { todayPST, formatPST } from "@/lib/tz";
 import { decryptAccountName } from "@/lib/account-crypto";
+import { decryptNum } from "@/lib/crypto";
 import type { PerformancePoint, PerformanceCompareResponse } from "@/types";
 
 const BENCHMARK_SYMBOLS: Record<string, string> = {
@@ -117,20 +118,25 @@ export async function GET(request: NextRequest) {
   let subjectName = "포트폴리오";
   let subjectPoints: PerformancePoint[] = [];
 
+  // 환율 한 번만 가져옴
+  const [erRow] = await sql`SELECT rate FROM exchange_rates ORDER BY date DESC LIMIT 1` as { rate: number }[];
+  const usdRate = erRow?.rate ?? 1350;
+
   if (type === "portfolio") {
-    // 포트폴리오 전체 원가
-    const costRows = await sql`
-      SELECT SUM(h.quantity * h.avg_cost *
-        CASE WHEN h.currency = 'USD'
-          THEN COALESCE((SELECT er.rate FROM exchange_rates er ORDER BY er.date DESC LIMIT 1), 1350)
-          ELSE 1
-        END
-      ) AS cost_basis
+    // 포트폴리오 전체 원가 — 암호화된 quantity/avg_cost는 JS에서 합산
+    const rows = await sql`
+      SELECT h.quantity, h.quantity_enc, h.avg_cost, h.avg_cost_enc, h.currency
       FROM holdings h
       JOIN accounts a ON h.account_id = a.id
       WHERE h.ticker != 'CASH' AND a.user_id = ${user.id}
-    ` as { cost_basis: number | null }[];
-    const costBasis = Number(costRows[0]?.cost_basis ?? 0);
+    ` as { quantity: number | null; quantity_enc: string | null; avg_cost: number | null; avg_cost_enc: string | null; currency: string }[];
+    let costBasis = 0;
+    for (const r of rows) {
+      const qty = r.quantity_enc ? (decryptNum(r.quantity_enc) ?? 0) : (r.quantity ?? 0);
+      const cost = r.avg_cost_enc ? (decryptNum(r.avg_cost_enc) ?? 0) : (r.avg_cost ?? 0);
+      const v = qty * cost;
+      costBasis += r.currency === "USD" ? v * usdRate : v;
+    }
 
     const snapshots = await sql`
       SELECT date, total_krw as value FROM snapshots
@@ -149,53 +155,53 @@ export async function GET(request: NextRequest) {
     subjectName = decryptAccountName(account) || "계좌";
 
     // 계좌 원가 (현재 환율 기준)
-    const costRows = await sql`
-      SELECT SUM(h.quantity * h.avg_cost *
-        CASE WHEN h.currency = 'USD'
-          THEN COALESCE((SELECT er.rate FROM exchange_rates er ORDER BY er.date DESC LIMIT 1), 1350)
-          ELSE 1
-        END
-      ) AS cost_basis
+    const acctRows = await sql`
+      SELECT h.quantity, h.quantity_enc, h.avg_cost, h.avg_cost_enc, h.currency
       FROM holdings h
-      WHERE h.account_id = ${Number(id)}
-        AND h.ticker != 'CASH'
-    ` as { cost_basis: number | null }[];
-    const costBasis = Number(costRows[0]?.cost_basis ?? 0);
+      WHERE h.account_id = ${Number(id)} AND h.ticker != 'CASH'
+    ` as { quantity: number | null; quantity_enc: string | null; avg_cost: number | null; avg_cost_enc: string | null; currency: string }[];
+    let costBasis = 0;
+    for (const r of acctRows) {
+      const qty = r.quantity_enc ? (decryptNum(r.quantity_enc) ?? 0) : (r.quantity ?? 0);
+      const cost = r.avg_cost_enc ? (decryptNum(r.avg_cost_enc) ?? 0) : (r.avg_cost ?? 0);
+      const v = qty * cost;
+      costBasis += r.currency === "USD" ? v * usdRate : v;
+    }
 
-    const rows = await sql`
-      SELECT ph.date,
-             SUM(
-               CASE
-                 WHEN h.currency = 'USD' THEN
-                   h.quantity * ph.price * COALESCE(
-                     (SELECT er.rate FROM exchange_rates er WHERE er.date <= ph.date ORDER BY er.date DESC LIMIT 1),
-                     1350
-                   )
-                 ELSE h.quantity * ph.price
-               END
-             ) AS value
+    // 일별 가치 — JS 집계
+    const dailyRaw = await sql`
+      SELECT ph.date, h.ticker, h.currency, h.quantity, h.quantity_enc, ph.price,
+             COALESCE((SELECT er.rate FROM exchange_rates er WHERE er.date <= ph.date ORDER BY er.date DESC LIMIT 1), 1350) AS er
       FROM holdings h
       JOIN price_history ph ON ph.ticker = h.ticker
       WHERE h.account_id = ${Number(id)}
         AND ph.date >= ${start}
         AND ph.date <= ${end}
         AND h.ticker != 'CASH'
-      GROUP BY ph.date
-      ORDER BY ph.date
-    ` as { date: string; value: number }[];
+    ` as { date: string; ticker: string; currency: string; quantity: number | null; quantity_enc: string | null; price: number; er: number }[];
+    const byDate = new Map<string, number>();
+    for (const r of dailyRaw) {
+      const qty = r.quantity_enc ? (decryptNum(r.quantity_enc) ?? 0) : (r.quantity ?? 0);
+      const v = qty * r.price;
+      const krw = r.currency === "USD" ? v * r.er : v;
+      byDate.set(r.date, (byDate.get(r.date) ?? 0) + krw);
+    }
+    const rows = Array.from(byDate.entries()).map(([date, value]) => ({ date, value })).sort((a, b) => a.date.localeCompare(b.date));
 
     subjectPoints = normalizeToCostBasis(rows, costBasis);
 
   } else if (type === "stock" && id) {
     // 종목 원가
     const [holding] = await sql`
-      SELECT h.name, h.avg_cost, h.currency
+      SELECT h.name, h.avg_cost, h.avg_cost_enc, h.currency
       FROM holdings h
       JOIN accounts a ON h.account_id = a.id
       WHERE h.ticker = ${id} AND a.user_id = ${user.id}
       LIMIT 1
-    ` as { name: string; avg_cost: number; currency: string }[];
+    ` as { name: string; avg_cost: number | null; avg_cost_enc: string | null; currency: string }[];
     subjectName = holding?.name ?? id;
+    const _avgCost = holding?.avg_cost_enc ? (decryptNum(holding.avg_cost_enc) ?? 0) : (holding?.avg_cost ?? 0);
+    void _avgCost; // (이 분기는 변동률만 계산하므로 cost_basis 직접 사용 안 함)
 
     const rows = await sql`
       SELECT date, price AS value FROM price_history
