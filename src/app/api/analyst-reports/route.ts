@@ -21,6 +21,8 @@ export interface AnalystReport {
   firm: string | null;
   recommendation: string | null;
   target_price: string | null;
+  ticker: string | null;
+  analyst: string | null;
 }
 
 export interface AnalystReportsResponse {
@@ -48,7 +50,7 @@ export async function GET(req: NextRequest) {
   const search   = sp.get("search") ?? "";
   const offset   = (page - 1) * pageSize;
 
-  let url = `${SUPABASE_URL}/rest/v1/sent_reports?select=id,title,category,date,pdf_url,summary_text,sent,stock_name,firm,recommendation,target_price&order=date.desc,id.desc&limit=${pageSize}&offset=${offset}`;
+  let url = `${SUPABASE_URL}/rest/v1/sent_reports?select=id,title,category,date,pdf_url,summary_text,sent,stock_name,firm,recommendation,target_price,ticker,analyst&order=date.desc,id.desc&limit=${pageSize}&offset=${offset}`;
 
   if (category) url += `&category=eq.${encodeURIComponent(category)}`;
   if (firm)     url += `&firm=eq.${encodeURIComponent(firm)}`;

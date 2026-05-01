@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import Link from "next/link";
 import { FileText, ExternalLink, Search, ChevronLeft, ChevronRight, Building2, Tag, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { AnalystReport, AnalystReportsResponse } from "@/app/api/analyst-reports/route";
@@ -63,11 +64,19 @@ function ReportCard({ report }: { report: AnalystReport }) {
             )}
           </div>
           <h3 className="text-sm font-semibold leading-snug text-foreground">
-            {report.stock_name && (
+            {report.stock_name && report.ticker ? (
+              <Link href={`/analyst-reports/${report.ticker}`}
+                className="mr-1.5 text-blue-600 dark:text-blue-400 hover:underline">
+                [{report.stock_name}]
+              </Link>
+            ) : report.stock_name ? (
               <span className="mr-1.5 text-blue-600 dark:text-blue-400">[{report.stock_name}]</span>
-            )}
+            ) : null}
             {report.title}
           </h3>
+          {report.analyst && (
+            <p className="mt-0.5 text-[10px] text-muted-foreground">by {report.analyst}</p>
+          )}
         </div>
         <div className="shrink-0 text-right">
           <p className="text-[11px] text-zinc-500">{report.date}</p>
