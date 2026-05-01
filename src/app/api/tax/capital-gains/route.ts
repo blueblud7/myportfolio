@@ -16,9 +16,12 @@ export async function GET(req: NextRequest) {
   const sql = getDb();
   const exchangeRate = await getCachedExchangeRate();
 
+  await sql`ALTER TABLE transactions ADD COLUMN IF NOT EXISTS quantity_enc TEXT`.catch(() => {});
+  await sql`ALTER TABLE transactions ADD COLUMN IF NOT EXISTS price_enc TEXT`.catch(() => {});
+
   // 해당 연도의 USD sell 거래 목록
-  const sellTxs = await sql`
-    SELECT t.id, t.ticker, t.name, t.quantity, t.price, t.date
+  const sellRaw = await sql`
+    SELECT t.id, t.ticker, t.name, t.quantity, t.quantity_enc, t.price, t.price_enc, t.date
     FROM transactions t
     JOIN accounts a ON t.account_id = a.id
     WHERE t.type = 'sell'
@@ -27,15 +30,20 @@ export async function GET(req: NextRequest) {
       AND t.date <= ${`${year}-12-31`}
       AND a.user_id = ${user.id}
     ORDER BY t.date ASC
-  ` as { id: number; ticker: string; name: string; quantity: number; price: number; date: string }[];
+  ` as { id: number; ticker: string; name: string; quantity: number | null; quantity_enc: string | null; price: number | null; price_enc: string | null; date: string }[];
+  const sellTxs = sellRaw.map(t => ({
+    ...t,
+    quantity: t.quantity_enc ? (decryptNum(t.quantity_enc) ?? 0) : (t.quantity ?? 0),
+    price: t.price_enc ? (decryptNum(t.price_enc) ?? 0) : (t.price ?? 0),
+  }));
 
   // 각 sell 거래의 avg_cost 계산: 해당 거래 이전까지의 buy 거래들의 가중평균
   const txResults: CapitalGainsTx[] = [];
 
   for (const sell of sellTxs) {
     // 이 sell 거래 이전의 buy 거래들로 avg_cost 계산
-    const buys = await sql`
-      SELECT t.quantity, t.price FROM transactions t
+    const buyRaw = await sql`
+      SELECT t.quantity, t.quantity_enc, t.price, t.price_enc FROM transactions t
       JOIN accounts a ON t.account_id = a.id
       WHERE t.ticker = ${sell.ticker}
         AND t.currency = 'USD'
@@ -44,7 +52,11 @@ export async function GET(req: NextRequest) {
         AND t.id < ${sell.id}
         AND a.user_id = ${user.id}
       ORDER BY t.date ASC
-    ` as { quantity: number; price: number }[];
+    ` as { quantity: number | null; quantity_enc: string | null; price: number | null; price_enc: string | null }[];
+    const buys = buyRaw.map(b => ({
+      quantity: b.quantity_enc ? (decryptNum(b.quantity_enc) ?? 0) : (b.quantity ?? 0),
+      price: b.price_enc ? (decryptNum(b.price_enc) ?? 0) : (b.price ?? 0),
+    }));
 
     let avgCost = 0;
     if (buys.length > 0) {

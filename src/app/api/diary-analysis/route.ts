@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 import { getSessionUser } from "@/lib/auth";
-import { tryDecrypt } from "@/lib/crypto";
+import { tryDecrypt, decryptNum } from "@/lib/crypto";
 
 export async function GET(req: NextRequest) {
   const user = await getSessionUser(req);
@@ -9,20 +9,21 @@ export async function GET(req: NextRequest) {
 
   const sql = getDb();
 
-  // 일기 + 같은 날짜의 본인 거래 — mood는 암호화되어 있어 JS에서 집계
+  await sql`ALTER TABLE transactions ADD COLUMN IF NOT EXISTS total_amount_enc TEXT`.catch(() => {});
+
+  // 일기 + 같은 날짜의 본인 거래 — mood/total_amount는 암호화되어 있어 JS에서 집계
   const rows = await sql`
-    SELECT d.mood_enc, d.mood, t.type as tx_type, t.total_amount, t.currency
+    SELECT d.mood_enc, d.mood, t.type as tx_type, t.total_amount, t.total_amount_enc, t.currency
     FROM diary d
     LEFT JOIN transactions t ON t.date = d.date
       AND t.account_id IN (SELECT id FROM accounts WHERE user_id = ${user.id})
     WHERE d.user_id = ${user.id}
-  ` as { mood_enc: string | null; mood: string | null; tx_type: string | null; total_amount: number | null; currency: string | null }[];
+  ` as { mood_enc: string | null; mood: string | null; tx_type: string | null; total_amount: number | null; total_amount_enc: string | null; currency: string | null }[];
 
-  // 복호화 — mood_enc 있으면 그쪽 우선 (마이그레이션 후에는 항상 enc)
   const decoded = rows.map(r => ({
     mood: r.mood_enc ? tryDecrypt(r.mood_enc) : r.mood,
     tx_type: r.tx_type,
-    total_amount: r.total_amount,
+    total_amount: r.total_amount_enc ? (decryptNum(r.total_amount_enc) ?? 0) : (r.total_amount ?? 0),
     currency: r.currency,
   }));
 
