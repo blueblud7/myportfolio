@@ -138,11 +138,16 @@ export async function GET(request: NextRequest) {
       costBasis += r.currency === "USD" ? v * usdRate : v;
     }
 
-    const snapshots = await sql`
-      SELECT date, total_krw as value FROM snapshots
+    await sql`ALTER TABLE snapshots ADD COLUMN IF NOT EXISTS total_krw_enc TEXT`.catch(() => {});
+    const snapshotsRaw = await sql`
+      SELECT date, total_krw, total_krw_enc FROM snapshots
       WHERE date >= ${start} AND date <= ${end} AND user_id = ${user.id}
       ORDER BY date
-    ` as { date: string; value: number }[];
+    ` as { date: string; total_krw: number | null; total_krw_enc: string | null }[];
+    const snapshots = snapshotsRaw.map(s => ({
+      date: s.date,
+      value: s.total_krw_enc ? (decryptNum(s.total_krw_enc) ?? 0) : (s.total_krw ?? 0),
+    }));
 
     subjectPoints = normalizeToCostBasis(snapshots, costBasis);
     subjectName = "포트폴리오";

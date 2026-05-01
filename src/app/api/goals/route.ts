@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 import { getCachedExchangeRate } from "@/lib/exchange-rate";
 import { getSessionUser } from "@/lib/auth";
+import { decryptNum } from "@/lib/crypto";
 
 async function ensureTable(sql: ReturnType<typeof getDb>) {
   await sql`
@@ -55,30 +56,33 @@ export async function GET(req: NextRequest) {
   await ensureTable(sql);
   const year = new Date().getFullYear();
 
+  await sql`ALTER TABLE snapshots ADD COLUMN IF NOT EXISTS total_krw_enc TEXT`.catch(() => {});
   const [goals, startSnaps, latestSnaps, exchangeRate] = await Promise.all([
     sql`SELECT * FROM annual_goals WHERE user_id = ${user.id} ORDER BY year DESC`.then((r) => r as unknown as GoalRow[]),
     sql`
-      SELECT total_krw, date FROM snapshots
+      SELECT total_krw, total_krw_enc, date FROM snapshots
       WHERE date >= ${`${year}-01-01`} AND user_id = ${user.id}
       ORDER BY date ASC LIMIT 1
-    `.then((r) => r as unknown as { total_krw: number; date: string }[]),
+    `.then((r) => r as unknown as { total_krw: number | null; total_krw_enc: string | null; date: string }[]),
     sql`
-      SELECT total_krw, date FROM snapshots
+      SELECT total_krw, total_krw_enc, date FROM snapshots
       WHERE user_id = ${user.id}
       ORDER BY date DESC LIMIT 1
-    `.then((r) => r as unknown as { total_krw: number; date: string }[]),
+    `.then((r) => r as unknown as { total_krw: number | null; total_krw_enc: string | null; date: string }[]),
     getCachedExchangeRate(),
   ]);
 
   const currentGoal = goals.find((g) => g.year === year) ?? null;
 
-  const snapshotStartKrw = startSnaps[0]?.total_krw ? Number(startSnaps[0].total_krw) : null;
+  const startEnc = startSnaps[0]?.total_krw_enc;
+  const snapshotStartKrw = startEnc ? (decryptNum(startEnc) ?? null) : (startSnaps[0]?.total_krw ?? null);
   const snapshotStartUsd = snapshotStartKrw ? snapshotStartKrw / exchangeRate : null;
   const startUsd: number | null =
     currentGoal?.start_value_usd ? Number(currentGoal.start_value_usd) : snapshotStartUsd;
   const startKrw = startUsd ? startUsd * exchangeRate : snapshotStartKrw;
 
-  const currentKrw = latestSnaps[0]?.total_krw ? Number(latestSnaps[0].total_krw) : null;
+  const latestEnc = latestSnaps[0]?.total_krw_enc;
+  const currentKrw = latestEnc ? (decryptNum(latestEnc) ?? null) : (latestSnaps[0]?.total_krw ?? null);
   const currentUsd = currentKrw ? currentKrw / exchangeRate : null;
 
   const ytdPct =
@@ -125,11 +129,11 @@ export async function POST(req: NextRequest) {
   if (!resolvedStartUsd) {
     const exchangeRate = await getCachedExchangeRate();
     const snaps = await sql`
-      SELECT total_krw FROM snapshots
+      SELECT total_krw, total_krw_enc FROM snapshots
       WHERE date >= ${`${year}-01-01`} AND user_id = ${user.id}
       ORDER BY date ASC LIMIT 1
-    `.then((r) => r as unknown as { total_krw: number }[]);
-    const startKrw = snaps[0]?.total_krw ? Number(snaps[0].total_krw) : null;
+    `.then((r) => r as unknown as { total_krw: number | null; total_krw_enc: string | null }[]);
+    const startKrw = snaps[0]?.total_krw_enc ? (decryptNum(snaps[0].total_krw_enc) ?? null) : (snaps[0]?.total_krw ?? null);
     resolvedStartUsd = startKrw ? startKrw / exchangeRate : null;
   }
 

@@ -3,6 +3,7 @@ import { getDb } from "@/lib/db";
 import { subMonths, subYears } from "date-fns";
 import { formatPST } from "@/lib/tz";
 import { getSessionUser } from "@/lib/auth";
+import { decryptNum } from "@/lib/crypto";
 import type { RiskMetrics } from "@/types";
 
 const RISK_FREE_RATE = 0.035; // 연 3.5%
@@ -121,9 +122,14 @@ export async function GET(req: NextRequest) {
   const startDate = getPeriodStart(period);
   const sql = getDb();
 
-  const rows = startDate
-    ? await sql`SELECT date, total_krw FROM snapshots WHERE date >= ${startDate} AND user_id = ${user.id} ORDER BY date ASC` as { date: string; total_krw: number }[]
-    : await sql`SELECT date, total_krw FROM snapshots WHERE user_id = ${user.id} ORDER BY date ASC` as { date: string; total_krw: number }[];
+  await sql`ALTER TABLE snapshots ADD COLUMN IF NOT EXISTS total_krw_enc TEXT`.catch(() => {});
+  const rawRows = startDate
+    ? await sql`SELECT date, total_krw, total_krw_enc FROM snapshots WHERE date >= ${startDate} AND user_id = ${user.id} ORDER BY date ASC` as { date: string; total_krw: number | null; total_krw_enc: string | null }[]
+    : await sql`SELECT date, total_krw, total_krw_enc FROM snapshots WHERE user_id = ${user.id} ORDER BY date ASC` as { date: string; total_krw: number | null; total_krw_enc: string | null }[];
+  const rows = rawRows.map(r => ({
+    date: r.date,
+    total_krw: r.total_krw_enc ? (decryptNum(r.total_krw_enc) ?? 0) : (r.total_krw ?? 0),
+  }));
 
   const metrics = calcMetrics(rows);
   return NextResponse.json(metrics);
