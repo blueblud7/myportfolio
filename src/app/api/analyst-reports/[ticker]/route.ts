@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
+import { getBenchmarkHistory, getQuote } from "@/lib/yahoo-finance";
+
+export const maxDuration = 60;
 
 const SUPABASE_URL = process.env.SUPABASE_URL!;
 const SUPABASE_KEY = process.env.SUPABASE_ANON_KEY!;
@@ -103,11 +106,43 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ tick
   // price_history (ASC): 가장 오래된 리포트 이전 ~ 현재
   const sql = getDb();
   const oldestReportDate = reportsRaw.reduce((min, r) => r.report_date && r.report_date < min ? r.report_date : min, reportsRaw[0].report_date ?? "9999-12-31");
-  const priceRows = await sql`
+  let priceRows = await sql`
     SELECT date, price FROM price_history
     WHERE ticker = ${ticker} AND date >= ${oldestReportDate}
     ORDER BY date ASC
   ` as { date: string; price: number }[];
+
+  // price_history에 데이터 없으면 Yahoo에서 on-demand 가져와 저장
+  if (priceRows.length === 0 && ticker) {
+    const today = new Date().toISOString().slice(0, 10);
+    // 한국 종목은 .KS 또는 .KQ 시도
+    const isKorean = /^\d{6}$/.test(ticker);
+    const symbolsToTry = isKorean ? [`${ticker}.KS`, `${ticker}.KQ`] : [ticker];
+    for (const sym of symbolsToTry) {
+      const history = await getBenchmarkHistory(sym, oldestReportDate, today);
+      if (history.length > 0) {
+        // batch insert (idempotent — 중복 방지를 위한 ON CONFLICT 안 쓰고 바로 INSERT)
+        for (const h of history) {
+          await sql`
+            INSERT INTO price_history (ticker, price, change_pct, date)
+            VALUES (${ticker}, ${h.close}, 0, ${h.date})
+            ON CONFLICT DO NOTHING
+          `.catch(() => {});
+        }
+        priceRows = history.map(h => ({ date: h.date, price: h.close }));
+        break;
+      }
+    }
+
+    // 그래도 비었으면 최신 시세 한 번만 (현재가 표시용)
+    if (priceRows.length === 0) {
+      const q = await getQuote(ticker);
+      if (q && q.price > 0) {
+        priceRows = [{ date: today, price: q.price }];
+      }
+    }
+  }
+
   const price_history = priceRows.map(p => ({ date: p.date, price: Number(p.price) }));
 
   const latest = price_history.length > 0 ? price_history[price_history.length - 1] : null;
