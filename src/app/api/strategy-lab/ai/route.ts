@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import OpenAI from "openai";
 import { getSessionUser } from "@/lib/auth";
+import { DEFAULT_AI_PARAMS, DEFAULT_AI_PARAMS_JSON } from "@/lib/ai-config";
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
@@ -83,9 +84,7 @@ ${lines.join("\n")}
 마크다운 형식으로 구조화하여 한국어로 답변해 주세요. 각 항목은 ##로 구분하세요.`;
 
   const completion = await openai.chat.completions.create({
-    model: "gpt-4o-mini",
-    max_tokens: 2000,
-    temperature: 0.7,
+    ...DEFAULT_AI_PARAMS,
     messages: [
       {
         role: "system",
@@ -137,10 +136,7 @@ indicator 값은 반드시 RSI, SMA, EMA, MACD, BB, MOMENTUM 중 하나여야 �
 params는 전략에 맞게 적절히 수정하세요. 예: SMA면 shortPeriod, longPeriod 등.`;
 
   const completion = await openai.chat.completions.create({
-    model: "gpt-4o-mini",
-    max_tokens: 800,
-    temperature: 0.3,
-    response_format: { type: "json_object" },
+    ...DEFAULT_AI_PARAMS_JSON,
     messages: [
       {
         role: "system",

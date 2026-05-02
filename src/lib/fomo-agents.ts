@@ -1,4 +1,5 @@
 import OpenAI from "openai";
+import { DEFAULT_AI_PARAMS_JSON } from "./ai-config";
 import type {
   SentimentData, AgentAnalysis, AgentsResult,
   TargetSector, TimeHorizon, ContrarianSignal,
@@ -272,9 +273,7 @@ export async function runAgent(
 ): Promise<AgentAnalysis> {
   try {
     const res = await client.chat.completions.create({
-      model: "gpt-5-nano",
-      max_completion_tokens: 3000,
-      response_format: { type: "json_object" },
+      ...DEFAULT_AI_PARAMS_JSON,
       messages: [
         { role: "system", content: buildSystemPrompt(profile) },
         { role: "user", content: prompt },

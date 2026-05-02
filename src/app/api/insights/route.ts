@@ -6,6 +6,7 @@ import { getSessionUser } from "@/lib/auth";
 import { decryptNum } from "@/lib/crypto";
 import { decryptJoinedAccountName, decryptAccountName } from "@/lib/account-crypto";
 import { decryptHoldingFields } from "@/lib/holdings-crypto";
+import { DEFAULT_AI_PARAMS } from "@/lib/ai-config";
 
 const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
@@ -181,9 +182,7 @@ ${bankBalances.map((b) => `- ${b.name}: ${b.currency === "USD" ? "$" : "₩"}${b
 5. 전반적인 리스크 수준 평가`;
 
     const message = await client.chat.completions.create({
-      model: "gpt-4o-mini",
-      max_tokens: 2000,
-      temperature: 0.7,
+      ...DEFAULT_AI_PARAMS,
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: userMessage },

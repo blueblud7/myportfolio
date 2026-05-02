@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import OpenAI from "openai";
 import { getDb } from "@/lib/db";
 import { getSessionUser } from "@/lib/auth";
+import { DEFAULT_AI_PARAMS } from "@/lib/ai-config";
 
 export const maxDuration = 60;
 
@@ -126,9 +127,7 @@ export async function POST(req: NextRequest) {
   const userPrompt = `## 다가오는 실적 발표\n${upcomingText}\n\n## 최근 4분기 실적 결과\n${resultsText}`;
 
   const message = await client.chat.completions.create({
-    model: "gpt-4o-mini",
-    max_tokens: 2000,
-    temperature: 0.7,
+    ...DEFAULT_AI_PARAMS,
     messages: [
       { role: "system", content: systemPrompt },
       { role: "user", content: userPrompt },
