@@ -790,7 +790,7 @@ function AiAnalysisTab({
           {loading ? <Spinner /> : <Sparkles className="h-4 w-4" />}
           {loading ? "AI 분석 중..." : "AI 분석 실행"}
         </Button>
-        <p className="text-xs text-muted-foreground">GPT-4.1-nano가 백테스트 결과를 종합 분석합니다</p>
+        <p className="text-xs text-muted-foreground">AI가 백테스트 종합결과 분석합니다</p>
       </div>
 
       {error && (
