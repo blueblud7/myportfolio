@@ -9,6 +9,9 @@ import type { EarningsCalendarItem } from "@/app/api/earnings-calendar/route";
 import type { EarningsResultRow } from "@/app/api/earnings-results/route";
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
+const isKoreanTicker = (t: string) => /^\d[A-Z0-9]{5}$/i.test(t);
+const fmtEps = (v: number, ticker: string) =>
+  isKoreanTicker(ticker) ? `₩${Math.round(v).toLocaleString()}` : `$${v.toFixed(2)}`;
 
 function daysUntil(dateStr: string | null): number | null {
   if (!dateStr) return null;
@@ -276,8 +279,8 @@ function ResultsTab() {
                       return (
                         <tr key={q.quarter} className="border-b border-border/40 last:border-b-0">
                           <td className="py-1.5">{q.quarter}</td>
-                          <td className="py-1.5 text-right font-mono">{q.eps_actual !== null ? `$${Number(q.eps_actual).toFixed(2)}` : "—"}</td>
-                          <td className="py-1.5 text-right font-mono text-muted-foreground">{q.eps_estimate !== null ? `$${Number(q.eps_estimate).toFixed(2)}` : "—"}</td>
+                          <td className="py-1.5 text-right font-mono">{q.eps_actual !== null ? fmtEps(Number(q.eps_actual), ticker) : "—"}</td>
+                          <td className="py-1.5 text-right font-mono text-muted-foreground">{q.eps_estimate !== null ? fmtEps(Number(q.eps_estimate), ticker) : "—"}</td>
                           <td className={cn("py-1.5 text-right font-mono font-semibold",
                             beat && "text-emerald-600 dark:text-emerald-400",
                             miss && "text-red-600 dark:text-red-400"

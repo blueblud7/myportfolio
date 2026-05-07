@@ -3,8 +3,56 @@ import { getDb } from "@/lib/db";
 import { getEarningsHistory, type EarningsQuarter } from "@/lib/yahoo-finance";
 import { getFinnhubEarnings } from "@/lib/finnhub";
 import { getSessionUser } from "@/lib/auth";
+import dartCorpCodes from "@/lib/dart-corp-codes.json";
 
 export const maxDuration = 60;
+
+const DART_KEY = process.env.DART_API_KEY ?? "";
+
+// 한국 종목: DART 사업보고서에서 연간 EPS 3개년 추출
+async function getDartAnnualEPS(stockCode: string): Promise<EarningsQuarter[]> {
+  if (!DART_KEY) return [];
+  const corpCode = (dartCorpCodes as Record<string, string>)[stockCode];
+  if (!corpCode) return [];
+
+  const currentYear = new Date().getFullYear();
+
+  for (const year of [currentYear - 1, currentYear - 2]) {
+    for (const fsDiv of ["CFS", "OFS"]) {
+      try {
+        const url = `https://opendart.fss.or.kr/api/fnlttSinglAcntAll.json?crtfc_key=${DART_KEY}&corp_code=${corpCode}&bsns_year=${year}&reprt_code=11011&fs_div=${fsDiv}`;
+        const res = await fetch(url);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const data: any = await res.json();
+        if (data?.status !== "000" || !Array.isArray(data.list) || data.list.length === 0) continue;
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const isItems = data.list.filter((i: any) => i.sj_div === "IS" || i.sj_div === "CIS");
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const epsItem = isItems.find((i: any) =>
+          i.account_id === "ifrs-full_BasicEarningsLossPerShare" ||
+          i.account_nm?.includes("기본주당이익") ||
+          i.account_nm?.includes("주당순이익")
+        );
+        if (!epsItem) continue;
+
+        const parseAmt = (v: string): number | null => {
+          const n = parseInt((v ?? "").replace(/,/g, ""), 10);
+          return isNaN(n) ? null : n;
+        };
+        const makeYear = (dt: string | undefined, fallback: number) =>
+          dt ? dt.slice(0, 4) : String(fallback);
+
+        return [
+          { quarter: `FY${makeYear(epsItem.thstrm_dt, year)}`,     date: null, epsActual: parseAmt(epsItem.thstrm_amount),    epsEstimate: null, surprisePct: null },
+          { quarter: `FY${makeYear(epsItem.frmtrm_dt, year - 1)}`, date: null, epsActual: parseAmt(epsItem.frmtrm_amount),    epsEstimate: null, surprisePct: null },
+          { quarter: `FY${makeYear(epsItem.bfefrmtrm_dt, year - 2)}`, date: null, epsActual: parseAmt(epsItem.bfefrmtrm_amount), epsEstimate: null, surprisePct: null },
+        ].filter(q => q.epsActual != null);
+      } catch { /* try next */ }
+    }
+  }
+  return [];
+}
 
 export interface EarningsResultRow {
   ticker: string;
@@ -86,26 +134,36 @@ export async function POST(req: NextRequest) {
   let updated = 0;
   let totalQuarters = 0;
   const failed: string[] = [];
-  const sources: { yahoo: number; finnhub: number } = { yahoo: 0, finnhub: 0 };
+  const sources: { yahoo: number; finnhub: number; dart: number } = { yahoo: 0, finnhub: 0, dart: 0 };
 
   await Promise.allSettled(
     tickers.map(async ({ ticker }) => {
       try {
-        let history: EarningsQuarter[] | null = await getEarningsHistory(ticker);
-        let source: "yahoo" | "finnhub" | null = history && history.length > 0 ? "yahoo" : null;
+        const isKorean = /^\d[A-Z0-9]{5}$/i.test(ticker);
+        let history: EarningsQuarter[] | null = null;
+        let source: "yahoo" | "finnhub" | "dart" | null = null;
 
-        // Fallback: Finnhub (Yahoo가 빈 응답 주는 종목용)
-        if (!source) {
-          const finn = await getFinnhubEarnings(ticker);
-          if (finn && finn.length > 0) {
-            history = finn.map((f): EarningsQuarter => ({
-              quarter: `${f.quarter}Q${f.year}`,
-              date: f.period ?? null,
-              epsActual: f.actual,
-              epsEstimate: f.estimate,
-              surprisePct: f.surprisePercent,
-            }));
-            source = "finnhub";
+        if (isKorean) {
+          // 한국 종목: DART 연간 EPS
+          const dartHistory = await getDartAnnualEPS(ticker);
+          if (dartHistory.length > 0) { history = dartHistory; source = "dart"; }
+        } else {
+          // 해외 종목: Yahoo (yahoo-finance2 npm → raw fetch → Finnhub)
+          history = await getEarningsHistory(ticker);
+          if (history && history.length > 0) {
+            source = "yahoo";
+          } else {
+            const finn = await getFinnhubEarnings(ticker);
+            if (finn && finn.length > 0) {
+              history = finn.map((f): EarningsQuarter => ({
+                quarter: `${f.quarter}Q${f.year}`,
+                date: f.period ?? null,
+                epsActual: f.actual,
+                epsEstimate: f.estimate,
+                surprisePct: f.surprisePercent,
+              }));
+              source = "finnhub";
+            }
           }
         }
 

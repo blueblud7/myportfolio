@@ -1,8 +1,12 @@
 import { resolveYahooSymbol } from "./ticker-resolver";
+import YahooFinance from "yahoo-finance2";
 
 const YF_HEADERS = {
   "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
 };
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const yf2 = new (YahooFinance as any)({ suppressNotices: ["yahooSurvey"] });
 
 export interface QuoteResult {
   ticker: string;
@@ -275,6 +279,8 @@ export interface EarningsQuarter {
 
 export async function getEarningsHistory(ticker: string): Promise<EarningsQuarter[] | null> {
   if (ticker === "CASH") return null;
+  // 한국 종목은 Yahoo에 EPS 데이터가 없으므로 route에서 DART로 처리
+  if (/^\d[A-Z0-9]{5}$/i.test(ticker)) return null;
 
   const num = (v: unknown): number | null => {
     if (typeof v === "number") return v;
@@ -285,53 +291,49 @@ export async function getEarningsHistory(ticker: string): Promise<EarningsQuarte
     return null;
   };
 
-  const trySymbol = async (symbol: string): Promise<EarningsQuarter[] | null> => {
-    // 1차: earnings 모듈 (earningsChart.quarterly — 가장 안정적, 인증 불필요)
-    const result = await fetchYahooSummary(symbol, "earnings");
-    if (!result?.earnings) return null;
-
-    const earnings = result.earnings as {
-      earningsChart?: { quarterly?: unknown[] };
-    };
-    const quarterly = earnings.earningsChart?.quarterly;
-    if (!Array.isArray(quarterly) || quarterly.length === 0) return null;
-
-    const parsed = quarterly
+  const parseQuarterly = (quarterly: unknown[]): EarningsQuarter[] =>
+    quarterly
       .map((row): EarningsQuarter | null => {
         if (!row || typeof row !== "object") return null;
         const r = row as Record<string, unknown>;
         const quarter = typeof r.date === "string" ? r.date : "";
         if (!quarter) return null;
-
         const actual = num(r.actual);
         const estimate = num(r.estimate);
-        const surprisePct =
-          actual !== null && estimate !== null && estimate !== 0
-            ? ((actual - estimate) / Math.abs(estimate)) * 100
-            : null;
-
         return {
-          quarter,         // "1Q2024" 등
+          quarter,
           date: null,
           epsActual: actual,
           epsEstimate: estimate,
-          surprisePct,
+          surprisePct:
+            actual !== null && estimate !== null && estimate !== 0
+              ? ((actual - estimate) / Math.abs(estimate)) * 100
+              : null,
         };
       })
       .filter((q): q is EarningsQuarter => q !== null);
 
-    return parsed.length > 0 ? parsed : null;
-  };
+  const symbol = resolveYahooSymbol(ticker);
 
-  if (/^\d[A-Z0-9]{5}$/i.test(ticker)) {
-    for (const suffix of [".KS", ".KQ"]) {
-      const result = await trySymbol(`${ticker}${suffix}`);
-      if (result && result.length > 0) return result;
+  // 1차: yahoo-finance2 npm (crumb 인증 자동 처리, 더 안정적)
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const result = await yf2.quoteSummary(symbol, { modules: ["earnings"] }) as any;
+    const quarterly = result?.earnings?.earningsChart?.quarterly;
+    if (Array.isArray(quarterly) && quarterly.length > 0) {
+      const parsed = parseQuarterly(quarterly);
+      if (parsed.length > 0) return parsed;
     }
-    return null;
-  }
+  } catch { /* fallback */ }
 
-  return trySymbol(resolveYahooSymbol(ticker));
+  // 2차: raw v10 API fallback
+  const result = await fetchYahooSummary(symbol, "earnings");
+  if (!result?.earnings) return null;
+  const earnings = result.earnings as { earningsChart?: { quarterly?: unknown[] } };
+  const quarterly = earnings.earningsChart?.quarterly;
+  if (!Array.isArray(quarterly) || quarterly.length === 0) return null;
+  const parsed = parseQuarterly(quarterly);
+  return parsed.length > 0 ? parsed : null;
 }
 
 export async function getExchangeRate(): Promise<number> {

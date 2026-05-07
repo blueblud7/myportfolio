@@ -5,6 +5,23 @@ import { getSessionUser } from "@/lib/auth";
 
 export const maxDuration = 60;
 
+// 한국 종목 실적발표 추정일: 12월 결산 기준 공시 법정 기한
+// Q1(11013) → 5월 15일, 반기(11012) → 8월 14일, Q3(11014) → 11월 14일, 연간(11011) → 3월 31일
+function estimateKoreanEarningsDate(): string {
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = now.getMonth() + 1; // 1-12
+
+  let target: Date;
+  if (m <= 3)       target = new Date(y, 2, 31);   // 3/31 연간
+  else if (m <= 5)  target = new Date(y, 4, 15);   // 5/15 Q1
+  else if (m <= 8)  target = new Date(y, 7, 14);   // 8/14 반기
+  else if (m <= 11) target = new Date(y, 10, 14);  // 11/14 Q3
+  else              target = new Date(y + 1, 2, 31); // 내년 3/31
+
+  return target.toISOString().split("T")[0];
+}
+
 export interface EarningsCalendarItem {
   ticker: string;
   name: string;
@@ -72,14 +89,29 @@ export async function POST() {
 
   await Promise.all(
     tickers.map(async ({ ticker, name }) => {
-      const events = await getEarningsCalendarEvents(ticker);
-      if (!events || !events.earningsDate) {
-        failed.push(ticker);
-        return;
+      const isKorean = /^\d[A-Z0-9]{5}$/i.test(ticker);
+
+      let earningsDate: string | null = null;
+      let epsEstimate: number | null = null;
+
+      if (isKorean) {
+        // 한국: Yahoo calendarEvents 시도 후 추정일 fallback
+        const events = await getEarningsCalendarEvents(ticker);
+        earningsDate = events?.earningsDate ?? estimateKoreanEarningsDate();
+        epsEstimate = events?.epsEstimate ?? null;
+      } else {
+        const events = await getEarningsCalendarEvents(ticker);
+        if (!events?.earningsDate) {
+          failed.push(ticker);
+          return;
+        }
+        earningsDate = events.earningsDate;
+        epsEstimate = events.epsEstimate;
       }
+
       await sql`
         INSERT INTO earnings_calendar (ticker, name, earnings_date, eps_estimate, updated_at)
-        VALUES (${ticker}, ${name}, ${events.earningsDate}, ${events.epsEstimate},
+        VALUES (${ticker}, ${name}, ${earningsDate}, ${epsEstimate},
                 ${new Date().toISOString().replace("T", " ").slice(0, 19)})
         ON CONFLICT (ticker) DO UPDATE SET
           name = EXCLUDED.name,
