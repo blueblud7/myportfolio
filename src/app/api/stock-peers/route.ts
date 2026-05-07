@@ -45,7 +45,73 @@ function pct(v: number | null | undefined): number | null {
   return Math.round(v * 1000) / 10; // xx.x%
 }
 
+// 네이버 파이낸스 (한국 피어용)
+const NAVER_HEADERS = {
+  "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
+  "Referer": "https://m.stock.naver.com/",
+};
+
+function parseNaverNum(v: string | undefined | null): number | null {
+  if (!v) return null;
+  const n = parseFloat(v.replace(/[,배원%조억만\s]/g, ""));
+  return isNaN(n) ? null : n;
+}
+
+async function fetchNaverPeerMetrics(code: string): Promise<Map<string, string>> {
+  try {
+    const res = await fetch(`https://m.stock.naver.com/api/stock/${code}/integration`, { headers: NAVER_HEADERS });
+    if (!res.ok) return new Map();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const data: any = await res.json();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const infos: { code: string; value: string }[] = data?.totalInfos ?? [];
+    return new Map(infos.map((i) => [i.code, i.value]));
+  } catch { return new Map(); }
+}
+
 async function fetchPeerMetrics(symbol: string, ticker: string, isTarget = false): Promise<PeerItem | null> {
+  const isKorean = isKoreanTicker(ticker.replace(/\.(KS|KQ)$/i, ""));
+
+  if (isKorean) {
+    // 한국 종목: Yahoo(가격/시총) + 네이버(재무지표)
+    const code = ticker.replace(/\.(KS|KQ)$/i, "");
+    try {
+      const [q, naverMap] = await Promise.all([
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        yf.quote(symbol) as Promise<any>,
+        fetchNaverPeerMetrics(code),
+      ]);
+      if (!q?.regularMarketPrice) return null;
+
+      const per = parseNaverNum(naverMap.get("per"));
+      const pbr = parseNaverNum(naverMap.get("pbr"));
+      const eps = parseNaverNum(naverMap.get("eps"));
+      const bps = parseNaverNum(naverMap.get("bps"));
+      const roe = eps != null && bps != null && bps !== 0 ? (eps / bps) * 100 : null;
+
+      return {
+        ticker: code,
+        symbol,
+        name: q.shortName ?? q.longName ?? code,
+        currency: "KRW",
+        price: q.regularMarketPrice ?? null,
+        changePct: q.regularMarketChangePercent ?? null,
+        marketCap: q.marketCap ?? null,
+        trailingPE: per,
+        forwardPE: parseNaverNum(naverMap.get("cnsPer")),
+        priceToBook: pbr,
+        profitMargins: null,
+        operatingMargins: null,
+        returnOnEquity: roe,
+        revenueGrowth: null,
+        earningsGrowth: null,
+        beta: q.beta ?? null,
+        isTarget,
+      };
+    } catch { return null; }
+  }
+
+  // 해외 종목: Yahoo Finance
   try {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const [q, s] = await Promise.all([

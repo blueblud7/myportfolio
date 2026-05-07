@@ -122,19 +122,20 @@ function dartDate(dt: string | undefined): string {
 async function fetchDartFinancials(stockCode: string): Promise<{
   incomeStatement: StockDetailResponse["incomeStatement"];
   balanceSheet: StockDetailResponse["balanceSheet"];
+  grossMargins: number | null;
 } | null> {
   if (!DART_KEY) return null;
 
   const corpCode = (dartCorpCodes as Record<string, string>)[stockCode];
   if (!corpCode) return null;
 
-  // 최근 사업연도 두 해 시도 (연결 재무제표 우선)
   const currentYear = new Date().getFullYear();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let items: DartFsItem[] | null = null;
+  let usedYear = currentYear - 1;
 
   for (const year of [currentYear - 1, currentYear - 2]) {
-    for (const fsDiv of ["CFS", "OFS"]) { // 연결 → 별도 순
+    for (const fsDiv of ["CFS", "OFS"]) {
       try {
         const url = `https://opendart.fss.or.kr/api/fnlttSinglAcntAll.json?crtfc_key=${DART_KEY}&corp_code=${corpCode}&bsns_year=${year}&reprt_code=11011&fs_div=${fsDiv}`;
         const res = await fetch(url);
@@ -142,6 +143,7 @@ async function fetchDartFinancials(stockCode: string): Promise<{
         const data: any = await res.json();
         if (data?.status === "000" && Array.isArray(data.list) && data.list.length > 0) {
           items = data.list as DartFsItem[];
+          usedYear = year;
           break;
         }
       } catch { /* try next */ }
@@ -151,40 +153,56 @@ async function fetchDartFinancials(stockCode: string): Promise<{
 
   if (!items) return null;
 
-  // account_id 기준 조회 헬퍼
-  const byId = (id: string) => items!.find((i) => i.account_id === id);
-  const byNm = (nm: string) => items!.find((i) => i.account_nm.includes(nm));
+  // IS와 CIS 둘 다 검색 (회사마다 다름)
+  const isItems = items.filter((i) => i.sj_div === "IS" || i.sj_div === "CIS");
+  const byId = (id: string) => isItems.find((i) => i.account_id === id);
+  const byNm = (nm: string) => isItems.find((i) => i.account_nm.includes(nm));
 
   // ── 손익계산서 ──
-  const revenue   = byId("ifrs-full_Revenue")           ?? byNm("매출액");
-  const opIncome  = byId("dart_OperatingIncomeLoss")    ?? byNm("영업이익");
-  const netIncome = byId("ifrs-full_ProfitLoss")        ?? byNm("당기순이익");
-  const epsItem   = byId("ifrs-full_BasicEarningsLossPerShare") ?? byNm("기본주당이익");
+  const revenue     = byId("ifrs-full_Revenue")                       ?? byNm("매출액");
+  const opIncome    = byId("dart_OperatingIncomeLoss")                ?? byNm("영업이익");
+  const netIncome   = byId("ifrs-full_ProfitLoss")                    ?? byNm("당기순이익");
+  const epsItem     = byId("ifrs-full_BasicEarningsLossPerShare")     ?? byNm("기본주당이익");
+  const grossProfit = byId("ifrs-full_GrossProfit")                   ?? byNm("매출총이익");
 
-  // DART는 당기(thstrm), 전기(frmtrm), 전전기(bfefrmtrm) 3개년 제공
+  // thstrm_dt가 null인 경우 usedYear 기반으로 날짜 생성
+  const makeDates = () => [
+    `${usedYear}-12`,
+    `${usedYear - 1}-12`,
+    `${usedYear - 2}-12`,
+  ];
+  const dates = revenue?.thstrm_dt
+    ? [dartDate(revenue.thstrm_dt), dartDate(revenue.frmtrm_dt), dartDate(revenue.bfefrmtrm_dt)]
+    : makeDates();
+
   const incomeRows = [
     {
-      date: dartDate(revenue?.thstrm_dt),
+      date:      dates[0],
       revenue:   parseDartAmount(revenue?.thstrm_amount),
       netIncome: parseDartAmount(netIncome?.thstrm_amount),
       ebitda:    parseDartAmount(opIncome?.thstrm_amount),
       eps:       parseDartAmount(epsItem?.thstrm_amount),
     },
     {
-      date: dartDate(revenue?.frmtrm_dt),
+      date:      dates[1],
       revenue:   parseDartAmount(revenue?.frmtrm_amount),
       netIncome: parseDartAmount(netIncome?.frmtrm_amount),
       ebitda:    parseDartAmount(opIncome?.frmtrm_amount),
       eps:       parseDartAmount(epsItem?.frmtrm_amount),
     },
     {
-      date: dartDate(revenue?.bfefrmtrm_dt),
+      date:      dates[2],
       revenue:   parseDartAmount(revenue?.bfefrmtrm_amount),
       netIncome: parseDartAmount(netIncome?.bfefrmtrm_amount),
       ebitda:    parseDartAmount(opIncome?.bfefrmtrm_amount),
       eps:       parseDartAmount(epsItem?.bfefrmtrm_amount),
     },
   ].filter((r) => r.date && r.revenue != null);
+
+  // 매출총이익률
+  const gp0 = parseDartAmount(grossProfit?.thstrm_amount);
+  const rv0 = parseDartAmount(revenue?.thstrm_amount);
+  const grossMarginsCalc = gp0 != null && rv0 != null && rv0 !== 0 ? (gp0 / rv0) * 100 : null;
 
   // ── 재무상태표 ──
   const bsItems = items.filter((i) => i.sj_div === "BS");
@@ -197,23 +215,28 @@ async function fetchDartFinancials(stockCode: string): Promise<{
   const equity   = bsById("ifrs-full_Equity")                  ?? bsByNm("자본총계");
   const ltDebt   = bsById("ifrs-full_NoncurrentLiabilities")   ?? bsByNm("비유동부채");
 
+  // BS 날짜도 thstrm_dt가 null일 수 있으므로 같은 dates 배열 사용
+  const bsDates = assets?.thstrm_dt
+    ? [dartDate(assets.thstrm_dt), dartDate(assets.frmtrm_dt), dartDate(assets.bfefrmtrm_dt)]
+    : makeDates();
+
   const bsRows = [
     {
-      date: dartDate(assets?.thstrm_dt),
+      date: bsDates[0],
       totalAssets:        parseDartAmount(assets?.thstrm_amount),
       totalDebt:          parseDartAmount(ltDebt?.thstrm_amount),
       cash:               parseDartAmount(cash?.thstrm_amount),
       stockholdersEquity: parseDartAmount(equity?.thstrm_amount),
     },
     {
-      date: dartDate(assets?.frmtrm_dt),
+      date: bsDates[1],
       totalAssets:        parseDartAmount(assets?.frmtrm_amount),
       totalDebt:          parseDartAmount(ltDebt?.frmtrm_amount),
       cash:               parseDartAmount(cash?.frmtrm_amount),
       stockholdersEquity: parseDartAmount(equity?.frmtrm_amount),
     },
     {
-      date: dartDate(assets?.bfefrmtrm_dt),
+      date: bsDates[2],
       totalAssets:        parseDartAmount(assets?.bfefrmtrm_amount),
       totalDebt:          parseDartAmount(ltDebt?.bfefrmtrm_amount),
       cash:               parseDartAmount(cash?.bfefrmtrm_amount),
@@ -224,6 +247,7 @@ async function fetchDartFinancials(stockCode: string): Promise<{
   return {
     incomeStatement: incomeRows as StockDetailResponse["incomeStatement"],
     balanceSheet: bsRows as StockDetailResponse["balanceSheet"],
+    grossMargins: grossMarginsCalc,
   };
 }
 
@@ -296,12 +320,13 @@ async function fetchKoreanStockDetail(code: string, ticker: string): Promise<Sto
   const fwdEps   = parseNaverValue(naverMap.get("cnsEps"));
   const roe      = (eps != null && bps != null && bps !== 0) ? (eps / bps) * 100 : null;
 
-  // 재무 성장률 계산 (DART 데이터 기반)
   const incomeStatement = dartData?.incomeStatement ?? [];
   const balanceSheet    = dartData?.balanceSheet ?? [];
 
+  let grossMargins:     number | null = dartData?.grossMargins ?? null;
   let operatingMargins: number | null = null;
   let profitMargins:    number | null = null;
+  let returnOnAssets:   number | null = null;
   let revenueGrowth:    number | null = null;
   let earningsGrowth:   number | null = null;
 
@@ -312,6 +337,12 @@ async function fetchKoreanStockDetail(code: string, ticker: string): Promise<Sto
     if (latest.revenue && latest.netIncome)
       profitMargins = (latest.netIncome / latest.revenue) * 100;
   }
+  if (incomeStatement.length >= 1 && balanceSheet.length >= 1) {
+    const net = incomeStatement[0].netIncome;
+    const assets = balanceSheet[0].totalAssets;
+    if (net != null && assets != null && assets !== 0)
+      returnOnAssets = (net / assets) * 100;
+  }
   if (incomeStatement.length >= 2) {
     const [curr, prev] = incomeStatement;
     if (curr.revenue && prev.revenue && prev.revenue !== 0)
@@ -319,6 +350,11 @@ async function fetchKoreanStockDetail(code: string, ticker: string): Promise<Sto
     if (curr.netIncome && prev.netIncome && prev.netIncome !== 0)
       earningsGrowth = ((curr.netIncome - prev.netIncome) / Math.abs(prev.netIncome)) * 100;
   }
+
+  // 배당성향: (주당배당금 / EPS) × 100
+  const divPerShare = parseNaverValue(naverMap.get("dividend"));
+  const payoutRatio = divPerShare != null && eps != null && eps !== 0
+    ? (divPerShare / eps) * 100 : null;
 
   return {
     ticker,
@@ -335,15 +371,15 @@ async function fetchKoreanStockDetail(code: string, ticker: string): Promise<Sto
     priceToBook:  pbr,
     priceToSales: null,
     evToEbitda:   null,
-    grossMargins:     null,
+    grossMargins,
     operatingMargins,
     profitMargins,
     returnOnEquity:   roe,
-    returnOnAssets:   null,
+    returnOnAssets,
     trailingEps: eps,
     forwardEps:  fwdEps,
     dividendYield: divYield,
-    payoutRatio:  null,
+    payoutRatio,
     revenueGrowth,
     earningsGrowth,
     beta:      nullNum(quoteResult.beta ?? sd.beta),
