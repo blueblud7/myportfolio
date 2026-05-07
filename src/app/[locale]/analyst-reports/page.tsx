@@ -184,7 +184,7 @@ export default function AnalystReportsPage() {
 
   const { data: holdings } = useHoldings();
 
-  // 보유 종목 티커 Set
+  // 보유 종목 티커 Set + 이름 Set (ticker null인 리포트 fallback용)
   const ownedTickers = useMemo<Set<string>>(() => {
     if (!Array.isArray(holdings)) return new Set();
     return new Set(
@@ -194,10 +194,21 @@ export default function AnalystReportsPage() {
     );
   }, [holdings]);
 
+  const ownedNames = useMemo<Set<string>>(() => {
+    if (!Array.isArray(holdings)) return new Set();
+    return new Set(
+      (holdings as { ticker: string; name: string }[])
+        .filter((h) => h.ticker !== "CASH" && h.name)
+        .map((h) => h.name.trim())
+    );
+  }, [holdings]);
+
   // localStorage에서 읽음 목록 로드
   useEffect(() => {
     setReadIds(loadReadIds());
   }, []);
+
+  const [watchlistNames, setWatchlistNames] = useState<Set<string>>(new Set());
 
   // 워치리스트 fetch
   useEffect(() => {
@@ -206,6 +217,7 @@ export default function AnalystReportsPage() {
       .then((items) => {
         if (!Array.isArray(items)) return;
         setWatchlistTickers(new Set((items as { ticker: string }[]).map((i) => i.ticker.toUpperCase())));
+        setWatchlistNames(new Set((items as { ticker: string; name: string }[]).filter((i) => i.name).map((i) => i.name.trim())));
       })
       .catch(() => {});
   }, []);
@@ -358,16 +370,28 @@ export default function AnalystReportsPage() {
         </div>
       ) : (
         <div className="space-y-3">
-          {filteredReports.map(r => (
+          {filteredReports.map(r => {
+            const tickerUp = r.ticker?.toUpperCase() ?? "";
+            const stockName = r.stock_name?.trim() ?? "";
+            const isOwned =
+              (!!tickerUp && ownedTickers.has(tickerUp)) ||
+              (!!stockName && ownedNames.has(stockName));
+            const isWatchlisted =
+              !isOwned && (
+                (!!tickerUp && watchlistTickers.has(tickerUp)) ||
+                (!!stockName && watchlistNames.has(stockName))
+              );
+            return (
             <ReportCard
               key={r.id}
               report={r}
               isRead={readIds.has(r.id)}
-              isOwned={!!r.ticker && ownedTickers.has(r.ticker.toUpperCase())}
-              isWatchlisted={!!r.ticker && watchlistTickers.has(r.ticker.toUpperCase())}
+              isOwned={isOwned}
+              isWatchlisted={isWatchlisted}
               onToggleRead={() => toggleRead(r.id)}
             />
-          ))}
+            );
+          })}
         </div>
       )}
 
