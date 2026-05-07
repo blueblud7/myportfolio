@@ -130,27 +130,31 @@ async function fetchDartFinancials(stockCode: string): Promise<{
   if (!corpCode) return null;
 
   const currentYear = new Date().getFullYear();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let items: DartFsItem[] | null = null;
-  let usedYear = currentYear - 1;
 
-  for (const year of [currentYear - 1, currentYear - 2]) {
-    for (const fsDiv of ["CFS", "OFS"]) {
-      try {
-        const url = `https://opendart.fss.or.kr/api/fnlttSinglAcntAll.json?crtfc_key=${DART_KEY}&corp_code=${corpCode}&bsns_year=${year}&reprt_code=11011&fs_div=${fsDiv}`;
-        const res = await fetch(url);
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const data: any = await res.json();
-        if (data?.status === "000" && Array.isArray(data.list) && data.list.length > 0) {
-          items = data.list as DartFsItem[];
-          usedYear = year;
-          break;
-        }
-      } catch { /* try next */ }
+  // 4개 조합을 동시에 시도, 우선순위 순으로 첫 번째 성공한 것 사용
+  const combos: [number, string][] = [
+    [currentYear - 1, "CFS"],
+    [currentYear - 1, "OFS"],
+    [currentYear - 2, "CFS"],
+    [currentYear - 2, "OFS"],
+  ];
+
+  const fetchCombo = async (year: number, fsDiv: string) => {
+    const url = `https://opendart.fss.or.kr/api/fnlttSinglAcntAll.json?crtfc_key=${DART_KEY}&corp_code=${corpCode}&bsns_year=${year}&reprt_code=11011&fs_div=${fsDiv}`;
+    const res = await fetch(url);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const data: any = await res.json();
+    if (data?.status === "000" && Array.isArray(data.list) && data.list.length > 0) {
+      return { items: data.list as DartFsItem[], usedYear: year };
     }
-    if (items) break;
-  }
+    throw new Error(`no data`);
+  };
 
+  const results = await Promise.allSettled(combos.map(([y, d]) => fetchCombo(y, d)));
+  const found = results.find((r): r is PromiseFulfilledResult<{ items: DartFsItem[]; usedYear: number }> => r.status === "fulfilled");
+  if (!found) return null;
+
+  const { items, usedYear } = found.value;
   if (!items) return null;
 
   // IS와 CIS 둘 다 검색 (회사마다 다름)
@@ -257,41 +261,41 @@ async function fetchKoreanStockDetail(code: string, ticker: string): Promise<Sto
   const oneYearAgo = new Date(now);
   oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
 
-  // Yahoo (가격+차트) + 네이버 (밸류에이션) + DART (재무제표) 병렬
+  // KS/KQ 동시 시도 + Naver + DART 모두 병렬로 시작 (심볼 확정 전에도 가능)
+  const [[ksResult, kqResult], naverMap, dartData] = await Promise.all([
+    Promise.allSettled([
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      yf.quote(`${code}.KS`) as Promise<any>,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      yf.quote(`${code}.KQ`) as Promise<any>,
+    ]),
+    fetchNaverIntegration(code),
+    fetchDartFinancials(code),
+  ]);
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let quoteResult: any = null;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let summaryResult: any = null;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let chartResult: any = null;
   let usedSymbol = `${code}.KS`;
 
-  for (const suffix of [".KS", ".KQ"]) {
-    const sym = `${code}${suffix}`;
-    try {
-      const q = await yf.quote(sym);
-      if (q?.regularMarketPrice) {
-        quoteResult = q;
-        usedSymbol = sym;
-        [summaryResult, chartResult] = await Promise.all([
-          yf.quoteSummary(sym, { modules: ["summaryDetail", "summaryProfile"] })
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            .catch(() => ({} as any)),
-          yf.chart(sym, { period1: oneYearAgo, period2: now, interval: "1d" })
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            .catch(() => ({ quotes: [] } as any)),
-        ]);
-        break;
-      }
-    } catch { /* try next suffix */ }
+  if (ksResult.status === "fulfilled" && ksResult.value?.regularMarketPrice) {
+    quoteResult = ksResult.value;
+    usedSymbol = `${code}.KS`;
+  } else if (kqResult.status === "fulfilled" && kqResult.value?.regularMarketPrice) {
+    quoteResult = kqResult.value;
+    usedSymbol = `${code}.KQ`;
   }
 
   if (!quoteResult?.regularMarketPrice) return null;
 
-  // 네이버 + DART 병렬
-  const [naverMap, dartData] = await Promise.all([
-    fetchNaverIntegration(code),
-    fetchDartFinancials(code),
+  // 심볼 확정 후 summary + chart 병렬
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [summaryResult, chartResult] = await Promise.all([
+    yf.quoteSummary(usedSymbol, { modules: ["summaryDetail", "summaryProfile"] })
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .catch(() => ({} as any)),
+    yf.chart(usedSymbol, { period1: oneYearAgo, period2: now, interval: "1d" })
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .catch(() => ({ quotes: [] } as any)),
   ]);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

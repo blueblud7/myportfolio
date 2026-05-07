@@ -152,13 +152,12 @@ async function fetchPeerMetrics(symbol: string, ticker: string, isTarget = false
 
 async function resolveSymbol(ticker: string): Promise<string> {
   if (isKoreanTicker(ticker)) {
-    for (const suffix of [".KS", ".KQ"]) {
-      const sym = `${ticker}${suffix}`;
-      try {
-        const q = await yf.quote(sym) as { regularMarketPrice?: number };
-        if (q?.regularMarketPrice) return sym;
-      } catch { /* continue */ }
-    }
+    const [ksResult, kqResult] = await Promise.allSettled([
+      yf.quote(`${ticker}.KS`) as Promise<{ regularMarketPrice?: number }>,
+      yf.quote(`${ticker}.KQ`) as Promise<{ regularMarketPrice?: number }>,
+    ]);
+    if (ksResult.status === "fulfilled" && ksResult.value?.regularMarketPrice) return `${ticker}.KS`;
+    if (kqResult.status === "fulfilled" && kqResult.value?.regularMarketPrice) return `${ticker}.KQ`;
     return `${ticker}.KS`;
   }
   return resolveYahooSymbol(ticker);
