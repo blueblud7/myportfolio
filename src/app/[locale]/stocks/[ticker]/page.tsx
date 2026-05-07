@@ -152,15 +152,23 @@ function PeerComparison({ ticker }: { ticker: string }) {
 
   const load = () => {
     setLoading(true);
+    setFetched(false);
     fetch(`/api/stock-peers?ticker=${encodeURIComponent(ticker)}`)
       .then((r) => r.json())
-      .then((d) => { setPeers(d); setFetched(true); })
+      .then((d: StockPeersResponse & { error?: string }) => {
+        if (d?.error || !Array.isArray(d?.peers)) {
+          setPeers(null);
+        } else {
+          setPeers(d);
+        }
+        setFetched(true);
+      })
       .catch(() => setFetched(true))
       .finally(() => setLoading(false));
   };
 
   const chartData = useMemo(() => {
-    if (!peers) return [];
+    if (!peers?.peers) return [];
     const metric = PEER_METRICS.find((m) => m.key === chartMetric)!;
     return peers.peers
       .map((p) => ({ name: p.ticker, value: p[chartMetric], isTarget: p.isTarget }))
@@ -168,6 +176,15 @@ function PeerComparison({ ticker }: { ticker: string }) {
       .sort((a, b) => (b.value ?? 0) - (a.value ?? 0))
       .map((d) => ({ ...d, label: `${(d.value ?? 0).toFixed(1)}${metric.suffix}` }));
   }, [peers, chartMetric]);
+
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center gap-2 py-12 text-muted-foreground">
+        <RefreshCw className="h-5 w-5 animate-spin" />
+        <p className="text-sm">AI가 피어 종목을 분석 중...</p>
+      </div>
+    );
+  }
 
   if (!fetched) {
     return (
@@ -184,17 +201,19 @@ function PeerComparison({ ticker }: { ticker: string }) {
     );
   }
 
-  if (loading) {
+  if (!peers?.peers || peers.peers.length === 0) {
     return (
-      <div className="flex flex-col items-center gap-2 py-12 text-muted-foreground">
-        <RefreshCw className="h-5 w-5 animate-spin" />
-        <p className="text-sm">AI가 피어 종목을 분석 중...</p>
+      <div className="flex flex-col items-center gap-3 py-8 text-muted-foreground">
+        <p className="text-sm text-center">피어 데이터를 가져올 수 없습니다.</p>
+        <button
+          onClick={load}
+          className="flex items-center gap-2 rounded-lg bg-zinc-500/20 px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-zinc-500/30 transition-colors"
+        >
+          <RefreshCw className="h-3.5 w-3.5" />
+          다시 시도
+        </button>
       </div>
     );
-  }
-
-  if (!peers || peers.peers.length === 0) {
-    return <div className="py-8 text-center text-sm text-muted-foreground">피어 데이터를 가져올 수 없습니다.</div>;
   }
 
   const metricSuffix = PEER_METRICS.find((m) => m.key === chartMetric)?.suffix ?? "";

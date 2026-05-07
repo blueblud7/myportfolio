@@ -167,10 +167,16 @@ async function fetchStockDetail(symbol: string, ticker: string): Promise<StockDe
       changePct: quoteResult.regularMarketChangePercent ?? 0,
       fiftyTwoWeekLow: quoteResult.fiftyTwoWeekLow ?? sd.fiftyTwoWeekLow ?? 0,
       fiftyTwoWeekHigh: quoteResult.fiftyTwoWeekHigh ?? sd.fiftyTwoWeekHigh ?? 0,
-      trailingPE: nullNum(sd.trailingPE ?? quoteResult.trailingPE),
+      trailingPE: nullNum(sd.trailingPE ?? quoteResult.trailingPE ?? quoteResult.trailingPegRatio),
       forwardPE: nullNum(sd.forwardPE ?? quoteResult.forwardPE),
       pegRatio: nullNum(ks.pegRatio),
-      priceToBook: nullNum(ks.priceToBook),
+      priceToBook: nullNum(
+        ks.priceToBook ??
+        quoteResult.priceToBook ??
+        (quoteResult.bookValue && quoteResult.regularMarketPrice
+          ? quoteResult.regularMarketPrice / quoteResult.bookValue
+          : null)
+      ),
       priceToSales: nullNum(ks.priceToSalesTrailing12Months ?? sd.priceToSalesTrailing12Months),
       evToEbitda: nullNum(ks.enterpriseToEbitda),
       grossMargins: pct(fd.grossMargins),
@@ -178,8 +184,8 @@ async function fetchStockDetail(symbol: string, ticker: string): Promise<StockDe
       profitMargins: pct(fd.profitMargins),
       returnOnEquity: pct(fd.returnOnEquity),
       returnOnAssets: pct(fd.returnOnAssets),
-      trailingEps: nullNum(ks.trailingEps),
-      forwardEps: nullNum(ks.forwardEps ?? fd.forwardEps),
+      trailingEps: nullNum(ks.trailingEps ?? quoteResult.epsTrailingTwelveMonths),
+      forwardEps: nullNum(ks.forwardEps ?? fd.forwardEps ?? quoteResult.epsForward),
       dividendYield: pct(sd.dividendYield ?? sd.trailingAnnualDividendYield),
       payoutRatio: pct(sd.payoutRatio),
       revenueGrowth: fd.revenueGrowth != null ? fd.revenueGrowth * 100 : null,
