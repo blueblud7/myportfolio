@@ -5,7 +5,7 @@ import { Link, usePathname } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
 import {
   LayoutDashboard, Wallet, BarChart3, TrendingUp, BookOpen,
-  Eye, EyeOff, FlaskConical, Bell, Sparkles, Activity, X, Layers, Microscope, PieChart, Receipt, Binoculars, FileText, CalendarDays,
+  Eye, EyeOff, FlaskConical, Bell, Sparkles, Activity, X, Layers, Microscope, PieChart, Receipt, Binoculars, FileText, CalendarDays, Search,
 } from "lucide-react";
 import { InvestorQuote } from "./InvestorQuote";
 import { usePrivacy } from "@/contexts/privacy-context";
@@ -33,6 +33,7 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
     {
       title: "🔍 종목 분석",
       items: [
+        { href: "/stocks", label: "종목 정보", icon: Search },
         { href: "/quant", label: t("quant"), icon: FlaskConical },
         { href: "/analyst-reports", label: "증권사 리포트", icon: FileText },
         { href: "/earnings", label: "실적 (Earnings)", icon: CalendarDays },

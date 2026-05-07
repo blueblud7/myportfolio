@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Target, TrendingUp, TrendingDown, Pencil, Check, X, RefreshCw, Calendar, Flame, ArrowRight } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { SectorFlowResponse, SectorItem } from "@/app/api/sector-flow/route";
+import type { SectorFlowResponse, SectorItem, IndexItem } from "@/app/api/sector-flow/route";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -58,6 +58,25 @@ function SectorTile({ item }: { item: SectorItem }) {
         <div className="min-w-0">
           <p className="truncate text-xs font-semibold leading-tight">{item.name}</p>
           <p className="mt-0.5 text-[10px] opacity-60 dark:opacity-75">{item.ticker}</p>
+        </div>
+        <span className="shrink-0 text-sm font-bold tabular-nums">
+          {fmtPct(item.changePct)}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+// ─── Index Tile ───────────────────────────────────────────────────────────────
+
+function IndexTile({ item }: { item: IndexItem }) {
+  return (
+    <div className={cn("rounded-xl border px-3 py-2.5 transition-colors", heatColor(item.changePct))}>
+      <div className="flex items-start justify-between gap-1">
+        <div className="min-w-0">
+          <p className="truncate text-xs font-semibold leading-tight">
+            <span className="mr-1">{item.flag}</span>{item.name}
+          </p>
         </div>
         <span className="shrink-0 text-sm font-bold tabular-nums">
           {fmtPct(item.changePct)}
@@ -232,6 +251,14 @@ export default function GoalsPage() {
   useEffect(() => { loadGoals(); }, [loadGoals]);
   useEffect(() => { loadFlow(period); }, [period, loadFlow]);
 
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState === "visible") loadGoals();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+  }, [loadGoals]);
+
   const [saveError, setSaveError] = useState<string | null>(null);
 
   const saveGoal = async (params: { returnTargetPct?: number; valueTargetUsd?: number; startValueUsd?: number }) => {
@@ -252,6 +279,7 @@ export default function GoalsPage() {
   };
 
   const deleteGoal = async () => {
+    if (!confirm("목표를 삭제하시겠습니까?")) return;
     const year = goalData?.year ?? new Date().getFullYear();
     await fetch(`/api/goals?year=${year}`, { method: "DELETE" });
     loadGoals();

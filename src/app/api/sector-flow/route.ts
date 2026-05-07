@@ -12,9 +12,19 @@ export interface SectorItem {
   price: number | null;
 }
 
+export interface IndexItem {
+  key: string;
+  name: string;
+  flag: string;
+  ticker: string;
+  changePct: number | null;
+  price: number | null;
+}
+
 export interface SectorFlowResponse {
   us: SectorItem[];
   kr: SectorItem[];
+  indices: IndexItem[];
   period: string;
   updatedAt: string;
 }
@@ -31,6 +41,21 @@ const US_SECTORS = [
   { key: "materials",  name: "소재 (Materials)",     ticker: "XLB"  },
   { key: "utilities",  name: "유틸리티 (Utilities)", ticker: "XLU"  },
   { key: "realestate", name: "부동산 (RE)",          ticker: "XLRE" },
+];
+
+const WORLD_INDICES = [
+  { key: "sp500",    name: "S&P 500",    flag: "🇺🇸", ticker: "^GSPC"     },
+  { key: "nasdaq",   name: "NASDAQ",     flag: "🇺🇸", ticker: "^IXIC"     },
+  { key: "dow",      name: "Dow Jones",  flag: "🇺🇸", ticker: "^DJI"      },
+  { key: "kospi",    name: "KOSPI",      flag: "🇰🇷", ticker: "^KS11"     },
+  { key: "kosdaq",   name: "KOSDAQ",     flag: "🇰🇷", ticker: "^KQ11"     },
+  { key: "nikkei",   name: "Nikkei 225", flag: "🇯🇵", ticker: "^N225"     },
+  { key: "shanghai", name: "Shanghai",   flag: "🇨🇳", ticker: "000001.SS" },
+  { key: "hsi",      name: "Hang Seng",  flag: "🇭🇰", ticker: "^HSI"      },
+  { key: "dax",      name: "DAX",        flag: "🇩🇪", ticker: "^GDAXI"    },
+  { key: "ftse",     name: "FTSE 100",   flag: "🇬🇧", ticker: "^FTSE"     },
+  { key: "taiex",    name: "TAIEX",      flag: "🇹🇼", ticker: "^TWII"     },
+  { key: "sensex",   name: "SENSEX",     flag: "🇮🇳", ticker: "^BSESN"    },
 ];
 
 const KR_SECTORS = [
@@ -88,12 +113,15 @@ export async function GET(req: NextRequest) {
   const today = new Date().toISOString().split("T")[0];
   const period1 = getPeriodStart(period);
 
-  const [usResults, krResults] = await Promise.all([
+  const [usResults, krResults, idxResults] = await Promise.all([
     Promise.allSettled(
       US_SECTORS.map((s) => fetchSectorChange(s.ticker, period1, today).then((r) => ({ ...s, ...r })))
     ),
     Promise.allSettled(
       KR_SECTORS.map((s) => fetchSectorChange(s.ticker, period1, today).then((r) => ({ ...s, ...r })))
+    ),
+    Promise.allSettled(
+      WORLD_INDICES.map((s) => fetchSectorChange(s.ticker, period1, today).then((r) => ({ ...s, ...r })))
     ),
   ]);
 
@@ -109,9 +137,21 @@ export async function GET(req: NextRequest) {
       .filter((r) => r.key && r.changePct !== null)
       .sort((a, b) => (b.changePct ?? -999) - (a.changePct ?? -999));
 
+  const toIndexItems = (
+    results: PromiseSettledResult<{ key: string; name: string; flag: string; ticker: string; changePct: number | null; price: number | null }>[]
+  ): IndexItem[] =>
+    results
+      .map((r) =>
+        r.status === "fulfilled"
+          ? r.value
+          : { key: "", name: "", flag: "", ticker: "", changePct: null, price: null }
+      )
+      .filter((r) => r.key);
+
   const data: SectorFlowResponse = {
     us: toItems(usResults),
     kr: toItems(krResults),
+    indices: toIndexItems(idxResults),
     period,
     updatedAt: new Date().toISOString(),
   };

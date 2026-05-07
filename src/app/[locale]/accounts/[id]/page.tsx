@@ -146,6 +146,12 @@ export default function AccountDetailPage() {
   const totalGainLoss = totalValue - totalCost;
   const totalGainLossPct = totalCost > 0 ? (totalGainLoss / totalCost) * 100 : 0;
 
+  const totalDailyProfit = holdings?.reduce((sum: number, h: { quantity: number; current_price: number; change_pct: number; ticker: string; avg_cost: number }) => {
+    if (h.ticker === "CASH") return sum;
+    const price = h.current_price || h.avg_cost;
+    return sum + h.quantity * price * ((h.change_pct ?? 0) / 100);
+  }, 0) ?? 0;
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -216,7 +222,7 @@ export default function AccountDetailPage() {
         </div>
       )}
 
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm text-muted-foreground">{t("valuation")}</CardTitle>
@@ -254,6 +260,21 @@ export default function AccountDetailPage() {
             <CardContent>
               <div className={cn("text-xl font-bold", gainLossColor(totalGainLossPct))}>
                 {formatPercent(totalGainLossPct)}
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm text-muted-foreground">{t("dailyProfit")}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className={cn("text-xl font-bold", gainLossColor(totalDailyProfit))}>
+                <Money
+                  value={currency === "USD"
+                    ? ((account?.currency ?? "KRW") === "KRW" ? totalDailyProfit / exchangeRate : totalDailyProfit)
+                    : ((account?.currency ?? "KRW") === "USD" ? totalDailyProfit * exchangeRate : totalDailyProfit)}
+                  currency={currency}
+                />
               </div>
             </CardContent>
           </Card>

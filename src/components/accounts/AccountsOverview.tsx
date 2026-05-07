@@ -31,15 +31,16 @@ export function AccountsOverview({ currency = "KRW", ownerFilter = "all", accoun
   }, [ownerFilter, accounts]);
 
   const summary = useMemo(() => {
-    if (!Array.isArray(holdings)) return { totalKrw: 0, costKrw: 0, gainLossKrw: 0, gainLossPct: 0 };
+    if (!Array.isArray(holdings)) return { totalKrw: 0, costKrw: 0, gainLossKrw: 0, gainLossPct: 0, dailyProfitKrw: 0 };
 
     let totalKrw = 0;
     let costKrw = 0;
+    let dailyProfitKrw = 0;
 
     for (const h of holdings as {
       account_id: number;
       ticker: string; quantity: number; avg_cost: number;
-      current_price: number; currency: string;
+      current_price: number; currency: string; change_pct: number;
     }[]) {
       if (allowedAccountIds && !allowedAccountIds.has(h.account_id)) continue;
       const price = h.ticker === "CASH" ? h.avg_cost : (h.current_price || h.avg_cost);
@@ -49,11 +50,12 @@ export function AccountsOverview({ currency = "KRW", ownerFilter = "all", accoun
       totalKrw += value * mul;
       if (h.ticker !== "CASH") costKrw += cost * mul;
       else costKrw += value * mul;
+      if (h.ticker !== "CASH") dailyProfitKrw += h.quantity * price * ((h.change_pct ?? 0) / 100) * mul;
     }
 
     const gainLossKrw = totalKrw - costKrw;
     const gainLossPct = costKrw > 0 ? (gainLossKrw / costKrw) * 100 : 0;
-    return { totalKrw, costKrw, gainLossKrw, gainLossPct };
+    return { totalKrw, costKrw, gainLossKrw, gainLossPct, dailyProfitKrw };
   }, [holdings, exchangeRate, allowedAccountIds]);
 
   const allocationData = useMemo(() => {
@@ -75,7 +77,7 @@ export function AccountsOverview({ currency = "KRW", ownerFilter = "all", accoun
 
   return (
     <div className="space-y-4">
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
@@ -117,6 +119,19 @@ export function AccountsOverview({ currency = "KRW", ownerFilter = "all", accoun
             </div>
             <div className={cn("mt-0.5 text-sm font-medium", gainLossColor(summary.gainLossPct))}>
               {formatPercent(summary.gainLossPct)}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+              <TrendingUp className="h-4 w-4" />{t("dailyProfit")}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className={cn("text-2xl font-bold", gainLossColor(summary.dailyProfitKrw))}>
+              <Money value={displayVal(summary.dailyProfitKrw)} currency={displayCurrency} />
             </div>
           </CardContent>
         </Card>

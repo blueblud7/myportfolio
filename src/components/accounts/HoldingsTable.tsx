@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from "react";
 import { useTranslations, useLocale } from "next-intl";
+import { Link } from "@/i18n/navigation";
 import {
   Table,
   TableBody,
@@ -189,7 +190,16 @@ export function HoldingsTable({ holdings, accountCurrency, exchangeRate, onEdit,
                         </Badge>
                       )}
                     </div>
-                    <div className="text-xs text-muted-foreground">{h.ticker}</div>
+                    {isCash ? (
+                      <div className="text-xs text-muted-foreground">{h.ticker}</div>
+                    ) : (
+                      <Link
+                        href={`/stocks/${encodeURIComponent(h.ticker)}`}
+                        className="text-xs text-blue-400 hover:text-blue-300 hover:underline transition-colors"
+                      >
+                        {h.ticker}
+                      </Link>
+                    )}
                     {h.note && (
                       <div className="mt-0.5 text-xs text-muted-foreground/70 italic">
                         {h.note}
