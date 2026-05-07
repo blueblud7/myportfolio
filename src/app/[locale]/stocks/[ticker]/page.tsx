@@ -10,13 +10,18 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
+  BarChart,
+  Bar,
+  Cell,
+  LabelList,
 } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, Building2 } from "lucide-react";
+import { ArrowLeft, Building2, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { StockDetailResponse } from "@/app/api/stock-detail/route";
+import type { StockPeersResponse, PeerItem } from "@/app/api/stock-peers/route";
 
 // ─── 유틸 ────────────────────────────────────────────────────────────────────
 
@@ -90,7 +95,7 @@ function StatCard({
   color?: string;
 }) {
   return (
-    <Card className="bg-zinc-900/60 border-zinc-800">
+    <Card>
       <CardContent className="pt-4 pb-3 px-4">
         <p className="text-xs text-muted-foreground">{label}</p>
         <p className={cn("mt-1 text-xl font-bold tabular-nums", color)}>{value}</p>
@@ -105,6 +110,194 @@ function MetricRow({ label, value }: { label: string; value: string }) {
     <div className="flex items-center justify-between py-2 text-sm border-b border-border/50 last:border-0">
       <span className="text-muted-foreground">{label}</span>
       <span className="font-mono font-medium">{value}</span>
+    </div>
+  );
+}
+
+// ─── 피어 비교 컴포넌트 ───────────────────────────────────────────────────────
+
+type PeerMetric = "trailingPE" | "priceToBook" | "returnOnEquity" | "profitMargins" | "operatingMargins" | "revenueGrowth";
+
+const PEER_METRICS: { key: PeerMetric; label: string; suffix: string }[] = [
+  { key: "trailingPE",      label: "PER",      suffix: "x"  },
+  { key: "priceToBook",     label: "PBR",      suffix: "x"  },
+  { key: "returnOnEquity",  label: "ROE",      suffix: "%"  },
+  { key: "profitMargins",   label: "순이익률", suffix: "%"  },
+  { key: "operatingMargins",label: "영업이익률",suffix: "%"  },
+  { key: "revenueGrowth",   label: "매출성장", suffix: "%"  },
+];
+
+function fmtVal(v: number | null, suffix: string): string {
+  if (v == null || !isFinite(v)) return "—";
+  return `${v.toFixed(suffix === "x" ? 1 : 1)}${suffix}`;
+}
+
+function fmtMcap(v: number | null, currency: string): string {
+  if (v == null) return "—";
+  if (currency === "KRW") {
+    if (v >= 1e12) return `₩${(v / 1e12).toFixed(1)}조`;
+    if (v >= 1e8)  return `₩${(v / 1e8).toFixed(0)}억`;
+    return `₩${v.toLocaleString()}`;
+  }
+  if (v >= 1e12) return `$${(v / 1e12).toFixed(2)}T`;
+  if (v >= 1e9)  return `$${(v / 1e9).toFixed(1)}B`;
+  return `$${(v / 1e6).toFixed(0)}M`;
+}
+
+function PeerComparison({ ticker }: { ticker: string }) {
+  const [peers, setPeers]       = useState<StockPeersResponse | null>(null);
+  const [loading, setLoading]   = useState(false);
+  const [fetched, setFetched]   = useState(false);
+  const [chartMetric, setChartMetric] = useState<PeerMetric>("trailingPE");
+
+  const load = () => {
+    setLoading(true);
+    fetch(`/api/stock-peers?ticker=${encodeURIComponent(ticker)}`)
+      .then((r) => r.json())
+      .then((d) => { setPeers(d); setFetched(true); })
+      .catch(() => setFetched(true))
+      .finally(() => setLoading(false));
+  };
+
+  const chartData = useMemo(() => {
+    if (!peers) return [];
+    const metric = PEER_METRICS.find((m) => m.key === chartMetric)!;
+    return peers.peers
+      .map((p) => ({ name: p.ticker, value: p[chartMetric], isTarget: p.isTarget }))
+      .filter((d) => d.value != null)
+      .sort((a, b) => (b.value ?? 0) - (a.value ?? 0))
+      .map((d) => ({ ...d, label: `${(d.value ?? 0).toFixed(1)}${metric.suffix}` }));
+  }, [peers, chartMetric]);
+
+  if (!fetched) {
+    return (
+      <div className="flex flex-col items-center gap-3 py-12 text-muted-foreground">
+        <p className="text-sm">AI가 동종업계 피어를 찾아 지표를 비교합니다.</p>
+        <button
+          onClick={load}
+          className="flex items-center gap-2 rounded-lg bg-blue-500/20 px-4 py-2 text-sm font-medium text-blue-400 hover:bg-blue-500/30 transition-colors"
+        >
+          <RefreshCw className="h-4 w-4" />
+          피어 비교 불러오기
+        </button>
+      </div>
+    );
+  }
+
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center gap-2 py-12 text-muted-foreground">
+        <RefreshCw className="h-5 w-5 animate-spin" />
+        <p className="text-sm">AI가 피어 종목을 분석 중...</p>
+      </div>
+    );
+  }
+
+  if (!peers || peers.peers.length === 0) {
+    return <div className="py-8 text-center text-sm text-muted-foreground">피어 데이터를 가져올 수 없습니다.</div>;
+  }
+
+  const metricSuffix = PEER_METRICS.find((m) => m.key === chartMetric)?.suffix ?? "";
+
+  return (
+    <div className="space-y-6">
+      {/* 차트 */}
+      <div>
+        <div className="mb-3 flex flex-wrap items-center gap-2">
+          <span className="text-sm font-medium text-muted-foreground">지표 선택:</span>
+          {PEER_METRICS.map((m) => (
+            <button
+              key={m.key}
+              onClick={() => setChartMetric(m.key)}
+              className={cn(
+                "rounded px-2.5 py-1 text-xs font-medium transition-colors",
+                chartMetric === m.key
+                  ? "bg-blue-500/20 text-blue-300"
+                  : "text-muted-foreground hover:bg-zinc-800"
+              )}
+            >
+              {m.label}
+            </button>
+          ))}
+        </div>
+        {chartData.length > 0 && (
+          <ResponsiveContainer width="100%" height={200}>
+            <BarChart data={chartData} layout="vertical" margin={{ left: 10, right: 40, top: 4, bottom: 4 }}>
+              <XAxis type="number" hide domain={["auto", "auto"]} />
+              <YAxis type="category" dataKey="name" width={72} tick={{ fontSize: 12 }} />
+              <Tooltip
+                formatter={(v: number) => [`${v.toFixed(1)}${metricSuffix}`, PEER_METRICS.find((m) => m.key === chartMetric)?.label]}
+                contentStyle={{ background: "#18181b", border: "1px solid #3f3f46", fontSize: 12 }}
+              />
+              <Bar dataKey="value" radius={[0, 4, 4, 0]}>
+                {chartData.map((d, i) => (
+                  <Cell key={i} fill={d.isTarget ? "#3b82f6" : "#52525b"} />
+                ))}
+                <LabelList dataKey="label" position="right" style={{ fontSize: 11, fill: "#a1a1aa" }} />
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        )}
+      </div>
+
+      {/* 비교 테이블 */}
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[700px] text-xs">
+          <thead>
+            <tr className="border-b border-border text-left text-[11px] text-muted-foreground">
+              <th className="pb-2 pr-4 font-medium">종목</th>
+              <th className="pb-2 px-3 text-right font-medium">시가총액</th>
+              {PEER_METRICS.map((m) => (
+                <th key={m.key} className="pb-2 px-3 text-right font-medium">{m.label}</th>
+              ))}
+              <th className="pb-2 pl-3 text-right font-medium">베타</th>
+            </tr>
+          </thead>
+          <tbody>
+            {peers.peers.map((p: PeerItem) => (
+              <tr
+                key={p.ticker}
+                className={cn(
+                  "border-b border-border/50 transition-colors",
+                  p.isTarget
+                    ? "bg-blue-500/10 font-semibold"
+                    : "hover:bg-zinc-800/30"
+                )}
+              >
+                <td className="py-2.5 pr-4">
+                  <div className="flex items-center gap-1.5">
+                    {p.isTarget && <span className="h-1.5 w-1.5 rounded-full bg-blue-400 shrink-0" />}
+                    <span className={cn("font-mono", p.isTarget && "text-blue-300")}>{p.ticker}</span>
+                    <span className="truncate max-w-[100px] text-zinc-400">{p.name}</span>
+                  </div>
+                </td>
+                <td className="py-2.5 px-3 text-right tabular-nums">{fmtMcap(p.marketCap, p.currency)}</td>
+                {PEER_METRICS.map((m) => {
+                  const val = p[m.key];
+                  const isGood =
+                    m.key === "returnOnEquity" || m.key === "profitMargins" || m.key === "operatingMargins" || m.key === "revenueGrowth"
+                      ? val != null && val > 0
+                      : null;
+                  return (
+                    <td
+                      key={m.key}
+                      className={cn(
+                        "py-2.5 px-3 text-right tabular-nums",
+                        isGood === true ? "text-emerald-400" : isGood === false ? "text-red-400" : ""
+                      )}
+                    >
+                      {fmtVal(val, m.suffix)}
+                    </td>
+                  );
+                })}
+                <td className="py-2.5 pl-3 text-right tabular-nums text-zinc-400">{fmtVal(p.beta, "x")}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <p className="text-[11px] text-zinc-600">* AI가 선정한 피어 목록 · Yahoo Finance 기준 · 1시간 캐시</p>
     </div>
   );
 }
@@ -281,7 +474,7 @@ export default function StockDetailPage({
       </div>
 
       {/* 차트 */}
-      <Card className="bg-zinc-900/60 border-zinc-800">
+      <Card>
         <CardHeader className="pb-2">
           <div className="flex items-center justify-between flex-wrap gap-2">
             <CardTitle className="text-base">주가 차트</CardTitle>
@@ -370,7 +563,7 @@ export default function StockDetailPage({
 
       {/* 밸류에이션 & 수익성 */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        <Card className="bg-zinc-900/60 border-zinc-800">
+        <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
               밸류에이션
@@ -386,7 +579,7 @@ export default function StockDetailPage({
           </CardContent>
         </Card>
 
-        <Card className="bg-zinc-900/60 border-zinc-800">
+        <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
               수익성 & 배당
@@ -405,7 +598,7 @@ export default function StockDetailPage({
       </div>
 
       {/* 성장 지표 */}
-      <Card className="bg-zinc-900/60 border-zinc-800">
+      <Card>
         <CardHeader className="pb-2">
           <CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
             성장
@@ -450,7 +643,7 @@ export default function StockDetailPage({
       </Card>
 
       {/* 재무제표 */}
-      <Card className="bg-zinc-900/60 border-zinc-800">
+      <Card>
         <CardHeader className="pb-2">
           <CardTitle className="text-base">재무제표</CardTitle>
         </CardHeader>
@@ -564,9 +757,19 @@ export default function StockDetailPage({
         </CardContent>
       </Card>
 
+      {/* 피어 비교 */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base">동종업계 피어 비교</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <PeerComparison ticker={ticker} />
+        </CardContent>
+      </Card>
+
       {/* 기업 정보 */}
       {(data.sector || data.industry || data.description) && (
-        <Card className="bg-zinc-900/60 border-zinc-800">
+        <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-base">기업 정보</CardTitle>
           </CardHeader>
