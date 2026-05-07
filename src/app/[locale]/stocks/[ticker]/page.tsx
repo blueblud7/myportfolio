@@ -226,7 +226,7 @@ function PeerComparison({ ticker }: { ticker: string }) {
               <XAxis type="number" hide domain={["auto", "auto"]} />
               <YAxis type="category" dataKey="name" width={72} tick={{ fontSize: 12 }} />
               <Tooltip
-                formatter={(v: number) => [`${v.toFixed(1)}${metricSuffix}`, PEER_METRICS.find((m) => m.key === chartMetric)?.label]}
+                formatter={(v: number | undefined) => [`${(v ?? 0).toFixed(1)}${metricSuffix}`, PEER_METRICS.find((m) => m.key === chartMetric)?.label]}
                 contentStyle={{ background: "#18181b", border: "1px solid #3f3f46", fontSize: 12 }}
               />
               <Bar dataKey="value" radius={[0, 4, 4, 0]}>
