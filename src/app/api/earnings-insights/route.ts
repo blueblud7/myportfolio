@@ -46,6 +46,7 @@ export async function POST(req: NextRequest) {
   const user = await getSessionUser(req);
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
+  try {
   const sql = getDb();
   await ensureTable(sql);
 
@@ -151,4 +152,8 @@ export async function POST(req: NextRequest) {
   `;
 
   return NextResponse.json({ content: text, generated_at: new Date().toISOString(), stale: false });
+  } catch (e) {
+    console.error("[earnings-insights POST]", e);
+    return NextResponse.json({ error: String(e) }, { status: 500 });
+  }
 }
