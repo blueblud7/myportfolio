@@ -270,11 +270,13 @@ export async function getEarningsCalendarEvents(
 }
 
 export interface EarningsQuarter {
-  quarter: string;        // e.g. "2025Q4" or raw fmt like "4Q2025"
+  quarter: string;        // e.g. "1Q2025"
   date: string | null;    // YYYY-MM-DD
   epsActual: number | null;
   epsEstimate: number | null;
   surprisePct: number | null;
+  revenue: number | null;    // USD (full value)
+  netIncome: number | null;  // USD (full value)
 }
 
 export async function getEarningsHistory(ticker: string): Promise<EarningsQuarter[] | null> {
@@ -305,6 +307,8 @@ export async function getEarningsHistory(ticker: string): Promise<EarningsQuarte
           date: null,
           epsActual: actual,
           epsEstimate: estimate,
+          revenue: null,
+          netIncome: null,
           surprisePct:
             actual !== null && estimate !== null && estimate !== 0
               ? ((actual - estimate) / Math.abs(estimate)) * 100
@@ -315,24 +319,46 @@ export async function getEarningsHistory(ticker: string): Promise<EarningsQuarte
 
   const symbol = resolveYahooSymbol(ticker);
 
+  // 수입 내역 (revenue, netIncome) 조회용 헬퍼
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const buildRevenueMap = (history: any[]): Map<number, { revenue: number | null; netIncome: number | null }> => {
+    const m = new Map<number, { revenue: number | null; netIncome: number | null }>();
+    history.forEach((r, idx) => {
+      m.set(idx, {
+        revenue:   num(r?.totalRevenue)   ?? null,
+        netIncome: num(r?.netIncome)      ?? null,
+      });
+    });
+    return m;
+  };
+
   // 1차: yahoo-finance2 npm (crumb 인증 자동 처리, 더 안정적)
   try {
+    const result = await yf2.quoteSummary(symbol, {
+      modules: ["earnings", "incomeStatementHistoryQuarterly"],
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const result = await yf2.quoteSummary(symbol, { modules: ["earnings"] }) as any;
+    }) as any;
     const quarterly = result?.earnings?.earningsChart?.quarterly;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const incomeHistory: any[] = result?.incomeStatementHistoryQuarterly?.incomeStatementHistory ?? [];
+    const revMap = buildRevenueMap(incomeHistory);
+
     if (Array.isArray(quarterly) && quarterly.length > 0) {
-      const parsed = parseQuarterly(quarterly);
+      const parsed = parseQuarterly(quarterly).map((q, i) => ({
+        ...q,
+        ...(revMap.get(i) ?? { revenue: null, netIncome: null }),
+      }));
       if (parsed.length > 0) return parsed;
     }
   } catch { /* fallback */ }
 
-  // 2차: raw v10 API fallback
+  // 2차: raw v10 API fallback (revenue 없이 EPS만)
   const result = await fetchYahooSummary(symbol, "earnings");
   if (!result?.earnings) return null;
   const earnings = result.earnings as { earningsChart?: { quarterly?: unknown[] } };
   const quarterly = earnings.earningsChart?.quarterly;
   if (!Array.isArray(quarterly) || quarterly.length === 0) return null;
-  const parsed = parseQuarterly(quarterly);
+  const parsed = parseQuarterly(quarterly).map(q => ({ ...q, revenue: null, netIncome: null }));
   return parsed.length > 0 ? parsed : null;
 }
 
