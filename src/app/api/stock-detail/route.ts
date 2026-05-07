@@ -58,7 +58,6 @@ interface CacheEntry { data: StockDetailResponse; expiresAt: number }
 const cache = new Map<string, CacheEntry>();
 const CACHE_TTL_MS = 15 * 60 * 1000;
 
-// ─── 유틸 ────────────────────────────────────────────────────────────────────
 function pct(val: number | null | undefined): number | null {
   return val == null ? null : val * 100;
 }
@@ -73,18 +72,40 @@ const NAVER_HEADERS = {
   "Referer": "https://m.stock.naver.com/",
 };
 
-// 억원 → 원 변환 (네이버 재무제표는 억원 단위)
-const OEK = 1e8;
-
-function parseNaverNum(v: string | undefined | null): number | null {
-  if (!v || v === "N/A" || v === "-" || v.trim() === "") return null;
-  const n = parseFloat(v.replace(/,/g, ""));
+// "41.36배" → 41.36 / "6,564원" → 6564 / "0.61%" → 0.61
+function parseNaverValue(v: string | undefined | null): number | null {
+  if (!v) return null;
+  const cleaned = v.replace(/[,배원%조억만\s]/g, "");
+  const n = parseFloat(cleaned);
   return isNaN(n) ? null : n;
 }
 
-interface NaverInfo { fieldId?: string; title?: string; value?: string }
+interface NaverTotalInfo { code: string; key: string; value: string; valueDesc?: string }
 
-async function fetchNaverSummary(code: string): Promise<NaverInfo[]> {
+async function fetchNaverIntegration(code: string): Promise<NaverTotalInfo[]> {
+  try {
+    const res = await fetch(
+      `https://m.stock.naver.com/api/stock/${code}/integration`,
+      { headers: NAVER_HEADERS }
+    );
+    if (!res.ok) return [];
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const data: any = await res.json();
+    return (data?.totalInfos ?? []) as NaverTotalInfo[];
+  } catch { return []; }
+}
+
+// finance/summary → chartIncomeStatement.annual.columns
+// columns: [["x", "2023.12.", ...], ["매출액", val1, val2, ...], ["영업이익", ...]]
+// 단위: 억원
+interface NaverIncomeRow {
+  date: string;    // "2023.12."
+  revenue: number | null;       // 억원
+  operatingIncome: number | null; // 억원
+  isConsensus: boolean;
+}
+
+async function fetchNaverIncomeSummary(code: string): Promise<NaverIncomeRow[]> {
   try {
     const res = await fetch(
       `https://m.stock.naver.com/api/stock/${code}/finance/summary`,
@@ -93,95 +114,66 @@ async function fetchNaverSummary(code: string): Promise<NaverInfo[]> {
     if (!res.ok) return [];
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const data: any = await res.json();
-    return (data?.totalInfos ?? []) as NaverInfo[];
+    const annual = data?.chartIncomeStatement?.annual ?? {};
+    const cols: string[][] = annual.columns ?? [];
+    const titleList: { isConsensus: string; title: string }[] = annual.trTitleList ?? [];
+
+    if (cols.length < 2) return [];
+
+    const dates: string[]   = cols[0].slice(1); // ["2023.12.", ...]
+    const revenues: string[] = (cols.find((c) => c[0] === "매출액")  ?? []).slice(1);
+    const opincome: string[] = (cols.find((c) => c[0] === "영업이익") ?? []).slice(1);
+
+    return dates.map((d, i) => ({
+      date: d,
+      revenue:        revenues[i] ? parseFloat(revenues[i].replace(/,/g, "")) : null,
+      operatingIncome: opincome[i] ? parseFloat(opincome[i].replace(/,/g, "")) : null,
+      isConsensus: titleList[i]?.isConsensus === "Y",
+    }));
   } catch { return []; }
-}
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function fetchNaverDetail(code: string, name: "income" | "balance"): Promise<any> {
-  try {
-    const res = await fetch(
-      `https://m.stock.naver.com/api/stock/${code}/finance/detail?type=annual&name=${name}`,
-      { headers: NAVER_HEADERS }
-    );
-    if (!res.ok) return null;
-    return await res.json();
-  } catch { return null; }
-}
-
-function findNaverField(infos: NaverInfo[], ...ids: string[]): number | null {
-  for (const id of ids) {
-    const item = infos.find(
-      (i) => i.fieldId === id || i.title?.toLowerCase().includes(id.toLowerCase())
-    );
-    if (item) {
-      const n = parseNaverNum(item.value);
-      if (n !== null) return n;
-    }
-  }
-  return null;
-}
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function findNaverAccount(accounts: any[], ...titles: string[]): number[] {
-  for (const t of titles) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const acc = accounts.find((a: any) =>
-      titles.some((tt) => (a.title ?? "").includes(tt))
-    );
-    if (acc) {
-      void t; // suppress unused warning
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      return (acc.values ?? []).map((v: any) => (typeof v === "number" ? v : null));
-    }
-  }
-  return [];
 }
 
 // ─── 한국 주식 fetch ──────────────────────────────────────────────────────────
 async function fetchKoreanStockDetail(code: string, ticker: string): Promise<StockDetailResponse | null> {
-  // Yahoo Finance (가격 + 차트 + 섹터) + 네이버 파이낸스 (재무지표) 병렬 조회
-  const yfSymbols = [".KS", ".KQ"].map((s) => `${code}${s}`);
+  const now = new Date();
+  const oneYearAgo = new Date(now);
+  oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
 
+  // Yahoo Finance (가격 + 차트) + 네이버 (재무지표) 병렬 조회
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let quoteResult: any = null;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let summaryResult: any = null;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let chartResult: any = null;
-  let usedSymbol = yfSymbols[0];
+  let usedSymbol = `${code}.KS`;
 
-  const now = new Date();
-  const oneYearAgo = new Date(now);
-  oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
-
-  for (const sym of yfSymbols) {
+  for (const suffix of [".KS", ".KQ"]) {
+    const sym = `${code}${suffix}`;
     try {
       const q = await yf.quote(sym);
       if (q?.regularMarketPrice) {
         quoteResult = q;
         usedSymbol = sym;
         [summaryResult, chartResult] = await Promise.all([
-          yf.quoteSummary(sym, {
-            modules: ["summaryDetail", "summaryProfile"],
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          }).catch(() => ({} as any)),
+          yf.quoteSummary(sym, { modules: ["summaryDetail", "summaryProfile"] })
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            .catch(() => ({} as any)),
           yf.chart(sym, { period1: oneYearAgo, period2: now, interval: "1d" })
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            .catch(() => ({ quotes: [] }) as any),
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            .catch(() => ({ quotes: [] } as any)),
         ]);
         break;
       }
-    } catch { /* try next */ }
+    } catch { /* try next suffix */ }
   }
 
   if (!quoteResult?.regularMarketPrice) return null;
 
-  // 네이버 파이낸스 병렬 조회
-  const [naverInfos, naverIncome, naverBalance] = await Promise.all([
-    fetchNaverSummary(code),
-    fetchNaverDetail(code, "income"),
-    fetchNaverDetail(code, "balance"),
+  // 네이버 병렬 조회
+  const [naverInfos, naverIncome] = await Promise.all([
+    fetchNaverIntegration(code),
+    fetchNaverIncomeSummary(code),
   ]);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -200,95 +192,49 @@ async function fetchKoreanStockDetail(code: string, ticker: string): Promise<Sto
       volume: (q.volume as number) ?? 0,
     }));
 
-  // 네이버 재무지표 파싱
-  const per  = findNaverField(naverInfos, "per");
-  const pbr  = findNaverField(naverInfos, "pbr");
-  const eps  = findNaverField(naverInfos, "eps");
-  const roe  = findNaverField(naverInfos, "roe");
-  const divRate = findNaverField(naverInfos, "dividendRate", "시가배당률");
+  // 네이버 totalInfos → code 기준 조회
+  const infoMap = new Map(naverInfos.map((i) => [i.code, i.value]));
+  const per = parseNaverValue(infoMap.get("per"));
+  const pbr = parseNaverValue(infoMap.get("pbr"));
+  const eps = parseNaverValue(infoMap.get("eps"));
+  const bps = parseNaverValue(infoMap.get("bps"));
+  const divYield = parseNaverValue(infoMap.get("dividendYieldRatio"));
+  const forwardPer = parseNaverValue(infoMap.get("cnsPer"));
+  const forwardEps = parseNaverValue(infoMap.get("cnsEps"));
 
-  // 네이버 손익계산서 (억원 단위)
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const incAccounts: any[] = naverIncome?.financeInfo?.accounts ?? naverIncome?.accounts ?? [];
-  const incDates: string[] = naverIncome?.financeInfo?.endDate ?? naverIncome?.endDate ?? [];
+  // ROE 근사: EPS / BPS * 100
+  const roe = (eps != null && bps != null && bps !== 0) ? (eps / bps) * 100 : null;
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  function getAccount(titles: string[]): (number | null)[] {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const acc = incAccounts.find((a: any) => titles.some((t) => (a.title ?? "").includes(t)));
-    if (!acc) return [];
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return (acc.values ?? []).map((v: any) => (typeof v === "number" && !isNaN(v) ? v : null));
-  }
+  // 네이버 손익계산서 (억원 × 1e8 = 원)
+  const OEK = 1e8;
+  const confirmedIncome = naverIncome.filter((r) => !r.isConsensus);
 
-  const revenues    = getAccount(["매출액"]);
-  const opIncomes   = getAccount(["영업이익"]);
-  const netIncomes  = getAccount(["당기순이익"]);
-  const epsArr      = getAccount(["EPS"]);
-
-  const incomeStatement = incDates
-    .map((d, i) => ({
-      date: d.replace("/", "-"),
-      revenue:   revenues[i]   != null ? revenues[i]! * OEK   : null,
-      netIncome: netIncomes[i] != null ? netIncomes[i]! * OEK : null,
-      ebitda:    opIncomes[i]  != null ? opIncomes[i]! * OEK  : null,
-      eps:       epsArr[i] ?? null,
-    }))
-    .filter((r) => r.revenue != null)
+  const incomeStatement = confirmedIncome
     .sort((a, b) => b.date.localeCompare(a.date))
-    .slice(0, 4);
+    .slice(0, 4)
+    .map((r) => ({
+      date: r.date.replace(".", "-").replace(".", ""), // "2024.12." → "2024-12"
+      revenue: r.revenue != null ? r.revenue * OEK : null,
+      netIncome: null as number | null,
+      ebitda: r.operatingIncome != null ? r.operatingIncome * OEK : null,
+      eps: null as number | null,
+    }));
 
-  // 수익성 지표 계산 (YoY)
+  // 영업이익률, 매출성장
   let operatingMargins: number | null = null;
-  let profitMargins: number | null = null;
   let revenueGrowth: number | null = null;
-  let earningsGrowth: number | null = null;
 
-  if (incomeStatement.length >= 1) {
-    const latest = incomeStatement[0];
-    if (latest.revenue && latest.ebitda)    operatingMargins = (latest.ebitda / latest.revenue) * 100;
-    if (latest.revenue && latest.netIncome) profitMargins    = (latest.netIncome / latest.revenue) * 100;
+  if (confirmedIncome.length >= 1 && confirmedIncome[confirmedIncome.length - 1].revenue && confirmedIncome[confirmedIncome.length - 1].operatingIncome) {
+    const latest = confirmedIncome.sort((a, b) => b.date.localeCompare(a.date))[0];
+    if (latest.revenue && latest.operatingIncome)
+      operatingMargins = (latest.operatingIncome / latest.revenue) * 100;
   }
-  if (incomeStatement.length >= 2) {
-    const [curr, prev] = incomeStatement;
+  if (confirmedIncome.length >= 2) {
+    const sorted = [...confirmedIncome].sort((a, b) => b.date.localeCompare(a.date));
+    const [curr, prev] = sorted;
     if (curr.revenue && prev.revenue && prev.revenue !== 0)
       revenueGrowth = ((curr.revenue - prev.revenue) / Math.abs(prev.revenue)) * 100;
-    if (curr.netIncome && prev.netIncome && prev.netIncome !== 0)
-      earningsGrowth = ((curr.netIncome - prev.netIncome) / Math.abs(prev.netIncome)) * 100;
   }
-
-  // 네이버 재무상태표
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const bsAccounts: any[] = naverBalance?.financeInfo?.accounts ?? naverBalance?.accounts ?? [];
-  const bsDates: string[] = naverBalance?.financeInfo?.endDate ?? naverBalance?.endDate ?? [];
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  function getBsAccount(titles: string[]): (number | null)[] {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const acc = bsAccounts.find((a: any) => titles.some((t) => (a.title ?? "").includes(t)));
-    if (!acc) return [];
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return (acc.values ?? []).map((v: any) => (typeof v === "number" && !isNaN(v) ? v : null));
-  }
-
-  const totalAssetsArr = getBsAccount(["자산총계"]);
-  const totalDebtArr   = getBsAccount(["부채총계"]);
-  const cashArr        = getBsAccount(["현금및현금성자산", "현금"]);
-  const equityArr      = getBsAccount(["자본총계"]);
-
-  const balanceSheet = bsDates
-    .map((d, i) => ({
-      date:               d.replace("/", "-"),
-      totalAssets:        totalAssetsArr[i] != null ? totalAssetsArr[i]! * OEK : null,
-      totalDebt:          totalDebtArr[i]   != null ? totalDebtArr[i]! * OEK   : null,
-      cash:               cashArr[i]        != null ? cashArr[i]! * OEK        : null,
-      stockholdersEquity: equityArr[i]      != null ? equityArr[i]! * OEK      : null,
-    }))
-    .filter((r) => r.totalAssets != null)
-    .sort((a, b) => b.date.localeCompare(a.date))
-    .slice(0, 4);
-
-  void findNaverAccount; // suppress unused warning
 
   return {
     ticker,
@@ -297,25 +243,25 @@ async function fetchKoreanStockDetail(code: string, ticker: string): Promise<Sto
     currency: "KRW",
     price: quoteResult.regularMarketPrice,
     changePct: quoteResult.regularMarketChangePercent ?? 0,
-    fiftyTwoWeekLow:  quoteResult.fiftyTwoWeekLow ?? sd.fiftyTwoWeekLow ?? 0,
-    fiftyTwoWeekHigh: quoteResult.fiftyTwoWeekHigh ?? sd.fiftyTwoWeekHigh ?? 0,
+    fiftyTwoWeekLow:  parseNaverValue(infoMap.get("lowPriceOf52Weeks"))  ?? quoteResult.fiftyTwoWeekLow  ?? sd.fiftyTwoWeekLow  ?? 0,
+    fiftyTwoWeekHigh: parseNaverValue(infoMap.get("highPriceOf52Weeks")) ?? quoteResult.fiftyTwoWeekHigh ?? sd.fiftyTwoWeekHigh ?? 0,
     trailingPE:   per,
-    forwardPE:    null,
+    forwardPE:    forwardPer,
     pegRatio:     null,
     priceToBook:  pbr,
     priceToSales: null,
     evToEbitda:   null,
     grossMargins:     null,
     operatingMargins,
-    profitMargins,
+    profitMargins:    null,
     returnOnEquity:   roe,
     returnOnAssets:   null,
     trailingEps: eps,
-    forwardEps:  null,
-    dividendYield: divRate,
+    forwardEps:  forwardEps,
+    dividendYield: divYield,
     payoutRatio:  null,
     revenueGrowth,
-    earningsGrowth,
+    earningsGrowth: null,
     beta: nullNum(quoteResult.beta ?? sd.beta),
     marketCap: nullNum(quoteResult.marketCap),
     sector:   sp.sector ?? null,
@@ -323,11 +269,11 @@ async function fetchKoreanStockDetail(code: string, ticker: string): Promise<Sto
     description: sp.longBusinessSummary ?? null,
     chart,
     incomeStatement,
-    balanceSheet,
+    balanceSheet: [], // 네이버 API에서 대차대조표 엔드포인트 미지원
   };
 }
 
-// ─── 해외 주식 fetch (기존 Yahoo Finance) ─────────────────────────────────────
+// ─── 해외 주식 fetch ──────────────────────────────────────────────────────────
 async function fetchStockDetail(symbol: string, ticker: string): Promise<StockDetailResponse | null> {
   try {
     const now = new Date();
@@ -342,9 +288,7 @@ async function fetchStockDetail(symbol: string, ticker: string): Promise<StockDe
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       }) as Promise<any>,
       yf.chart(symbol, {
-        period1: oneYearAgo,
-        period2: now,
-        interval: "1d",
+        period1: oneYearAgo, period2: now, interval: "1d",
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       }) as Promise<any>,
       Promise.all([
@@ -377,8 +321,7 @@ async function fetchStockDetail(symbol: string, ticker: string): Promise<StockDe
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const tsArr: [any[], any[]] = Array.isArray(tsResult) && tsResult.length >= 2
-      ? [tsResult[0], tsResult[1]]
-      : [[], []];
+      ? [tsResult[0], tsResult[1]] : [[], []];
     const [finRows, bsRows] = tsArr;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const toRows = (r: any) => (Array.isArray(r) ? r : Object.values(r ?? {})) as any[];
@@ -414,14 +357,14 @@ async function fetchStockDetail(symbol: string, ticker: string): Promise<StockDe
       currency: quoteResult.currency ?? "USD",
       price: quoteResult.regularMarketPrice,
       changePct: quoteResult.regularMarketChangePercent ?? 0,
-      fiftyTwoWeekLow:  quoteResult.fiftyTwoWeekLow ?? sd.fiftyTwoWeekLow ?? 0,
+      fiftyTwoWeekLow:  quoteResult.fiftyTwoWeekLow  ?? sd.fiftyTwoWeekLow  ?? 0,
       fiftyTwoWeekHigh: quoteResult.fiftyTwoWeekHigh ?? sd.fiftyTwoWeekHigh ?? 0,
-      trailingPE: nullNum(sd.trailingPE ?? quoteResult.trailingPE),
-      forwardPE:  nullNum(sd.forwardPE  ?? quoteResult.forwardPE),
-      pegRatio:   nullNum(ks.pegRatio),
+      trailingPE:  nullNum(sd.trailingPE  ?? quoteResult.trailingPE),
+      forwardPE:   nullNum(sd.forwardPE   ?? quoteResult.forwardPE),
+      pegRatio:    nullNum(ks.pegRatio),
       priceToBook: nullNum(ks.priceToBook ?? quoteResult.priceToBook),
       priceToSales: nullNum(ks.priceToSalesTrailing12Months ?? sd.priceToSalesTrailing12Months),
-      evToEbitda: nullNum(ks.enterpriseToEbitda),
+      evToEbitda:  nullNum(ks.enterpriseToEbitda),
       grossMargins:     pct(fd.grossMargins),
       operatingMargins: pct(fd.operatingMargins),
       profitMargins:    pct(fd.profitMargins),
@@ -456,14 +399,9 @@ export async function GET(request: NextRequest) {
   const cached = cache.get(ticker);
   if (cached && cached.expiresAt > now) return NextResponse.json(cached.data);
 
-  let data: StockDetailResponse | null = null;
-
-  if (isKoreanTicker(ticker)) {
-    data = await fetchKoreanStockDetail(ticker, ticker);
-  } else {
-    const symbol = resolveYahooSymbol(ticker);
-    data = await fetchStockDetail(symbol, ticker);
-  }
+  const data = isKoreanTicker(ticker)
+    ? await fetchKoreanStockDetail(ticker, ticker)
+    : await fetchStockDetail(resolveYahooSymbol(ticker), ticker);
 
   if (!data) {
     return NextResponse.json({ error: `종목을 찾을 수 없습니다: ${ticker}` }, { status: 404 });
