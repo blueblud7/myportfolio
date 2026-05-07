@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import YahooFinance from "yahoo-finance2";
+import { getStockCache, setStockCache } from "@/lib/stock-cache";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const yf = new (YahooFinance as any)({ suppressNotices: ["yahooSurvey"] });
@@ -29,7 +30,12 @@ function getNextWtiSymbols(): [string, string] {
   ];
 }
 
+const INDICES_TTL = 5 * 60 * 1000; // 5분
+
 export async function GET() {
+  const cached = await getStockCache<unknown[]>("market-indices");
+  if (cached) return NextResponse.json(cached);
+
   const [frontSym, nextSym] = getNextWtiSymbols();
 
   const [indexResults, oilFront, oilNext] = await Promise.all([
@@ -76,7 +82,6 @@ export async function GET() {
     return base;
   });
 
-  return NextResponse.json(data, {
-    headers: { "Cache-Control": "s-maxage=300, stale-while-revalidate=60" },
-  });
+  await setStockCache("market-indices", data, INDICES_TTL);
+  return NextResponse.json(data);
 }

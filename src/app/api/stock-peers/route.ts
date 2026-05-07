@@ -3,6 +3,7 @@ import OpenAI from "openai";
 import YahooFinance from "yahoo-finance2";
 import { resolveYahooSymbol, isKoreanTicker } from "@/lib/ticker-resolver";
 import { DEFAULT_AI_PARAMS_JSON } from "@/lib/ai-config";
+import { getStockCache, setStockCache } from "@/lib/stock-cache";
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -36,9 +37,7 @@ export interface StockPeersResponse {
   peers: PeerItem[];
 }
 
-// 1시간 캐시
-const cache = new Map<string, { data: StockPeersResponse; expiresAt: number }>();
-const CACHE_TTL = 60 * 60 * 1000;
+const CACHE_TTL = 60 * 60 * 1000; // 1시간
 
 function pct(v: number | null | undefined): number | null {
   if (v == null) return null;
@@ -194,9 +193,9 @@ export async function GET(req: NextRequest) {
   const ticker = req.nextUrl.searchParams.get("ticker")?.trim().toUpperCase();
   if (!ticker) return NextResponse.json({ error: "ticker required" }, { status: 400 });
 
-  const now = Date.now();
-  const cached = cache.get(ticker);
-  if (cached && cached.expiresAt > now) return NextResponse.json(cached.data);
+  const cacheKey = `stock-peers:${ticker}`;
+  const cached = await getStockCache<StockPeersResponse>(cacheKey);
+  if (cached) return NextResponse.json(cached);
 
   // 1. 대상 종목 정보 조회
   const targetSymbol = await resolveSymbol(ticker);
@@ -240,6 +239,6 @@ export async function GET(req: NextRequest) {
     ticker, name: targetMetrics.name, sector, industry, peers,
   };
 
-  cache.set(ticker, { data, expiresAt: now + CACHE_TTL });
+  await setStockCache(cacheKey, data, CACHE_TTL);
   return NextResponse.json(data);
 }

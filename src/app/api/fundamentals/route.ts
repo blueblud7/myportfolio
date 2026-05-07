@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import YahooFinance from "yahoo-finance2";
 import { resolveYahooSymbol } from "@/lib/ticker-resolver";
+import { getStockCache, setStockCache } from "@/lib/stock-cache";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const yf = new (YahooFinance as any)({ suppressNotices: ["yahooSurvey"] });
@@ -92,6 +93,18 @@ async function getFundamentals(ticker: string): Promise<FundamentalsResult | nul
   return trySymbol(symbol);
 }
 
+const FUNDAMENTALS_TTL = 30 * 60 * 1000; // 30분
+
+async function getFundamentalsCached(ticker: string): Promise<FundamentalsResult | null> {
+  const key = `fundamentals:${ticker}`;
+  const cached = await getStockCache<FundamentalsResult>(key);
+  if (cached) return cached;
+
+  const data = await getFundamentals(ticker);
+  if (data) await setStockCache(key, data, FUNDAMENTALS_TTL);
+  return data;
+}
+
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const tickersParam = searchParams.get("tickers");
@@ -104,17 +117,13 @@ export async function GET(request: NextRequest) {
     .split(",")
     .map((t) => t.trim().toUpperCase())
     .filter(Boolean)
-    .slice(0, 20); // max 20 tickers
+    .slice(0, 20);
 
-  const results = await Promise.allSettled(tickers.map(getFundamentals));
+  const results = await Promise.allSettled(tickers.map(getFundamentalsCached));
   const data = results
     .filter((r): r is PromiseFulfilledResult<FundamentalsResult | null> => r.status === "fulfilled")
     .map((r) => r.value)
     .filter((r): r is FundamentalsResult => r !== null);
 
-  return NextResponse.json(data, {
-    headers: {
-      "Cache-Control": "s-maxage=300, stale-while-revalidate=60",
-    },
-  });
+  return NextResponse.json(data);
 }

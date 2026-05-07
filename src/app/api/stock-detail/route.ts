@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import YahooFinance from "yahoo-finance2";
 import { resolveYahooSymbol, isKoreanTicker } from "@/lib/ticker-resolver";
 import dartCorpCodes from "@/lib/dart-corp-codes.json";
+import { getStockCache, setStockCache } from "@/lib/stock-cache";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const yf = new (YahooFinance as any)({ suppressNotices: ["yahooSurvey"] });
@@ -56,10 +57,8 @@ export interface StockDetailResponse {
   }[];
 }
 
-// ─── 캐시 ────────────────────────────────────────────────────────────────────
-interface CacheEntry { data: StockDetailResponse; expiresAt: number }
-const cache = new Map<string, CacheEntry>();
-const CACHE_TTL_MS = 15 * 60 * 1000;
+// ─── 캐시 TTL ────────────────────────────────────────────────────────────────
+const CACHE_TTL_MS = 15 * 60 * 1000; // 15분
 
 function nullNum(val: number | null | undefined): number | null { return val ?? null; }
 function pct(val: number | null | undefined): number | null {
@@ -516,9 +515,9 @@ export async function GET(request: NextRequest) {
   const ticker = request.nextUrl.searchParams.get("ticker")?.trim().toUpperCase();
   if (!ticker) return NextResponse.json({ error: "ticker parameter required" }, { status: 400 });
 
-  const now = Date.now();
-  const cached = cache.get(ticker);
-  if (cached && cached.expiresAt > now) return NextResponse.json(cached.data);
+  const cacheKey = `stock-detail:${ticker}`;
+  const cached = await getStockCache<StockDetailResponse>(cacheKey);
+  if (cached) return NextResponse.json(cached);
 
   const data = isKoreanTicker(ticker)
     ? await fetchKoreanStockDetail(ticker, ticker)
@@ -528,6 +527,6 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: `종목을 찾을 수 없습니다: ${ticker}` }, { status: 404 });
   }
 
-  cache.set(ticker, { data, expiresAt: now + CACHE_TTL_MS });
+  await setStockCache(cacheKey, data, CACHE_TTL_MS);
   return NextResponse.json(data);
 }
