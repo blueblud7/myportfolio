@@ -10,7 +10,7 @@ export function useAccounts() {
 
 export function useHoldings(accountId?: number) {
   const key = accountId ? `/api/holdings?account_id=${accountId}` : "/api/holdings";
-  return useSWR(key, arrayFetcher);
+  return useSWR(key, arrayFetcher, { dedupingInterval: 60_000 });
 }
 
 export function useExchangeRate() {

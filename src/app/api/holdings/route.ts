@@ -3,6 +3,7 @@ import { getDb } from "@/lib/db";
 import { getSessionUser } from "@/lib/auth";
 import { encrypt, encryptNum } from "@/lib/crypto";
 import { decryptHoldingFields, type HoldingEncFields } from "@/lib/holdings-crypto";
+import { getQuotes } from "@/lib/yahoo-finance";
 
 async function ensureSchema(sql: ReturnType<typeof getDb>) {
   await sql`ALTER TABLE holdings ADD COLUMN IF NOT EXISTS quantity_enc TEXT`;
@@ -88,6 +89,24 @@ export async function GET(req: NextRequest) {
       (r.price_change_pct || 0);
     return { ...d, current_price, change_pct };
   });
+
+  // 실시간 시세로 change_pct / current_price 교체 (manual_price 없는 종목만)
+  const liveTickers = [...new Set(
+    decrypted
+      .filter(h => h.ticker !== "CASH" && (h.manual_price === null || h.manual_price === undefined))
+      .map(h => h.ticker)
+  )];
+
+  if (liveTickers.length > 0) {
+    const liveQuotes = await getQuotes(liveTickers);
+    const qMap = new Map(liveQuotes.map(q => [q.ticker, q]));
+    const withLive = decrypted.map(h => {
+      const lq = qMap.get(h.ticker);
+      if (!lq) return h;
+      return { ...h, current_price: lq.price, change_pct: lq.changePct };
+    });
+    return NextResponse.json(withLive);
+  }
 
   return NextResponse.json(decrypted);
 }
