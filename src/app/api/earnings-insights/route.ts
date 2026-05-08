@@ -63,7 +63,7 @@ export async function POST(req: NextRequest) {
     SELECT s.ticker, s.name, e.earnings_date, e.eps_estimate
     FROM src s
     LEFT JOIN earnings_calendar e ON e.ticker = s.ticker
-    WHERE e.earnings_date IS NOT NULL AND e.earnings_date >= CURRENT_DATE
+    WHERE e.earnings_date IS NOT NULL AND e.earnings_date::date >= CURRENT_DATE
     ORDER BY e.earnings_date ASC
     LIMIT 30
   ` as { ticker: string; name: string; earnings_date: string; eps_estimate: number | null }[];

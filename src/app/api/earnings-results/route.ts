@@ -112,6 +112,8 @@ export async function GET(req: NextRequest) {
       r.eps_actual,
       r.eps_estimate,
       r.surprise_pct,
+      r.revenue,
+      r.net_income,
       r.updated_at
     FROM user_tickers u
     LEFT JOIN earnings_results r ON r.ticker = u.ticker

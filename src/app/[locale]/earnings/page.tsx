@@ -206,12 +206,29 @@ function ResultsTab() {
   const [refreshing, setRefreshing] = useState(false);
   const [refreshMsg, setRefreshMsg] = useState("");
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (autoRefreshIfEmpty = false) => {
     setLoading(true);
-    try { setRows(await (await fetch("/api/earnings-results")).json()); }
-    finally { setLoading(false); }
+    try {
+      const data: EarningsResultRow[] = await (await fetch("/api/earnings-results")).json();
+      const hasAnyQuarter = Array.isArray(data) && data.some(r => r.quarter != null);
+      if (!hasAnyQuarter && autoRefreshIfEmpty) {
+        // 첫 진입 시 DB가 비어있으면 자동 갱신
+        setLoading(false);
+        setRefreshing(true);
+        const res: { updated: number; failed: string[]; total: number; totalQuarters?: number; sources?: Record<string, number> } =
+          await (await fetch("/api/earnings-results", { method: "POST" })).json();
+        const q = res.totalQuarters ? ` · ${res.totalQuarters}개 데이터` : "";
+        const src = res.sources ? ` (${Object.entries(res.sources).filter(([,v]) => v > 0).map(([k,v]) => `${k} ${v}`).join(" / ")})` : "";
+        setRefreshMsg(`${res.total}개 중 ${res.updated}개 종목${q}${src}${res.failed.length ? ` · 실패: ${res.failed.join(", ")}` : ""}`);
+        const fresh: EarningsResultRow[] = await (await fetch("/api/earnings-results")).json();
+        setRows(Array.isArray(fresh) ? fresh : []);
+        setRefreshing(false);
+        return;
+      }
+      setRows(Array.isArray(data) ? data : []);
+    } finally { setLoading(false); }
   }, []);
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { load(true); }, [load]);
 
   const handleRefresh = async () => {
     setRefreshing(true); setRefreshMsg("");
@@ -223,7 +240,7 @@ function ResultsTab() {
         ? ` (${Object.entries(data.sources).filter(([,v]) => v > 0).map(([k,v]) => `${k} ${v}`).join(" / ")})`
         : "";
       setRefreshMsg(`${data.total}개 중 ${data.updated}개 종목${q}${src}${data.failed.length ? ` · 실패: ${data.failed.join(", ")}` : ""}`);
-      await load();
+      await load(false);
     } catch { setRefreshMsg("갱신 실패"); }
     finally { setRefreshing(false); }
   };
