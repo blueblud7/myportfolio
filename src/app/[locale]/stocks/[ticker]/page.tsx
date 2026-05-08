@@ -21,7 +21,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ArrowLeft, Building2, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { StockDetailResponse } from "@/app/api/stock-detail/route";
-import type { StockPeersResponse, PeerItem } from "@/app/api/stock-peers/route";
+import type { StockPeersResponse, PeerItem, PeerRankingItem } from "@/app/api/stock-peers/route";
 
 // ─── 유틸 ────────────────────────────────────────────────────────────────────
 
@@ -315,6 +315,50 @@ function PeerComparison({ ticker }: { ticker: string }) {
           </tbody>
         </table>
       </div>
+
+      {/* AI 우선순위 랭킹 */}
+      {peers.ranking && peers.ranking.length > 0 && (
+        <div className="rounded-xl border border-border/60 bg-zinc-900/40 p-4">
+          <div className="mb-3 flex items-center gap-2">
+            <span className="text-sm font-semibold">AI 투자 우선순위</span>
+            <span className="rounded bg-blue-500/20 px-1.5 py-0.5 text-[10px] text-blue-400">AI 분석</span>
+          </div>
+          <div className="space-y-2">
+            {peers.ranking.map((r: PeerRankingItem) => {
+              const peer = peers.peers.find((p) => p.ticker === r.ticker);
+              const medal = r.rank === 1 ? "🥇" : r.rank === 2 ? "🥈" : r.rank === 3 ? "🥉" : null;
+              return (
+                <div
+                  key={r.ticker}
+                  className={cn(
+                    "flex items-start gap-3 rounded-lg px-3 py-2 text-sm",
+                    r.rank <= 3 ? "bg-zinc-800/60" : "opacity-70",
+                    peer?.isTarget && "ring-1 ring-blue-500/40"
+                  )}
+                >
+                  <span className="w-6 shrink-0 text-center text-base leading-none mt-0.5">
+                    {medal ?? <span className="font-mono text-xs text-zinc-500">{r.rank}</span>}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-1.5">
+                      <span className={cn("font-mono font-semibold text-xs", peer?.isTarget ? "text-blue-300" : "text-zinc-200")}>
+                        {r.ticker}
+                      </span>
+                      {peer && (
+                        <span className="truncate text-xs text-zinc-500">{peer.name}</span>
+                      )}
+                      {peer?.isTarget && (
+                        <span className="rounded bg-blue-500/20 px-1 py-0.5 text-[9px] text-blue-400">보유</span>
+                      )}
+                    </div>
+                    <p className="mt-0.5 text-xs text-zinc-400 leading-relaxed">{r.reason}</p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       <p className="text-[11px] text-zinc-600">* AI가 선정한 피어 목록 · Yahoo Finance 기준 · 1시간 캐시</p>
     </div>

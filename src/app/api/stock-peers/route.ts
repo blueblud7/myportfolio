@@ -29,12 +29,19 @@ export interface PeerItem {
   isTarget: boolean;
 }
 
+export interface PeerRankingItem {
+  ticker: string;
+  rank: number;
+  reason: string;
+}
+
 export interface StockPeersResponse {
   ticker: string;
   name: string;
   sector: string | null;
   industry: string | null;
   peers: PeerItem[];
+  ranking: PeerRankingItem[];
 }
 
 const CACHE_TTL = 60 * 60 * 1000; // 1시간
@@ -189,6 +196,48 @@ Rules:
   } catch { return []; }
 }
 
+async function getRanking(peers: PeerItem[], targetTicker: string): Promise<PeerRankingItem[]> {
+  const rows = peers.map((p) => ({
+    ticker: p.ticker,
+    per: p.trailingPE,
+    pbr: p.priceToBook,
+    roe: p.returnOnEquity,
+    profitMargin: p.profitMargins,
+    opMargin: p.operatingMargins,
+    revenueGrowth: p.revenueGrowth,
+    earningsGrowth: p.earningsGrowth,
+    beta: p.beta,
+  }));
+
+  const prompt = `You are a quantitative equity analyst. Rank the following peer companies from best to worst investment priority based on their financial metrics.
+
+Metrics (null = data unavailable):
+${JSON.stringify(rows, null, 2)}
+
+Current focus stock: ${targetTicker}
+
+Scoring criteria (apply holistically, not mechanically):
+- Valuation: lower P/E and P/B preferred (if positive)
+- Quality: higher ROE, profit margin, operating margin preferred
+- Growth: higher revenue and earnings growth preferred
+- Risk: moderate beta (0.5–1.5) preferred; penalize extreme values
+
+Return ONLY valid JSON (no markdown):
+{ "ranking": [{ "ticker": "...", "rank": 1, "reason": "한국어로 한 문장 이내 투자 매력도 요약" }, ...] }
+
+Include every ticker. rank 1 = highest investment priority.`;
+
+  try {
+    const res = await openai.chat.completions.create({
+      ...DEFAULT_AI_PARAMS_JSON,
+      messages: [{ role: "user", content: prompt }],
+    });
+    const text = res.choices[0]?.message?.content ?? "{}";
+    const parsed = JSON.parse(text) as { ranking?: PeerRankingItem[] };
+    return (parsed.ranking ?? []).sort((a, b) => a.rank - b.rank);
+  } catch { return []; }
+}
+
 export async function GET(req: NextRequest) {
   const ticker = req.nextUrl.searchParams.get("ticker")?.trim().toUpperCase();
   if (!ticker) return NextResponse.json({ error: "ticker required" }, { status: 400 });
@@ -235,8 +284,10 @@ export async function GET(req: NextRequest) {
       .filter((v): v is PeerItem => v !== null),
   ];
 
+  const ranking = await getRanking(peers, ticker);
+
   const data: StockPeersResponse = {
-    ticker, name: targetMetrics.name, sector, industry, peers,
+    ticker, name: targetMetrics.name, sector, industry, peers, ranking,
   };
 
   await setStockCache(cacheKey, data, CACHE_TTL);
