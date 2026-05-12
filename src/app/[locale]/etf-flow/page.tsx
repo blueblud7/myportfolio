@@ -274,15 +274,16 @@ export default function EtfFlowPage() {
           </div>
 
           {/* 헤더 행 */}
-          <div className="grid items-center gap-2 px-3 text-[10px] font-medium uppercase tracking-wide text-muted-foreground"
-            style={{ gridTemplateColumns: "1fr 56px 52px 52px 52px 60px 16px" }}>
-            <span>ETF</span>
-            <span className="text-right">차트</span>
-            <span className="text-right">일간</span>
-            <span className="text-right">주간</span>
-            <span className="text-right">월간</span>
-            <span className="text-right">거래량</span>
-            <span />
+          <div className="flex items-center px-3 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+            <span className="flex-1 min-w-0">ETF</span>
+            <div className="flex shrink-0 items-center">
+              <span className="w-[82px] text-right">차트</span>
+              <span className="w-[54px] text-right">일간</span>
+              <span className="w-[54px] text-right">주간</span>
+              <span className="w-[54px] text-right">월간</span>
+              <span className="w-[52px] text-right">거래량</span>
+              <span className="w-[20px]" />
+            </div>
           </div>
 
           {/* ETF 목록 */}
@@ -294,11 +295,10 @@ export default function EtfFlowPage() {
                 : etf.volumeRatio >= 1.2 ? "bg-blue-500/5"
                 : "")}>
                 <button
-                  className="grid w-full items-center gap-2 px-3 py-2 text-left hover:bg-muted/20"
-                  style={{ gridTemplateColumns: "1fr 56px 52px 52px 52px 60px 16px" }}
+                  className="flex w-full items-center px-3 py-2 text-left hover:bg-muted/20"
                   onClick={() => setExpanded(expanded === etf.ticker ? null : etf.ticker)}>
                   {/* 종목명 */}
-                  <div className="flex min-w-0 items-center gap-2">
+                  <div className="flex min-w-0 flex-1 items-center gap-2">
                     <div className={cn("h-4 w-0.5 shrink-0 rounded-full",
                       etf.changePct >= 2 ? "bg-emerald-500" : etf.changePct >= 0 ? "bg-emerald-500/50"
                       : etf.changePct >= -2 ? "bg-red-500/50" : "bg-red-500")} />
@@ -310,14 +310,15 @@ export default function EtfFlowPage() {
                       <span className="shrink-0 text-[10px] text-muted-foreground/60">{etf.category}</span>
                     )}
                   </div>
-                  {/* 차트 */}
-                  <div className="flex justify-end"><Spark data={etf.sparkline} changePct={etf.changePct} /></div>
-                  {/* 수익률 */}
-                  <div className="text-right"><Pct v={etf.changePct} /></div>
-                  <div className="text-right"><Pct v={etf.weekChangePct} /></div>
-                  <div className="text-right"><Pct v={etf.monthChangePct} /></div>
-                  <div className="text-right"><VolBadge ratio={etf.volumeRatio} /></div>
-                  <div>{expanded === etf.ticker ? <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" /> : <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />}</div>
+                  {/* 지표 컬럼 (항상 compact하게 오른쪽에 붙음) */}
+                  <div className="flex shrink-0 items-center">
+                    <div className="w-[82px] flex justify-end"><Spark data={etf.sparkline} changePct={etf.changePct} /></div>
+                    <div className="w-[54px] text-right"><Pct v={etf.changePct} /></div>
+                    <div className="w-[54px] text-right"><Pct v={etf.weekChangePct} /></div>
+                    <div className="w-[54px] text-right"><Pct v={etf.monthChangePct} /></div>
+                    <div className="w-[52px] text-right"><VolBadge ratio={etf.volumeRatio} /></div>
+                    <div className="w-[20px] flex justify-end">{expanded === etf.ticker ? <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" /> : <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />}</div>
+                  </div>
                 </button>
                 {expanded === etf.ticker && (
                   <div className="border-t border-border/40 bg-muted/10 px-4 py-3">
