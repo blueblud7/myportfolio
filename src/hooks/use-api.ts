@@ -8,9 +8,9 @@ export function useAccounts() {
   return useSWR<Account[]>("/api/accounts", arrayFetcher);
 }
 
-export function useHoldings(accountId?: number) {
+export function useHoldings(accountId?: number, swrOptions?: { refreshInterval?: number }) {
   const key = accountId ? `/api/holdings?account_id=${accountId}` : "/api/holdings";
-  return useSWR(key, arrayFetcher, { dedupingInterval: 60_000 });
+  return useSWR(key, arrayFetcher, { dedupingInterval: 60_000, ...swrOptions });
 }
 
 export function useExchangeRate() {

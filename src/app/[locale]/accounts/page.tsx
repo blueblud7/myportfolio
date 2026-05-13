@@ -21,7 +21,7 @@ type ViewMode = "card" | "list";
 export default function AccountsPage() {
   const t = useTranslations("Accounts");
   const { data: accounts, mutate } = useAccounts();
-  const { data: holdings, mutate: mutateHoldings } = useHoldings();
+  const { data: holdings, mutate: mutateHoldings } = useHoldings(undefined, { refreshInterval: 5 * 60 * 1000 });
   const { data: exchangeRateData } = useExchangeRate();
   const { data: dailyChanges } = useAccountDailyChange();
   const [formOpen, setFormOpen] = useState(false);
@@ -132,13 +132,6 @@ export default function AccountsPage() {
     }
   }, [holdings, handleRefreshAll]);
 
-  useEffect(() => {
-    const onVisible = () => {
-      if (document.visibilityState === "visible") handleRefreshAll();
-    };
-    document.addEventListener("visibilitychange", onVisible);
-    return () => document.removeEventListener("visibilitychange", onVisible);
-  }, [handleRefreshAll]);
 
   const exchangeRate = exchangeRateData?.rate ?? 1350;
 
