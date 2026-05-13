@@ -23,19 +23,21 @@ const SYMBOLS = [
 ];
 
 const LOOKBACKS = [
-  { value: 20,  label: "20일" },
-  { value: 40,  label: "40일" },
-  { value: 60,  label: "60일" },
-  { value: 90,  label: "90일" },
-  { value: 120, label: "120일" },
+  { value: 20,  label: "1개월" },
+  { value: 60,  label: "3개월" },
+  { value: 120, label: "6개월" },
+  { value: 250, label: "1년" },
+  { value: 500, label: "2년" },
 ];
 
 const FORWARDS = [
-  { value: 30,  label: "30일" },
-  { value: 60,  label: "60일" },
-  { value: 90,  label: "90일" },
-  { value: 120, label: "120일" },
-  { value: 180, label: "180일" },
+  { value: 90,   label: "3개월" },
+  { value: 180,  label: "6개월" },
+  { value: 365,  label: "1년" },
+  { value: 730,  label: "2년" },
+  { value: 1095, label: "3년" },
+  { value: 1825, label: "5년" },
+  { value: 3650, label: "10년" },
 ];
 
 const MATCH_COLORS = [
@@ -51,6 +53,19 @@ function fmtPct(v: number, plusSign = true) {
 
 function fmtDate(d: string) {
   return d.slice(0, 7); // YYYY-MM
+}
+
+function fmtPeriod(days: number): string {
+  if (days < 60)   return `${days}일`;
+  if (days < 365)  return `${Math.round(days / 30)}개월`;
+  const y = days / 365;
+  return y % 1 === 0 ? `${y}년` : `${y.toFixed(1)}년`;
+}
+
+function fmtForwardLabel(day: number, total: number): string {
+  if (total <= 200) return `+${day}일`;
+  if (total <= 800) return `+${Math.round(day / 30)}M`;
+  return `+${(day / 365).toFixed(1)}Y`;
 }
 
 // ── 차트 툴팁 ────────────────────────────────────────────────────────────────
@@ -79,7 +94,7 @@ function CustomTooltip({ active, payload, label }: any) {
 export default function PatternLabPage() {
   const [symbol,   setSymbol]   = useState("^IXIC");
   const [lookback, setLookback] = useState(60);
-  const [forward,  setForward]  = useState(90);
+  const [forward,  setForward]  = useState(365);
   const [topK,     setTopK]     = useState(5);
   const [data,     setData]     = useState<PatternMatchResponse | null>(null);
   const [loading,  setLoading]  = useState(false);
@@ -122,19 +137,23 @@ export default function PatternLabPage() {
     });
   }, [data, selectedMatch]);
 
-  // ── 이후 구간 차트 데이터 ────────────────────────────────────────────────
+  // ── 이후 구간 차트 데이터 (최대 300포인트로 다운샘플) ───────────────────
   const forwardChartData = useMemo(() => {
     if (!data) return [];
-    return Array.from({ length: data.forward }, (_, i) => {
-      const point: Record<string, number | string> = { day: `+${i + 1}일` };
+    const total = data.forward;
+    const step  = Math.max(1, Math.ceil(total / 300));
+    const points: Record<string, number | string>[] = [];
+    for (let i = 0; i < total; i += step) {
+      const point: Record<string, number | string> = { day: fmtForwardLabel(i + 1, total) };
       data.matches.forEach((m, mi) => {
         if (selectedMatch === null || selectedMatch === mi) {
           const v = m.forwardNorm[i];
           if (v != null) point[`유사${mi + 1} (${fmtDate(m.startDate)})`] = parseFloat(v.toFixed(3));
         }
       });
-      return point;
-    });
+      points.push(point);
+    }
+    return points;
   }, [data, selectedMatch]);
 
   const symbolName = SYMBOLS.find((s) => s.value === symbol)?.label ?? symbol;
@@ -259,7 +278,7 @@ export default function PatternLabPage() {
       {loading && (
         <div className="flex flex-col items-center gap-3 py-20 text-muted-foreground">
           <RefreshCw className="h-8 w-8 animate-spin opacity-40" />
-          <p className="text-sm">10년 데이터에서 유사 패턴 검색 중...</p>
+          <p className="text-sm">30년 데이터에서 유사 패턴 검색 중...</p>
         </div>
       )}
 
@@ -273,7 +292,7 @@ export default function PatternLabPage() {
               <p className="mt-1 text-lg font-bold text-violet-400">{data.displayName}</p>
             </div>
             <div className="rounded-xl border border-border bg-card p-4 text-center">
-              <p className="text-xs text-muted-foreground">유사 구간 평균 이후 수익률 ({forward}일)</p>
+              <p className="text-xs text-muted-foreground">유사 구간 평균 이후 수익률 ({fmtPeriod(forward)})</p>
               <p className={cn("mt-1 text-lg font-bold tabular-nums", data.avgForwardReturn >= 0 ? "text-emerald-400" : "text-red-400")}>
                 {fmtPct(data.avgForwardReturn)}
               </p>
@@ -346,7 +365,7 @@ export default function PatternLabPage() {
 
           {/* 현재 vs 유사 구간 비교 차트 */}
           <div className="rounded-xl border border-border bg-card p-4">
-            <h2 className="mb-1 text-sm font-semibold">패턴 비교 ({lookback}일)</h2>
+            <h2 className="mb-1 text-sm font-semibold">패턴 비교 ({fmtPeriod(lookback)})</h2>
             <p className="mb-4 text-xs text-muted-foreground">현재 패턴(굵은 선)과 과거 유사 구간을 겹쳐 비교</p>
             <ResponsiveContainer width="100%" height={260}>
               <LineChart data={compareChartData} margin={{ left: 0, right: 16, top: 4, bottom: 4 }}>
@@ -391,8 +410,8 @@ export default function PatternLabPage() {
 
           {/* 이후 전개 예측 차트 */}
           <div className="rounded-xl border border-border bg-card p-4">
-            <h2 className="mb-1 text-sm font-semibold">이후 전개 ({forward}일) — 유사 구간의 실제 흐름</h2>
-            <p className="mb-4 text-xs text-muted-foreground">각 유사 구간이 끝난 시점을 0%로 놓고, 이후 {forward}일간의 실제 흐름</p>
+            <h2 className="mb-1 text-sm font-semibold">이후 전개 ({fmtPeriod(forward)}) — 유사 구간의 실제 흐름</h2>
+            <p className="mb-4 text-xs text-muted-foreground">각 유사 구간이 끝난 시점을 0%로 놓고, 이후 {fmtPeriod(forward)}간의 실제 흐름</p>
             <ResponsiveContainer width="100%" height={260}>
               <LineChart data={forwardChartData} margin={{ left: 0, right: 16, top: 4, bottom: 4 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#27272a" />
@@ -426,7 +445,7 @@ export default function PatternLabPage() {
             <div className="mt-4 grid grid-cols-3 gap-3 text-center text-xs">
               {[
                 {
-                  label: `평균 이후 수익률 (${forward}일)`,
+                  label: `평균 이후 수익률 (${fmtPeriod(forward)})`,
                   value: fmtPct(data.avgForwardReturn),
                   color: data.avgForwardReturn >= 0 ? "text-emerald-400" : "text-red-400",
                   icon: data.avgForwardReturn >= 0 ? TrendingUp : data.avgForwardReturn < 0 ? TrendingDown : Minus,
@@ -456,7 +475,7 @@ export default function PatternLabPage() {
           </div>
 
           <p className="text-[11px] text-zinc-600">
-            * 과거 유사도 분석은 참고용이며 미래 수익을 보장하지 않습니다. Yahoo Finance 10년 데이터 기준 · 1시간 캐시 · Pearson 상관계수 기반
+            * 과거 유사도 분석은 참고용이며 미래 수익을 보장하지 않습니다. Yahoo Finance 30년 데이터 기준 · 1시간 캐시 · Pearson 상관계수 기반
           </p>
         </div>
       )}
@@ -469,8 +488,8 @@ export default function PatternLabPage() {
             지수와 기간을 선택하고 <b className="text-foreground">패턴 분석</b>을 실행하세요
           </p>
           <p className="text-xs text-center max-w-sm leading-relaxed">
-            현재 {symbolName}의 최근 {lookback}일 흐름과 가장 유사한 과거 구간 {topK}개를 찾아<br />
-            이후 {forward}일간 실제 전개를 보여줍니다
+            현재 {symbolName}의 최근 {fmtPeriod(lookback)} 흐름과 가장 유사한 과거 구간 {topK}개를 찾아<br />
+            이후 {fmtPeriod(forward)}간 실제 전개를 보여줍니다
           </p>
         </div>
       )}

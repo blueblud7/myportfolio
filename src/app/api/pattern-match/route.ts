@@ -63,8 +63,8 @@ const SYMBOL_NAMES: Record<string, string> = {
 export async function GET(req: NextRequest) {
   const { searchParams } = req.nextUrl;
   const symbol    = searchParams.get("symbol")   ?? "^IXIC";
-  const lookback  = Math.max(20, Math.min(120, parseInt(searchParams.get("lookback")  ?? "60")));
-  const forward   = Math.max(10, Math.min(180, parseInt(searchParams.get("forward")   ?? "90")));
+  const lookback  = Math.max(20, Math.min(500, parseInt(searchParams.get("lookback")  ?? "60")));
+  const forward   = Math.max(30, Math.min(3650, parseInt(searchParams.get("forward")  ?? "365")));
   const topK      = Math.max(3,  Math.min(10,  parseInt(searchParams.get("topK")      ?? "5")));
 
   const today = new Date().toISOString().split("T")[0];
@@ -72,9 +72,9 @@ export async function GET(req: NextRequest) {
   const cached = await getStockCache<PatternMatchResponse>(cacheKey);
   if (cached) return NextResponse.json(cached);
 
-  // 10년 데이터 fetch
+  // 30년 데이터 fetch (긴 예측 기간 지원)
   const endDate   = today;
-  const startDate = new Date(Date.now() - 10 * 365.25 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
+  const startDate = new Date(Date.now() - 30 * 365.25 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
   const history   = await getBenchmarkHistory(symbol, startDate, endDate);
 
   const minRequired = lookback + forward + 60;
@@ -126,9 +126,10 @@ export async function GET(req: NextRequest) {
   matches.sort((a, b) => b.correlation - a.correlation);
   const selected: PatternMatch[] = [];
   for (const m of matches) {
+    const minGap = Math.max(90, lookback);
     const overlap = selected.some((s) => {
       const diff = Math.abs(new Date(m.startDate).getTime() - new Date(s.startDate).getTime());
-      return diff < 90 * 24 * 60 * 60 * 1000;
+      return diff < minGap * 24 * 60 * 60 * 1000;
     });
     if (!overlap) selected.push(m);
     if (selected.length >= topK) break;
