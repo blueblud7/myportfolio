@@ -93,7 +93,29 @@ export default function AccountsPage() {
     try {
       const result = await refreshPrices(tickers);
       setRefreshResult({ updated: result.updated ?? 0, failed: result.failed ?? [] });
-      await mutateHoldings();
+
+      // POST에서 받은 quotes로 SWR 캐시를 직접 업데이트 (추가 Yahoo 호출 없이 즉시 반영)
+      if (result.quotes?.length) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const qMap = new Map<string, { price: number; changePct: number }>(
+          result.quotes.map((q: { ticker: string; price: number; changePct: number }) => [q.ticker, q])
+        );
+        await mutateHoldings(
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          (current: any) => {
+            if (!Array.isArray(current)) return current;
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            return current.map((h: any) => {
+              const q = qMap.get(h.ticker);
+              if (!q || h.manual_price != null) return h;
+              return { ...h, current_price: q.price, change_pct: q.changePct };
+            });
+          },
+          { revalidate: false }
+        );
+      } else {
+        await mutateHoldings();
+      }
     } catch (e) {
       setRefreshResult({ updated: 0, failed: tickers });
       console.error("refresh failed", e);
