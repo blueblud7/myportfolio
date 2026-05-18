@@ -5,7 +5,7 @@ import { Link, usePathname } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
 import {
   LayoutDashboard, Wallet, BarChart3, TrendingUp, BookOpen,
-  Eye, EyeOff, FlaskConical, Bell, Sparkles, Activity, X, Layers, Microscope, PieChart, Receipt, Binoculars, FileText, CalendarDays, Search, LineChart,
+  Eye, EyeOff, FlaskConical, Bell, Sparkles, Activity, X, Layers, Microscope, PieChart, Receipt, Binoculars, FileText, CalendarDays, Search, LineChart, Rocket,
 } from "lucide-react";
 import { InvestorQuote } from "./InvestorQuote";
 import { usePrivacy } from "@/contexts/privacy-context";
@@ -47,6 +47,7 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
         { href: "/backtest", label: t("backtest"), icon: Activity },
         { href: "/etf-flow", label: "ETF 흐름", icon: Layers },
         { href: "/pattern-lab", label: "패턴 유사도", icon: LineChart },
+        { href: "/ten-bagger", label: "텐베거 스크리너", icon: Rocket },
       ],
     },
     {

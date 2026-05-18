@@ -3,6 +3,10 @@
     {
       "path": "/api/cron/fomo-agents",
       "schedule": "0 21 * * *"
+    },
+    {
+      "path": "/api/cron/ten-bagger",
+      "schedule": "0 22 * * 1-5"
     }
   ]
 }
