@@ -185,10 +185,10 @@ export async function GET() {
 
     if (inflowEtfs.length === 0) {
       const msg = withHoldings.length === 0
-        ? `ETF ${etfRows.length}개 분석됐지만 구성종목 데이터가 없습니다 (Yahoo Finance 한국 ETF 미지원). KRX Open API 연동이 필요합니다.`
+        ? `구성종목 데이터가 없습니다. ETF 흐름 페이지에서 "강제 새로고침"을 눌러 KRX 데이터를 다시 로드해 주세요.`
         : highVolume.length === 0
           ? `거래량 급증 ETF 없음 — 오늘 거래량이 평균의 1.2배 이상인 ETF가 없습니다 (${etfRows.length}개 중 0개).`
-          : `거래량 급증 ETF ${highVolume.length}개 있지만 구성종목 데이터가 없습니다.`;
+          : `거래량 급증 ETF ${highVolume.length}개 있지만 구성종목 데이터가 없습니다. 강제 새로고침을 눌러주세요.`;
       return NextResponse.json({ stocks: [], message: msg, debug });
     }
 
