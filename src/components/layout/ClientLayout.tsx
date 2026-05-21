@@ -1,20 +1,169 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { SWRConfig } from "swr";
 import { Sidebar } from "./Sidebar";
 import { GlobalFooterDisclaimer } from "./Disclaimer";
 import { PrivacyProvider } from "@/contexts/privacy-context";
 import { ThemeProvider } from "@/contexts/theme-context";
+import { useSession } from "@/hooks/use-session";
+
+// 소프트 게이트 적용 경로 (미들웨어는 통과시키되 비로그인 시 블러 오버레이 표시)
+const PRIVATE_PATHS = [
+  "/dashboard",
+  "/accounts",
+  "/alerts",
+  "/budget",
+  "/diary",
+  "/goals",
+  "/insights",
+  "/reports",
+  "/watchlist",
+];
+
+const GATE_META: Record<string, { title: string; desc: string; bullets: string[] }> = {
+  "/dashboard":  { title: "내 포트폴리오", desc: "여러 계좌의 수익률·배분을 한눈에.", bullets: ["다계좌 통합 평가액", "실시간 손익 추적", "섹터·통화 배분 분석"] },
+  "/accounts":   { title: "계좌 관리", desc: "증권사별 보유 종목과 수익률을 확인하세요.", bullets: ["계좌별 보유 종목", "평균 단가·수익률", "파이차트 배분"] },
+  "/watchlist":  { title: "워치리스트", desc: "관심 종목을 저장하고 모니터링하세요.", bullets: ["종목 저장·관리", "가격 알림 연동", "실적 일정 추적"] },
+  "/insights":   { title: "AI 인사이트", desc: "내 포트폴리오 기반 AI 분석.", bullets: ["보유 종목 컨텍스트", "리밸런스 제안", "리스크 시나리오"] },
+  "/reports":    { title: "성과 리포트", desc: "백분위·벤치마크 대비 수익률 분석.", bullets: ["CAGR·샤프 분석", "벤치마크 비교", "리스크 지표"] },
+  "/diary":      { title: "투자 일지", desc: "매매 근거와 결과를 기록하세요.", bullets: ["의사결정 기록", "패턴 발견", "승률 통계"] },
+  "/budget":     { title: "예산 관리", desc: "월별 수입·지출을 추적하세요.", bullets: ["카테고리 분류", "목표 대비 현황", "월별 트렌드"] },
+  "/goals":      { title: "투자 목표", desc: "목표 수익률과 달성도를 추적하세요.", bullets: ["목표 설정·추적", "달성률 시각화", "시뮬레이션"] },
+  "/alerts":     { title: "알림 설정", desc: "가격·이벤트 알림을 설정하세요.", bullets: ["가격 도달 알림", "실적 발표 알림", "맞춤 조건 설정"] },
+};
+
+function LockIcon() {
+  return (
+    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+      <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+    </svg>
+  );
+}
+
+function CheckIcon() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="m5 12 5 5 9-11"/>
+    </svg>
+  );
+}
+
+function SoftGateOverlay({ stripped }: { stripped: string }) {
+  const key = PRIVATE_PATHS.find(p => stripped.startsWith(p)) ?? "/dashboard";
+  const meta = GATE_META[key] ?? GATE_META["/dashboard"];
+
+  return (
+    <div style={{
+      position: "absolute", inset: 0,
+      display: "flex", alignItems: "center", justifyContent: "center",
+      background: "oklch(0.155 0.006 250 / 0.75)",
+      backdropFilter: "blur(2px)",
+      zIndex: 20,
+      padding: "24px",
+    }}>
+      <div style={{
+        background: "var(--surface)",
+        border: "1px solid var(--border-strong)",
+        borderRadius: 18,
+        padding: "36px 40px",
+        maxWidth: 380,
+        width: "100%",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        gap: 0,
+        boxShadow: "0 40px 80px -20px oklch(0 0 0 / 0.6)",
+        textAlign: "center",
+      }}>
+        {/* Icon */}
+        <div style={{
+          width: 52, height: 52, borderRadius: 14,
+          background: "var(--accent-bg)", color: "var(--accent)",
+          display: "grid", placeItems: "center",
+          border: "1px solid oklch(0.50 0.10 75 / 0.4)",
+          marginBottom: 20,
+        }}>
+          <LockIcon />
+        </div>
+
+        {/* Title */}
+        <div style={{ fontSize: 20, fontWeight: 600, letterSpacing: "-0.02em", marginBottom: 8 }}>
+          {meta.title}
+        </div>
+
+        {/* Desc */}
+        <div style={{ fontSize: 14, color: "var(--fg-3)", lineHeight: 1.55, marginBottom: 24 }}>
+          {meta.desc}<br/>
+          <span style={{ fontSize: 13 }}>로그인 후 바로 이용할 수 있어요.</span>
+        </div>
+
+        {/* Feature bullets */}
+        <div style={{
+          width: "100%",
+          background: "var(--bg-2)",
+          border: "1px solid var(--border)",
+          borderRadius: 10,
+          padding: "14px 16px",
+          marginBottom: 24,
+          display: "flex",
+          flexDirection: "column",
+          gap: 8,
+          textAlign: "left",
+        }}>
+          {meta.bullets.map((b, i) => (
+            <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "var(--fg-2)" }}>
+              <span style={{ color: "var(--accent)", flexShrink: 0 }}><CheckIcon /></span>
+              {b}
+            </div>
+          ))}
+        </div>
+
+        {/* CTAs */}
+        <div style={{ display: "flex", gap: 8, width: "100%" }}>
+          <Link
+            href="/login"
+            style={{
+              flex: 1, display: "flex", alignItems: "center", justifyContent: "center",
+              height: 40, borderRadius: 8, fontSize: 14, fontWeight: 500,
+              background: "var(--accent)", color: "var(--accent-fg)",
+              border: "none", textDecoration: "none",
+              boxShadow: "0 8px 20px -8px var(--accent)",
+            }}
+          >
+            로그인
+          </Link>
+          <Link
+            href="/login"
+            style={{
+              flex: 1, display: "flex", alignItems: "center", justifyContent: "center",
+              height: 40, borderRadius: 8, fontSize: 14, fontWeight: 500,
+              background: "var(--bg-3)", color: "var(--fg)",
+              border: "1px solid var(--border)", textDecoration: "none",
+            }}
+          >
+            무료 시작
+          </Link>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export function ClientLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const stripped = pathname.replace(/^\/(ko|en)/, "") || "/";
-  const isLoginPage = stripped === "/" || stripped === "/login" || stripped === "/landing";
+  const loggedIn = useSession();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  if (isLoginPage) {
+  const stripped = pathname.replace(/^\/(ko|en)/, "") || "/";
+  const isNoSidebar = stripped === "/" || stripped === "/login" || stripped === "/landing";
+  const isPrivate = PRIVATE_PATHS.some(p => stripped.startsWith(p));
+  const showGate = isPrivate && loggedIn === false;
+
+  if (isNoSidebar) {
     return <>{children}</>;
   }
 
@@ -28,7 +177,6 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
               onMobileClose={() => setMobileMenuOpen(false)}
             />
             <div style={{ minWidth: 0, overflowY: "auto", overflowX: "hidden", display: "flex", flexDirection: "column" }}>
-              {/* Mobile header bar */}
               <div className="mobile-header" style={{ display: "none" }}>
                 <button
                   onClick={() => setMobileMenuOpen(true)}
@@ -40,7 +188,16 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
                   </svg>
                 </button>
               </div>
-              <main style={{ flex: 1, padding: "var(--gutter)", minWidth: 0 }}>{children}</main>
+              <main style={{ flex: 1, padding: "var(--gutter)", minWidth: 0, position: "relative" }}>
+                {showGate ? (
+                  <>
+                    <div style={{ filter: "blur(6px)", pointerEvents: "none", userSelect: "none", opacity: 0.35 }}>
+                      {children}
+                    </div>
+                    <SoftGateOverlay stripped={stripped} />
+                  </>
+                ) : children}
+              </main>
               <GlobalFooterDisclaimer />
             </div>
           </div>

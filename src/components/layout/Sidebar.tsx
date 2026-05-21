@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Link, usePathname } from "@/i18n/navigation";
+import { useSession } from "@/hooks/use-session";
 import { cn } from "@/lib/utils";
 import { usePrivacy } from "@/contexts/privacy-context";
 import { useRouter } from "next/navigation";
@@ -89,18 +90,6 @@ interface SidebarProps {
   onMobileClose?: () => void;
 }
 
-// 세션 상태를 가져오는 훅
-function useSession() {
-  const [loggedIn, setLoggedIn] = useState<boolean | null>(null);
-
-  useEffect(() => {
-    fetch("/api/me", { cache: "no-store" })
-      .then(r => setLoggedIn(r.ok))
-      .catch(() => setLoggedIn(false));
-  }, []);
-
-  return loggedIn;
-}
 
 function SummaryFooter({
   loggedIn,
@@ -232,34 +221,22 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
             <div className="nav-section-title">{sec.section}</div>
             {sec.items.map((it) => {
               const locked = it.requiresAuth && loggedIn === false;
-              if (locked) {
-                return (
-                  <button
-                    key={it.href}
-                    onClick={handleLogin}
-                    className="nav-item"
-                    style={{ width: "100%", textAlign: "left", opacity: 0.45, cursor: "pointer" }}
-                    title="로그인 후 이용 가능"
-                  >
-                    <Icon name={it.icon} size={15} />
-                    <span style={{ flex: 1 }}>{it.label}</span>
-                    {/* 자물쇠 아이콘 */}
-                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.6, flexShrink: 0 }}>
-                      <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
-                      <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-                    </svg>
-                  </button>
-                );
-              }
               return (
                 <Link
                   key={it.href}
                   href={it.href as Parameters<typeof Link>[0]["href"]}
                   onClick={onClose}
-                  className={cn("nav-item", isActive(it.href) && "active")}
+                  className={cn("nav-item", isActive(it.href) && "active", locked && "locked")}
+                  title={locked ? "로그인 후 이용 가능" : undefined}
                 >
                   <Icon name={it.icon} size={15} />
-                  <span>{it.label}</span>
+                  <span style={{ flex: 1 }}>{it.label}</span>
+                  {locked && (
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.5, flexShrink: 0 }}>
+                      <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                      <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                    </svg>
+                  )}
                 </Link>
               );
             })}
