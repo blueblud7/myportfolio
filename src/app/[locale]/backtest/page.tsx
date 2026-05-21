@@ -5,9 +5,6 @@ import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, ReferenceLine, BarChart, Bar, Cell, Legend,
 } from "recharts";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { Play, Plus, X, TrendingUp, TrendingDown, BarChart2, Target, Award } from "lucide-react";
 
@@ -137,24 +134,20 @@ export default function BacktestPage() {
       </div>
 
       {/* 파라미터 설정 */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-sm">전략 파라미터</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
+      <div className="card">
+        <div className="card-head"><div><h3 className="card-title">전략 파라미터</h3></div></div>
+        <div className="card-body card-body-padded space-y-4">
           {/* 프리셋 */}
           <div className="flex flex-wrap gap-2">
             <span className="text-xs text-muted-foreground self-center">프리셋:</span>
             {PRESET_UNIVERSES.map((p) => (
-              <Button
+              <button
                 key={p.label}
-                size="sm"
-                variant="outline"
-                className="h-7 text-xs"
+                className="btn"
                 onClick={() => setTickers(p.tickers)}
               >
                 {p.label}
-              </Button>
+              </button>
             ))}
           </div>
 
@@ -163,12 +156,12 @@ export default function BacktestPage() {
             <label className="text-xs text-muted-foreground">종목 (티커)</label>
             <div className="mt-1 flex flex-wrap gap-1.5">
               {tickers.map((t) => (
-                <Badge key={t} variant="secondary" className="gap-1 pr-1">
+                <span key={t} className="badge badge-outline gap-1 pr-1">
                   {t}
                   <button onClick={() => removeTicker(t)} className="hover:text-destructive">
                     <X className="h-3 w-3" />
                   </button>
-                </Badge>
+                </span>
               ))}
               <div className="flex gap-1">
                 <input
@@ -178,9 +171,9 @@ export default function BacktestPage() {
                   onChange={(e) => setTickerInput(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && addTicker()}
                 />
-                <Button size="sm" variant="outline" className="h-6 w-6 p-0" onClick={addTicker}>
+                <button className="btn btn-icon h-6 w-6" onClick={addTicker}>
                   <Plus className="h-3 w-3" />
-                </Button>
+                </button>
               </div>
             </div>
           </div>
@@ -240,14 +233,14 @@ export default function BacktestPage() {
             </div>
           </div>
 
-          <Button onClick={runBacktest} disabled={loading || tickers.length === 0} className="w-full sm:w-auto">
+          <button onClick={runBacktest} disabled={loading || tickers.length === 0} className="btn btn-primary w-full sm:w-auto">
             <Play className="mr-2 h-4 w-4" />
             {loading ? "백테스트 실행 중..." : "백테스트 실행"}
-          </Button>
+          </button>
 
           {error && <p className="text-sm text-destructive">{error}</p>}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       {/* 결과 */}
       {results.length > 0 && (
@@ -255,16 +248,16 @@ export default function BacktestPage() {
           {/* 성과 요약 카드 */}
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {results.map((r, i) => (
-              <Card key={r.ticker} className={cn("border-l-4")} style={{ borderLeftColor: LINE_COLORS[i % LINE_COLORS.length] }}>
-                <CardHeader className="pb-1">
-                  <CardTitle className="flex items-center justify-between text-sm">
-                    <span>{r.ticker}</span>
-                    <Badge variant={r.totalReturn >= 0 ? "default" : "destructive"} className="text-xs">
+              <div key={r.ticker} className="card border-l-4" style={{ borderLeftColor: LINE_COLORS[i % LINE_COLORS.length] }}>
+                <div className="card-head">
+                  <div className="flex items-center justify-between w-full">
+                    <h3 className="card-title">{r.ticker}</h3>
+                    <span className={cn("badge", r.totalReturn >= 0 ? "badge-up" : "badge-down")}>
                       {r.totalReturn >= 0 ? "+" : ""}{r.totalReturn.toFixed(1)}%
-                    </Badge>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-1.5 text-xs">
+                    </span>
+                  </div>
+                </div>
+                <div className="card-body card-body-padded space-y-1.5 text-xs">
                   <div className="flex justify-between">
                     <span className="text-muted-foreground flex items-center gap-1"><TrendingUp className="h-3 w-3" />CAGR</span>
                     <span className={cn("font-semibold", r.cagr >= 0 ? "text-emerald-500" : "text-red-500")}>
@@ -291,30 +284,28 @@ export default function BacktestPage() {
                       {(r.totalReturn - r.buyHoldReturn).toFixed(1)}%p
                     </span>
                   </div>
-                </CardContent>
-              </Card>
+                </div>
+              </div>
             ))}
           </div>
 
           {/* 탭 차트 */}
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm">분석 결과</CardTitle>
+          <div className="card">
+            <div className="card-head">
+              <div><h3 className="card-title">분석 결과</h3></div>
               <div className="flex gap-1">
                 {(["chart", "yearly", "trades"] as const).map((tab) => (
-                  <Button
+                  <button
                     key={tab}
-                    size="sm"
-                    variant={activeTab === tab ? "default" : "ghost"}
-                    className="h-7 px-2.5 text-xs"
+                    className={cn("btn", activeTab === tab ? "btn-primary" : "btn-ghost")}
                     onClick={() => setActiveTab(tab)}
                   >
                     {tab === "chart" ? "자산 곡선" : tab === "yearly" ? "연도별 수익" : "거래 내역"}
-                  </Button>
+                  </button>
                 ))}
               </div>
-            </CardHeader>
-            <CardContent>
+            </div>
+            <div className="card-body card-body-padded">
               {activeTab === "chart" && (
                 <ResponsiveContainer width="100%" height={320}>
                   <LineChart data={mergedCurve} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
@@ -395,9 +386,9 @@ export default function BacktestPage() {
                             ${t.pnl.toFixed(0)}
                           </td>
                           <td className="py-1.5 text-center">
-                            <Badge variant="outline" className="text-[10px]">
+                            <span className="badge badge-outline text-[10px]">
                               {t.reason === "rsi_crossdown" ? "RSI" : "Trail"}
-                            </Badge>
+                            </span>
                           </td>
                         </tr>
                       ))}
@@ -408,8 +399,8 @@ export default function BacktestPage() {
                   )}
                 </div>
               )}
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         </>
       )}
 

@@ -3,8 +3,6 @@
 import { useState, useMemo } from "react";
 import { useTranslations } from "next-intl";
 import { useAccounts, useBankBalances } from "@/hooks/use-api";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import {
   Table,
   TableBody,
@@ -13,7 +11,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
 import { BankBalanceForm } from "@/components/bank/BankBalanceForm";
 import {
   LineChart,
@@ -89,19 +86,17 @@ export default function BankPage() {
       </div>
 
       {bankAccounts.length === 0 && (
-        <Card>
-          <CardContent className="py-12 text-center text-muted-foreground">
+        <div className="card">
+          <div className="card-body card-body-padded py-12 text-center text-muted-foreground">
             {t("noAccounts")}
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       )}
 
       {chartData.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>{t("balanceTrend")}</CardTitle>
-          </CardHeader>
-          <CardContent>
+        <div className="card">
+          <div className="card-head"><div><h3 className="card-title">{t("balanceTrend")}</h3></div></div>
+          <div className="card-body card-body-padded">
             <ResponsiveContainer width="100%" height={250}>
               <LineChart data={chartData}>
                 <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
@@ -128,16 +123,14 @@ export default function BankPage() {
                 />
               </LineChart>
             </ResponsiveContainer>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       )}
 
       {balancesWithAccount.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>{t("history")}</CardTitle>
-          </CardHeader>
-          <CardContent>
+        <div className="card">
+          <div className="card-head"><div><h3 className="card-title">{t("history")}</h3></div></div>
+          <div className="card-body">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -154,30 +147,28 @@ export default function BankPage() {
                     <TableCell className="font-mono text-sm">{b.date}</TableCell>
                     <TableCell>
                       {b.account_name}
-                      <Badge variant="secondary" className="ml-2 text-xs">
+                      <span className="badge ml-2 text-xs">
                         {b.currency}
-                      </Badge>
+                      </span>
                     </TableCell>
                     <TableCell className="text-right font-mono font-medium">
                       <Money value={b.balance} currency={b.currency} />
                     </TableCell>
                     <TableCell className="text-muted-foreground">{b.note}</TableCell>
                     <TableCell>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-7 w-7 text-destructive"
+                      <button
+                        className="btn btn-ghost btn-icon text-destructive"
                         onClick={() => handleDelete(b.id)}
                       >
                         <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
+                      </button>
                     </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
             </Table>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       )}
 
       {accounts && (

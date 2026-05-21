@@ -5,9 +5,6 @@ import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, Legend, BarChart, Bar, Cell, ReferenceLine, Brush,
 } from "recharts";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import {
   Play, Plus, X, Trophy, Loader2, TrendingUp, TrendingDown,
@@ -472,31 +469,29 @@ export default function PositionLabPage() {
       </div>
 
       {/* Config */}
-      <Card className="border-border dark:border-zinc-800 bg-card dark:bg-zinc-900/60">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-sm text-foreground">설정</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
+      <div className="card border-border dark:border-zinc-800 bg-card dark:bg-zinc-900/60">
+        <div className="card-head"><div><h3 className="card-title">설정</h3></div></div>
+        <div className="card-body card-body-padded space-y-4">
           {/* Tickers */}
           <div className="space-y-2">
             <label className="text-xs font-semibold text-muted-foreground">종목 티커 (복수 선택 가능)</label>
             <div className="flex flex-wrap gap-1.5 items-center">
               {tickers.map(t => (
-                <Badge key={t} variant="secondary" className="gap-1 pr-1 bg-muted dark:bg-zinc-800 text-foreground border-border dark:border-zinc-700">
+                <span key={t} className="badge badge-outline gap-1 pr-1 bg-muted dark:bg-zinc-800 text-foreground">
                   {t}
                   <button onClick={() => setTickers(p => p.filter(x => x !== t))} className="hover:text-red-400 transition">
                     <X className="h-3 w-3" />
                   </button>
-                </Badge>
+                </span>
               ))}
               <div className="flex gap-1">
                 <input className="h-7 w-20 rounded-lg border border-border dark:border-zinc-700 bg-muted dark:bg-zinc-800 px-2 text-xs text-foreground outline-none focus:border-amber-500 transition"
                   placeholder="TSLA" value={tickerInput}
                   onChange={e => setTickerInput(e.target.value.toUpperCase())}
                   onKeyDown={e => e.key === "Enter" && addTicker()} />
-                <Button size="sm" variant="outline" className="h-7 w-7 p-0 border-border dark:border-zinc-700" onClick={() => addTicker()}>
+                <button className="btn btn-icon h-7 w-7 border-border dark:border-zinc-700" onClick={() => addTicker()}>
                   <Plus className="h-3 w-3" />
-                </Button>
+                </button>
               </div>
             </div>
             <div className="flex flex-wrap gap-1.5">
@@ -532,13 +527,13 @@ export default function PositionLabPage() {
             </div>
           </div>
 
-          <Button onClick={run} disabled={loading || tickers.length === 0}
-            className="bg-amber-600 hover:bg-amber-700 text-white gap-2">
+          <button onClick={run} disabled={loading || tickers.length === 0}
+            className="btn btn-primary bg-amber-600 hover:bg-amber-700 gap-2">
             {loading ? <><Loader2 className="h-4 w-4 animate-spin" />분석 중...</> : <><Play className="h-4 w-4" />전략 비교 실행</>}
-          </Button>
+          </button>
           {error && <p className="rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-2 text-sm text-red-400">{error}</p>}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       {/* Results */}
       {results && currentResults.length > 0 && (
@@ -560,14 +555,14 @@ export default function PositionLabPage() {
           {bestResult && <BestStrategyCard result={bestResult} ticker={activeTicker} />}
 
           {/* Quick rank bar */}
-          <Card className="border-border dark:border-zinc-800 bg-card dark:bg-zinc-900/60">
-            <CardHeader className="pb-2">
-              <CardTitle className="flex items-center gap-2 text-sm text-foreground">
+          <div className="card border-border dark:border-zinc-800 bg-card dark:bg-zinc-900/60">
+            <div className="card-head">
+              <div className="flex items-center gap-2">
                 <Target className="h-4 w-4 text-amber-400" />
-                수익률 순위 (총수익률 기준 · 차트 순서와 동일)
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2">
+                <h3 className="card-title">수익률 순위 (총수익률 기준 · 차트 순서와 동일)</h3>
+              </div>
+            </div>
+            <div className="card-body card-body-padded space-y-2">
               {[...currentResults].sort((a, b) => b.totalReturn - a.totalReturn).map((r, i) => {
                 const maxReturn = Math.max(...currentResults.map(x => x.totalReturn));
                 const barW = Math.max(4, (r.totalReturn / (maxReturn || 1)) * 100);
@@ -593,13 +588,13 @@ export default function PositionLabPage() {
                   </div>
                 );
               })}
-            </CardContent>
-          </Card>
+            </div>
+          </div>
 
           {/* Tabs */}
-          <Card className="border-border dark:border-zinc-800 bg-card dark:bg-zinc-900/60">
-            <CardHeader className="pb-0">
-              <div className="flex flex-wrap gap-1 border-b border-border dark:border-zinc-800 pb-3">
+          <div className="card border-border dark:border-zinc-800 bg-card dark:bg-zinc-900/60">
+            <div className="card-head pb-0">
+              <div className="flex flex-wrap gap-1 border-b border-border dark:border-zinc-800 pb-3 w-full">
                 {([
                   { key: "chart", label: "누적 수익률 차트" },
                   { key: "ranking", label: "상세 순위표" },
@@ -613,8 +608,8 @@ export default function PositionLabPage() {
                   </button>
                 ))}
               </div>
-            </CardHeader>
-            <CardContent className="pt-4">
+            </div>
+            <div className="card-body card-body-padded pt-4">
               {activeTab === "chart" && (
                 <div className="space-y-6">
                   <EquityChart results={currentResults} ticker={activeTicker} />
@@ -662,8 +657,8 @@ export default function PositionLabPage() {
                   )}
                 </div>
               )}
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         </div>
       )}
 

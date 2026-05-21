@@ -5,8 +5,6 @@ import useSWR from "swr";
 import { useTranslations, useLocale } from "next-intl";
 import { format } from "date-fns";
 import { ko, enUS } from "date-fns/locale";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -15,7 +13,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Badge } from "@/components/ui/badge";
 import { BookOpen, Plus, Pencil, Trash2, Search } from "lucide-react";
 import { DiaryPatternAnalysis } from "@/components/diary/DiaryPatternAnalysis";
 import type { DiaryEntry } from "@/types";
@@ -171,13 +168,13 @@ export default function DiaryPage() {
           const count = entries.filter((e) => e.mood === m.value).length;
           const label = moodLabels[m.value];
           return (
-            <Card key={m.value} className="text-center">
-              <CardContent className="pt-4 pb-3">
+            <div key={m.value} className="card text-center">
+              <div className="card-body card-body-padded pt-4 pb-3">
                 <div className="text-2xl">{label.split(" ")[0]}</div>
                 <div className="text-xs text-muted-foreground mt-1">{label.split(" ")[1]}</div>
                 <div className="text-xl font-bold mt-1">{count}</div>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           );
         })}
       </div>
@@ -192,9 +189,9 @@ export default function DiaryPage() {
             const isExpanded = expandedId === entry.id;
             const tags = tagList(entry.tags);
             return (
-              <Card key={entry.id} className="cursor-pointer hover:shadow-sm transition-shadow">
-                <CardHeader className="pb-2 pt-4 px-4">
-                  <div className="flex items-start justify-between gap-2">
+              <div key={entry.id} className="card cursor-pointer hover:shadow-sm transition-shadow">
+                <div className="card-head px-4 pt-4 pb-2">
+                  <div className="flex items-start justify-between gap-2 w-full">
                     <div
                       className="flex-1 min-w-0"
                       onClick={() => setExpandedId(isExpanded ? null : entry.id)}
@@ -208,54 +205,50 @@ export default function DiaryPage() {
                       <h3 className="font-semibold mt-1 truncate">{entry.title}</h3>
                     </div>
                     <div className="flex gap-1 shrink-0">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-7 w-7"
+                      <button
+                        className="btn btn-ghost btn-icon"
                         onClick={() => openEdit(entry)}
                       >
                         <Pencil className="h-3.5 w-3.5" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-7 w-7 text-destructive"
+                      </button>
+                      <button
+                        className="btn btn-ghost btn-icon text-destructive"
                         onClick={() => handleDelete(entry.id)}
                       >
                         <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
+                      </button>
                     </div>
                   </div>
-                </CardHeader>
+                </div>
                 {(isExpanded || !entry.content) && entry.content && (
-                  <CardContent className="px-4 pb-4 pt-0">
+                  <div className="card-body card-body-padded px-4 pb-4 pt-0">
                     <p className="text-sm text-muted-foreground whitespace-pre-wrap leading-relaxed">
                       {entry.content}
                     </p>
-                  </CardContent>
+                  </div>
                 )}
                 {!isExpanded && entry.content && (
-                  <CardContent className="px-4 pb-3 pt-0">
+                  <div className="card-body card-body-padded px-4 pb-3 pt-0">
                     <p
                       className="text-sm text-muted-foreground line-clamp-2 cursor-pointer"
                       onClick={() => setExpandedId(entry.id)}
                     >
                       {entry.content}
                     </p>
-                  </CardContent>
+                  </div>
                 )}
                 {tags.length > 0 && (
-                  <CardContent className="px-4 pb-3 pt-0">
+                  <div className="card-body card-body-padded px-4 pb-3 pt-0">
                     <div className="flex flex-wrap gap-1">
                       {tags.map((tag) => (
-                        <Badge key={tag} variant="secondary" className="text-xs">
+                        <span key={tag} className="badge text-xs">
                           #{tag}
-                        </Badge>
+                        </span>
                       ))}
                     </div>
-                  </CardContent>
+                  </div>
                 )}
-              </Card>
+              </div>
             );
           })}
         </div>
@@ -333,12 +326,12 @@ export default function DiaryPage() {
             </div>
 
             <div className="flex justify-end gap-2">
-              <Button variant="outline" onClick={() => setFormOpen(false)}>
+              <button className="btn" onClick={() => setFormOpen(false)}>
                 {tCommon("cancel")}
-              </Button>
-              <Button onClick={handleSave} disabled={saving || !form.title || !form.date}>
+              </button>
+              <button className="btn btn-primary" onClick={handleSave} disabled={saving || !form.title || !form.date}>
                 {saving ? tCommon("saving") : tCommon("save")}
-              </Button>
+              </button>
             </div>
           </div>
         </DialogContent>

@@ -1,10 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
 import { Target, TrendingUp, TrendingDown, Pencil, Check, X, RefreshCw, Calendar, Flame, ArrowRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { SectorFlowResponse, SectorItem, IndexItem } from "@/app/api/sector-flow/route";
@@ -203,14 +200,14 @@ function GoalForm({
         )}
 
         <div className="flex items-center gap-1">
-          <Button size="icon" variant="ghost" className="h-8 w-8 text-emerald-400 hover:text-emerald-300"
+          <button className="btn btn-ghost btn-icon text-emerald-400 hover:text-emerald-300"
             onClick={handleSave}>
             <Check className="h-4 w-4" />
-          </Button>
-          <Button size="icon" variant="ghost" className="h-8 w-8 text-zinc-500 hover:text-zinc-300"
+          </button>
+          <button className="btn btn-ghost btn-icon text-zinc-500 hover:text-zinc-300"
             onClick={onCancel}>
             <X className="h-4 w-4" />
-          </Button>
+          </button>
         </div>
       </div>
     </div>
@@ -324,28 +321,28 @@ export default function GoalsPage() {
       </div>
 
       {/* ── Annual Goal Card ── */}
-      <Card className="border-blue-500/20 bg-gradient-to-br from-blue-500/5 to-transparent">
-        <CardContent className="p-5">
+      <div className="card border-blue-500/20 bg-gradient-to-br from-blue-500/5 to-transparent">
+        <div className="card-body card-body-padded p-5">
           <div className="mb-4 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <span className="text-sm font-semibold text-blue-300">{goalData?.year ?? "—"}년 수익 목표</span>
               {goal && (
-                <Badge variant="outline" className={cn("text-xs",
+                <span className={cn("badge badge-outline text-xs",
                   isAhead ? "border-emerald-500/40 text-emerald-400" : "border-amber-500/40 text-amber-400")}>
                   {isAhead ? "목표 앞서는 중" : "목표 뒤처지는 중"}
-                </Badge>
+                </span>
               )}
             </div>
             {!editing && (
               <div className="flex items-center gap-1">
-                <Button size="sm" variant="ghost" className="h-7 gap-1.5 text-xs text-zinc-400 hover:text-zinc-200"
+                <button className="btn btn-ghost gap-1.5 text-xs text-zinc-400 hover:text-zinc-200"
                   onClick={() => setEditing(true)}>
                   <Pencil className="h-3 w-3" />
                   {goal ? "수정" : "목표 설정"}
-                </Button>
+                </button>
                 {goal && (
-                  <Button size="sm" variant="ghost" className="h-7 text-xs text-zinc-600 hover:text-red-400"
-                    onClick={deleteGoal}>삭제</Button>
+                  <button className="btn btn-ghost text-xs text-zinc-600 hover:text-red-400"
+                    onClick={deleteGoal}>삭제</button>
                 )}
               </div>
             )}
@@ -447,13 +444,13 @@ export default function GoalsPage() {
               <Target className="h-10 w-10 opacity-20" />
               <p className="text-sm">아직 올해 목표를 설정하지 않았습니다.</p>
               <p className="text-xs text-zinc-600">목표 금액($) 또는 목표 수익률(%)로 입력할 수 있습니다.</p>
-              <Button size="sm" variant="outline" onClick={() => setEditing(true)} className="mt-1">
+              <button className="btn mt-1" onClick={() => setEditing(true)}>
                 목표 설정하기
-              </Button>
+              </button>
             </div>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       {/* ── Sector Flow ── */}
       <div>
@@ -463,10 +460,10 @@ export default function GoalsPage() {
             <span className="font-semibold">섹터별 자금 흐름</span>
             <span className="text-xs text-zinc-500">— 기간별 등락률 (수익률 ≈ 자금 유입 프록시)</span>
           </div>
-          <Button size="icon" variant="ghost" className="h-7 w-7 text-zinc-500 hover:text-zinc-300"
+          <button className="btn btn-ghost btn-icon text-zinc-500 hover:text-zinc-300"
             onClick={() => loadFlow(period)}>
             <RefreshCw className={cn("h-3.5 w-3.5", loadingFlow && "animate-spin")} />
-          </Button>
+          </button>
         </div>
 
         {/* Period tabs */}
@@ -494,13 +491,13 @@ export default function GoalsPage() {
                 <span className="text-lg">🇺🇸</span>
                 <span className="font-semibold">미국 섹터 (S&P SPDR ETF)</span>
                 {flowData.us[0] && (
-                  <Badge variant="outline" className={cn("ml-auto text-xs",
+                  <span className={cn("badge badge-outline ml-auto text-xs",
                     (flowData.us[0].changePct ?? 0) >= 0 ? "border-emerald-500/30 text-emerald-400" : "border-red-500/30 text-red-400")}>
                     {(flowData.us[0].changePct ?? 0) >= 0
                       ? <TrendingUp className="mr-1 inline h-3 w-3" />
                       : <TrendingDown className="mr-1 inline h-3 w-3" />}
                     최강: {flowData.us[0].name.split(" ")[0]} {fmtPct(flowData.us[0].changePct)}
-                  </Badge>
+                  </span>
                 )}
               </div>
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-2 xl:grid-cols-3">
@@ -513,13 +510,13 @@ export default function GoalsPage() {
                 <span className="text-lg">🇰🇷</span>
                 <span className="font-semibold">한국 섹터 (KODEX/TIGER ETF)</span>
                 {flowData.kr[0] && (
-                  <Badge variant="outline" className={cn("ml-auto text-xs",
+                  <span className={cn("badge badge-outline ml-auto text-xs",
                     (flowData.kr[0].changePct ?? 0) >= 0 ? "border-emerald-500/30 text-emerald-400" : "border-red-500/30 text-red-400")}>
                     {(flowData.kr[0].changePct ?? 0) >= 0
                       ? <TrendingUp className="mr-1 inline h-3 w-3" />
                       : <TrendingDown className="mr-1 inline h-3 w-3" />}
                     최강: {flowData.kr[0].name} {fmtPct(flowData.kr[0].changePct)}
-                  </Badge>
+                  </span>
                 )}
               </div>
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-2 xl:grid-cols-2">

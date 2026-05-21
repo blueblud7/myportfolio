@@ -1,9 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Filter, RefreshCw, CheckCircle2, XCircle, MinusCircle, Search, Play } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -247,18 +244,17 @@ export default function CanSlimPage() {
 
       {/* 분석 컨트롤 */}
       <div className="flex flex-wrap items-center gap-3 rounded-xl border border-border bg-muted/20 px-4 py-3">
-        <Button
+        <button
           onClick={() => startAnalysis(activeIndex)}
           disabled={currentJob.running}
-          size="default"
-          className="shrink-0 bg-emerald-600 text-white hover:bg-emerald-700"
+          className="btn btn-primary shrink-0 bg-emerald-600 hover:bg-emerald-700"
         >
           {currentJob.running
             ? <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
             : <Play className="mr-2 h-4 w-4" />
           }
           {currentJob.running ? "분석 중..." : "분석 시작"}
-        </Button>
+        </button>
 
         {/* 진행률 바 */}
         {currentJob.total > 0 && (
@@ -355,16 +351,16 @@ export default function CanSlimPage() {
       {displayed.length > 0 && (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {displayed.map((item) => (
-            <Card
+            <div
               key={item.ticker}
               className={cn(
-                "transition-colors",
+                "card transition-colors",
                 item.score >= 6 ? "border-emerald-500/30"
                 : item.score >= 4 ? "border-blue-500/20"
                 : ""
               )}
             >
-              <CardContent className="p-4">
+              <div className="card-body card-body-padded">
                 {/* 종목 정보 */}
                 <div className="mb-2 flex items-start justify-between gap-2">
                   <div className="min-w-0">
@@ -372,17 +368,16 @@ export default function CanSlimPage() {
                     <p className="truncate text-xs text-muted-foreground">{item.name}</p>
                   </div>
                   <div className="shrink-0 text-right">
-                    <Badge
-                      variant="outline"
+                    <span
                       className={cn(
-                        "text-xs font-bold",
+                        "badge badge-outline text-xs font-bold",
                         item.score >= 6 ? "border-emerald-500/40 text-emerald-400"
                         : item.score >= 4 ? "border-blue-500/40 text-blue-400"
                         : "text-muted-foreground"
                       )}
                     >
                       {item.score}/7
-                    </Badge>
+                    </span>
                     {item.change52wPct !== null && (
                       <p className={cn(
                         "mt-0.5 text-xs font-medium",
@@ -423,8 +418,8 @@ export default function CanSlimPage() {
                     </div>
                   ))}
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           ))}
         </div>
       )}
