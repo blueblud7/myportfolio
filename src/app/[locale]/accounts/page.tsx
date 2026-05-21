@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { AccountForm } from "@/components/accounts/AccountForm";
+import { HoldingsPieChart } from "@/components/accounts/HoldingsPieChart";
 import { AccountsOverview } from "@/components/accounts/AccountsOverview";
 import { AccountTrendChart } from "@/components/accounts/AccountTrendChart";
 import { Plus, Pencil, Trash2, ArrowRight, RefreshCw, LayoutGrid, List, GripVertical } from "lucide-react";
@@ -151,6 +152,25 @@ export default function AccountsPage() {
       stats[h.account_id].costKrw += cost * mul;
     }
     return stats;
+  }, [holdings, exchangeRate]);
+
+  const accountAllocations = useMemo(() => {
+    if (!Array.isArray(holdings)) return {};
+    const allocs: Record<number, Array<{ name: string; value: number }>> = {};
+    for (const h of holdings as {
+      account_id: number; ticker: string; name?: string;
+      quantity: number; avg_cost: number; current_price: number; currency: string;
+    }[]) {
+      const price = h.ticker === "CASH" ? h.avg_cost : (h.current_price || h.avg_cost);
+      const value = h.quantity * price * (h.currency === "USD" ? exchangeRate : 1);
+      if (value <= 0) continue;
+      if (!allocs[h.account_id]) allocs[h.account_id] = [];
+      allocs[h.account_id].push({
+        name: h.ticker === "CASH" ? "현금" : (h.name || h.ticker),
+        value,
+      });
+    }
+    return allocs;
   }, [holdings, exchangeRate]);
 
   const handleDelete = async (id: number) => {
@@ -447,6 +467,9 @@ export default function AccountsPage() {
                         </div>
                       )}
                     </div>
+                  )}
+                  {(accountAllocations[account.id]?.length ?? 0) > 1 && (
+                    <HoldingsPieChart data={accountAllocations[account.id]} compact />
                   )}
                   <Link href={`/accounts/${account.id}`}>
                     <Button variant="outline" size="sm" className="w-full">

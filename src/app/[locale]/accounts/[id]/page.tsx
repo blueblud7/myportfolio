@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect, useRef, startTransition } from "react";
+import { useState, useCallback, useEffect, useMemo, useRef, startTransition } from "react";
 import { useParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
@@ -13,6 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { HoldingsTable } from "@/components/accounts/HoldingsTable";
 import { HoldingForm } from "@/components/accounts/HoldingForm";
+import { HoldingsPieChart } from "@/components/accounts/HoldingsPieChart";
 import { KiwoomSyncDialog } from "@/components/accounts/KiwoomSyncDialog";
 import { TransactionForm } from "@/components/transactions/TransactionForm";
 import { TransactionTable } from "@/components/transactions/TransactionTable";
@@ -152,6 +153,20 @@ export default function AccountDetailPage() {
     return sum + h.quantity * price * ((h.change_pct ?? 0) / 100);
   }, 0) ?? 0;
 
+  const holdingsAllocation = useMemo(() => {
+    if (!Array.isArray(holdings)) return [];
+    return (holdings as {
+      ticker: string; name?: string; quantity: number;
+      avg_cost: number; current_price: number; currency: string;
+    }[])
+      .map((h) => {
+        const price = h.ticker === "CASH" ? h.avg_cost : (h.current_price || h.avg_cost);
+        const value = h.quantity * price * (h.currency === "USD" ? exchangeRate : 1);
+        return { name: h.ticker === "CASH" ? "현금" : (h.name || h.ticker), value };
+      })
+      .filter((d) => d.value > 0);
+  }, [holdings, exchangeRate]);
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -279,6 +294,17 @@ export default function AccountDetailPage() {
             </CardContent>
           </Card>
       </div>
+
+      {holdingsAllocation.length > 1 && (
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">종목 비율</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <HoldingsPieChart data={holdingsAllocation} />
+          </CardContent>
+        </Card>
+      )}
 
       <Tabs defaultValue="holdings">
         <TabsList>
