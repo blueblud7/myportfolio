@@ -4,9 +4,6 @@ import { useState, useMemo, useCallback, useEffect, useRef, startTransition } fr
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { useAccounts, useHoldings, useExchangeRate, refreshPrices, useAccountDailyChange } from "@/hooks/use-api";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { AccountForm } from "@/components/accounts/AccountForm";
 import { HoldingsPieChart } from "@/components/accounts/HoldingsPieChart";
 import { AccountsOverview } from "@/components/accounts/AccountsOverview";
@@ -357,19 +354,19 @@ export default function AccountsPage() {
       )}
 
       {isEmpty ? (
-        <Card>
-          <CardContent className="py-12 text-center text-muted-foreground">
+        <div className="card">
+          <div className="card-body card-body-padded" style={{ textAlign: "center", padding: "48px 14px", color: "var(--fg-3)" }}>
             {t("noAccounts")}
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       ) : isFilteredEmpty ? (
-        <Card>
-          <CardContent className="py-12 text-center text-muted-foreground">
+        <div className="card">
+          <div className="card-body card-body-padded" style={{ textAlign: "center", padding: "48px 14px", color: "var(--fg-3)" }}>
             선택한 소유자의 계좌가 없습니다.
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       ) : viewMode === "card" ? (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="stack-3">
           {filteredAccounts.map((account, index) => {
             const stat = accountStats[account.id];
             const gainLoss = stat ? stat.totalKrw - stat.costKrw : 0;
@@ -379,10 +376,10 @@ export default function AccountsPage() {
             const isDropTarget = dropIndex === index && dragIndex !== index;
 
             return (
-              <Card
+              <div
                 key={account.id}
                 className={cn(
-                  "relative transition-all",
+                  "card relative transition-all",
                   isDragging && "opacity-40 scale-95",
                   isDropTarget && "ring-2 ring-indigo-500 ring-offset-1"
                 )}
@@ -392,44 +389,41 @@ export default function AccountsPage() {
                 onDrop={(e) => handleDrop(e, index)}
                 onDragEnd={handleDragEnd}
               >
-                <CardHeader className="flex flex-row items-start justify-between pb-2">
-                  <div className="flex items-start gap-2">
-                    <GripVertical className="mt-0.5 h-4 w-4 shrink-0 cursor-grab text-muted-foreground/50 active:cursor-grabbing" />
+                <div className="card-head">
+                  <div style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
+                    <GripVertical className="mt-0.5 h-4 w-4 shrink-0 cursor-grab text-muted-foreground/50 active:cursor-grabbing" style={{ marginTop: 2 }} />
                     <div>
-                      <CardTitle className="text-lg">{account.name}</CardTitle>
-                      <div className="mt-1 flex flex-wrap gap-2">
-                        <Badge variant="outline">
+                      <div style={{ fontSize: 16, fontWeight: 600 }}>{account.name}</div>
+                      <div style={{ marginTop: 4, display: "flex", flexWrap: "wrap", gap: 6 }}>
+                        <span className="badge badge-outline">
                           {account.type === "stock" ? t("stock") : t("bank")}
-                        </Badge>
-                        <Badge variant="secondary">{account.currency}</Badge>
+                        </span>
+                        <span className="badge">{account.currency}</span>
                         {account.owner && (
-                          <Badge variant="outline" className="border-blue-500/40 text-blue-600 dark:text-blue-400">
+                          <span className="badge badge-outline" style={{ borderColor: "rgba(59,130,246,0.4)", color: "var(--accent)" }}>
                             👤 {account.owner}
-                          </Badge>
+                          </span>
                         )}
                       </div>
                     </div>
                   </div>
-                  <div className="flex gap-1">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-7 w-7"
+                  <div style={{ display: "flex", gap: 4 }}>
+                    <button
+                      className="btn btn-ghost btn-icon"
                       onClick={() => { setEditingAccount(account); setFormOpen(true); }}
                     >
                       <Pencil className="h-3.5 w-3.5" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-7 w-7 text-destructive"
+                    </button>
+                    <button
+                      className="btn btn-ghost btn-icon"
+                      style={{ color: "var(--down)" }}
                       onClick={() => handleDelete(account.id)}
                     >
                       <Trash2 className="h-3.5 w-3.5" />
-                    </Button>
+                    </button>
                   </div>
-                </CardHeader>
-                <CardContent className="space-y-3">
+                </div>
+                <div className="card-body card-body-padded" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                   {account.broker && (
                     <p className="text-sm text-muted-foreground">{account.broker}</p>
                   )}
@@ -472,13 +466,13 @@ export default function AccountsPage() {
                     <HoldingsPieChart data={accountAllocations[account.id]} compact />
                   )}
                   <Link href={`/accounts/${account.id}`}>
-                    <Button variant="outline" size="sm" className="w-full">
+                    <button className="btn" style={{ width: "100%" }}>
                       {t("viewDetail")}
                       <ArrowRight className="ml-2 h-3.5 w-3.5" />
-                    </Button>
+                    </button>
                   </Link>
-                </CardContent>
-              </Card>
+                </div>
+              </div>
             );
           })}
         </div>
@@ -526,16 +520,16 @@ export default function AccountsPage() {
                     <td className="px-4 py-3">
                       <div className="font-medium">{account.name}</div>
                       <div className="mt-0.5 flex flex-wrap gap-1.5">
-                        <Badge variant="outline" className="text-[10px] px-1 py-0">
+                        <span className="badge badge-outline" style={{ fontSize: 10, padding: "0 4px" }}>
                           {account.type === "stock" ? t("stock") : t("bank")}
-                        </Badge>
-                        <Badge variant="secondary" className="text-[10px] px-1 py-0">
+                        </span>
+                        <span className="badge" style={{ fontSize: 10, padding: "0 4px" }}>
                           {account.currency}
-                        </Badge>
+                        </span>
                         {account.owner && (
-                          <Badge variant="outline" className="text-[10px] px-1 py-0 border-blue-500/40 text-blue-600 dark:text-blue-400">
+                          <span className="badge badge-outline" style={{ fontSize: 10, padding: "0 4px", borderColor: "rgba(59,130,246,0.4)", color: "var(--accent)" }}>
                             👤 {account.owner}
-                          </Badge>
+                          </span>
                         )}
                       </div>
                     </td>
@@ -574,26 +568,23 @@ export default function AccountsPage() {
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center justify-end gap-1">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-7 w-7"
+                        <button
+                          className="btn btn-ghost btn-icon"
                           onClick={() => { setEditingAccount(account); setFormOpen(true); }}
                         >
                           <Pencil className="h-3.5 w-3.5" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-7 w-7 text-destructive"
+                        </button>
+                        <button
+                          className="btn btn-ghost btn-icon"
+                          style={{ color: "var(--down)" }}
                           onClick={() => handleDelete(account.id)}
                         >
                           <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
+                        </button>
                         <Link href={`/accounts/${account.id}`}>
-                          <Button variant="ghost" size="icon" className="h-7 w-7">
+                          <button className="btn btn-ghost btn-icon">
                             <ArrowRight className="h-3.5 w-3.5" />
-                          </Button>
+                          </button>
                         </Link>
                       </div>
                     </td>

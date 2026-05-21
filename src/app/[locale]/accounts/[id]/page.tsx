@@ -7,9 +7,6 @@ import { Link } from "@/i18n/navigation";
 import useSWR from "swr";
 import { useHoldings, useExchangeRate, useTransactions } from "@/hooks/use-api";
 import { refreshPrices } from "@/hooks/use-api";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { HoldingsTable } from "@/components/accounts/HoldingsTable";
 import { HoldingForm } from "@/components/accounts/HoldingForm";
 import { HoldingsPieChart } from "@/components/accounts/HoldingsPieChart";
@@ -169,47 +166,43 @@ export default function AccountDetailPage() {
   }, [holdings, exchangeRate]);
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
+    <div style={{ display: "flex", flexDirection: "column", gap: "var(--gutter)" }}>
+      <div className="topbar">
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <Link href="/accounts">
-            <Button variant="ghost" size="icon">
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
+            <button className="btn btn-ghost btn-icon">
+              <ArrowLeft size={15} />
+            </button>
           </Link>
           <div>
-            <div className="flex items-center gap-3">
-              <h1 className="text-2xl font-bold">{account?.name ?? "..."}</h1>
-              <div className="flex rounded-md border overflow-hidden text-sm">
-                {(["KRW", "USD"] as const).map((cur) => (
-                  <button
-                    key={cur}
-                    onClick={() => setCurrency(cur as "KRW" | "USD")}
-                    className={cn(
-                      "px-3 py-1 font-medium transition-colors",
-                      currency === cur
-                        ? "bg-blue-500 text-white"
-                        : "bg-transparent text-muted-foreground hover:bg-muted"
-                    )}
-                  >
-                    {cur}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div className="mt-1 flex gap-2">
-              {account && (
-                <>
-                  <Badge variant="outline">
-                    {account.type === "stock" ? t("stock") : t("bank")}
-                  </Badge>
-                  <Badge variant="secondary">{account.currency}</Badge>
-                  {account.broker && (
-                    <Badge variant="outline">{account.broker}</Badge>
-                  )}
-                </>
-              )}
-            </div>
+            <div className="crumb">포트폴리오</div>
+            <h1>{account?.name ?? "..."}</h1>
+          </div>
+        </div>
+        <div className="right">
+          <div style={{ marginTop: 4, display: "flex", gap: 6 }}>
+            {account && (
+              <>
+                <span className="badge badge-outline">
+                  {account.type === "stock" ? t("stock") : t("bank")}
+                </span>
+                <span className="badge">{account.currency}</span>
+                {account.broker && (
+                  <span className="badge badge-outline">{account.broker}</span>
+                )}
+              </>
+            )}
+          </div>
+          <div className="seg seg-sm">
+            {(["KRW", "USD"] as const).map((cur) => (
+              <button
+                key={cur}
+                onClick={() => setCurrency(cur as "KRW" | "USD")}
+                className={`seg-btn${currency === cur ? " active" : ""}`}
+              >
+                {cur}
+              </button>
+            ))}
           </div>
         </div>
       </div>
@@ -238,73 +231,57 @@ export default function AccountDetailPage() {
         </div>
       )}
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm text-muted-foreground">{t("valuation")}</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-xl font-bold">
-                <Money
-                  value={currency === "USD"
-                    ? ((account?.currency ?? "KRW") === "KRW" ? totalValue / exchangeRate : totalValue)
-                    : ((account?.currency ?? "KRW") === "USD" ? totalValue * exchangeRate : totalValue)}
-                  currency={currency}
-                />
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm text-muted-foreground">{t("totalGainLoss")}</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className={cn("text-xl font-bold", gainLossColor(totalGainLoss))}>
-                <Money
-                  value={currency === "USD"
-                    ? ((account?.currency ?? "KRW") === "KRW" ? totalGainLoss / exchangeRate : totalGainLoss)
-                    : ((account?.currency ?? "KRW") === "USD" ? totalGainLoss * exchangeRate : totalGainLoss)}
-                  currency={currency}
-                />
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm text-muted-foreground">{t("returnRate")}</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className={cn("text-xl font-bold", gainLossColor(totalGainLossPct))}>
-                {formatPercent(totalGainLossPct)}
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm text-muted-foreground">{t("dailyProfit")}</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className={cn("text-xl font-bold", gainLossColor(totalDailyProfit))}>
-                <Money
-                  value={currency === "USD"
-                    ? ((account?.currency ?? "KRW") === "KRW" ? totalDailyProfit / exchangeRate : totalDailyProfit)
-                    : ((account?.currency ?? "KRW") === "USD" ? totalDailyProfit * exchangeRate : totalDailyProfit)}
-                  currency={currency}
-                />
-              </div>
-            </CardContent>
-          </Card>
+      <div className="stack-4">
+        <div className="card card-body-padded">
+          <div className="section-title"><span>{t("valuation")}</span></div>
+          <div className="num" style={{ fontSize: 22, fontWeight: 500, letterSpacing: "-0.02em", marginTop: 4 }}>
+            <Money
+              value={currency === "USD"
+                ? ((account?.currency ?? "KRW") === "KRW" ? totalValue / exchangeRate : totalValue)
+                : ((account?.currency ?? "KRW") === "USD" ? totalValue * exchangeRate : totalValue)}
+              currency={currency}
+            />
+          </div>
+        </div>
+        <div className="card card-body-padded">
+          <div className="section-title"><span>{t("totalGainLoss")}</span></div>
+          <div className={cn("num", gainLossColor(totalGainLoss))} style={{ fontSize: 22, fontWeight: 500, letterSpacing: "-0.02em", marginTop: 4 }}>
+            <Money
+              value={currency === "USD"
+                ? ((account?.currency ?? "KRW") === "KRW" ? totalGainLoss / exchangeRate : totalGainLoss)
+                : ((account?.currency ?? "KRW") === "USD" ? totalGainLoss * exchangeRate : totalGainLoss)}
+              currency={currency}
+            />
+          </div>
+        </div>
+        <div className="card card-body-padded">
+          <div className="section-title"><span>{t("returnRate")}</span></div>
+          <div className={cn("num", gainLossColor(totalGainLossPct))} style={{ fontSize: 22, fontWeight: 500, letterSpacing: "-0.02em", marginTop: 4 }}>
+            {formatPercent(totalGainLossPct)}
+          </div>
+        </div>
+        <div className="card card-body-padded">
+          <div className="section-title"><span>{t("dailyProfit")}</span></div>
+          <div className={cn("num", gainLossColor(totalDailyProfit))} style={{ fontSize: 22, fontWeight: 500, letterSpacing: "-0.02em", marginTop: 4 }}>
+            <Money
+              value={currency === "USD"
+                ? ((account?.currency ?? "KRW") === "KRW" ? totalDailyProfit / exchangeRate : totalDailyProfit)
+                : ((account?.currency ?? "KRW") === "USD" ? totalDailyProfit * exchangeRate : totalDailyProfit)}
+              currency={currency}
+            />
+          </div>
+        </div>
       </div>
 
       {holdingsAllocation.length > 1 && (
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">종목 비율</CardTitle>
-          </CardHeader>
-          <CardContent>
+        <div className="card">
+          <div className="card-head">
+            <div><h3 className="card-title">종목 비율</h3></div>
+          </div>
+          <div className="card-body card-body-padded">
             <HoldingsPieChart data={holdingsAllocation} />
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       )}
 
       <div className="tabs">
@@ -314,32 +291,29 @@ export default function AccountDetailPage() {
       </div>
 
       {activeTab === "holdings" && (
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle>{t("holdings")}</CardTitle>
-            <div className="flex gap-2">
+        <div className="card">
+          <div className="card-head">
+            <div><h3 className="card-title">{t("holdings")}</h3></div>
+            <div style={{ display: "flex", gap: 8 }}>
               {account?.type === "stock" && (
-                <Button
-                  variant="outline"
-                  size="sm"
+                <button
+                  className="btn"
                   onClick={() => setKiwoomOpen(true)}
                 >
-                  <RefreshCw className="mr-2 h-3.5 w-3.5" />
+                  <RefreshCw className="h-3.5 w-3.5" />
                   {t("kiwoomSync")}
-                </Button>
+                </button>
               )}
-              <Button
-                variant="outline"
-                size="sm"
+              <button
+                className="btn"
                 onClick={handleRefresh}
                 disabled={refreshing}
               >
-                <RefreshCw className={cn("mr-2 h-3.5 w-3.5", refreshing && "animate-spin")} />
+                <RefreshCw className={cn("h-3.5 w-3.5", refreshing && "animate-spin")} />
                 {refreshing ? t("refreshing") : t("refresh")}
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
+              </button>
+              <button
+                className="btn"
                 onClick={() => {
                   if (!holdings) return;
                   const rows = holdings.map((h: Record<string, unknown>) => ({
@@ -355,22 +329,22 @@ export default function AccountDetailPage() {
                   downloadCsv(`holdings_${account?.name ?? accountId}_${new Date().toISOString().slice(0, 10)}.csv`, rows);
                 }}
               >
-                <Download className="mr-2 h-3.5 w-3.5" />
+                <Download className="h-3.5 w-3.5" />
                 CSV
-              </Button>
-              <Button
-                size="sm"
+              </button>
+              <button
+                className="btn btn-primary"
                 onClick={() => {
                   setEditingHolding(null);
                   setFormOpen(true);
                 }}
               >
-                <Plus className="mr-2 h-3.5 w-3.5" />
+                <Plus className="h-3.5 w-3.5" />
                 {t("addHolding")}
-              </Button>
+              </button>
             </div>
-          </CardHeader>
-          <CardContent>
+          </div>
+          <div className="card-body">
             <HoldingsTable
               holdings={holdings ?? []}
               accountCurrency={account?.currency ?? "KRW"}
@@ -381,40 +355,41 @@ export default function AccountDetailPage() {
               }}
               onDelete={handleDelete}
             />
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       )}
 
       {activeTab === "transactions" && (
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle>{tTx("title")}</CardTitle>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                if (!transactions || transactions.length === 0) return;
-                downloadCsv(
-                  `transactions_${account?.name ?? accountId}_${new Date().toISOString().slice(0, 10)}.csv`,
-                  transactions
-                );
-              }}
-            >
-              <Download className="mr-2 h-3.5 w-3.5" />
-              CSV
-            </Button>
-            <Button
-              size="sm"
-              onClick={() => {
-                setEditingTx(null);
-                setTxFormOpen(true);
-              }}
-            >
-              <Plus className="mr-2 h-3.5 w-3.5" />
-              {tTx("addTransaction")}
-            </Button>
-          </CardHeader>
-          <CardContent>
+        <div className="card">
+          <div className="card-head">
+            <div><h3 className="card-title">{tTx("title")}</h3></div>
+            <div style={{ display: "flex", gap: 8 }}>
+              <button
+                className="btn"
+                onClick={() => {
+                  if (!transactions || transactions.length === 0) return;
+                  downloadCsv(
+                    `transactions_${account?.name ?? accountId}_${new Date().toISOString().slice(0, 10)}.csv`,
+                    transactions
+                  );
+                }}
+              >
+                <Download className="h-3.5 w-3.5" />
+                CSV
+              </button>
+              <button
+                className="btn btn-primary"
+                onClick={() => {
+                  setEditingTx(null);
+                  setTxFormOpen(true);
+                }}
+              >
+                <Plus className="h-3.5 w-3.5" />
+                {tTx("addTransaction")}
+              </button>
+            </div>
+          </div>
+          <div className="card-body">
             <TransactionTable
               transactions={transactions ?? []}
               onEdit={(tx) => {
@@ -423,8 +398,8 @@ export default function AccountDetailPage() {
               }}
               onDelete={handleTxDelete}
             />
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       )}
 
       {activeTab === "benchmark" && (
