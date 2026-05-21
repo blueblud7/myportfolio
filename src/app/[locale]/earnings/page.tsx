@@ -3,7 +3,6 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { CalendarDays, RefreshCw, Briefcase, Eye, TrendingUp, TrendingDown, Sparkles, BarChart3 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AIDisclaimer } from "@/components/layout/Disclaimer";
 import type { EarningsCalendarItem } from "@/app/api/earnings-calendar/route";
 import type { EarningsResultRow } from "@/app/api/earnings-results/route";
@@ -17,17 +16,23 @@ function fmtEps(v: number, ticker: string) {
 }
 function fmtRevenue(v: number, ticker: string) {
   if (isKorean(ticker)) {
-    // DART 단위: 백만원
-    const jo = v / 1_000_000;
-    if (jo >= 1)   return `₩${jo.toFixed(1)}조`;
-    const eok = v / 100;
-    if (eok >= 1)  return `₩${Math.round(eok).toLocaleString()}억`;
-    return `₩${Math.round(v)}백만`;
+    // DART fnlttSinglAcntAll 단위: 원(₩)
+    const sign = v < 0 ? "−" : "";
+    const abs = Math.abs(v);
+    const jo = abs / 1_000_000_000_000;
+    if (jo >= 0.1) return `${sign}₩${jo.toFixed(1)}조`;
+    const eok = abs / 100_000_000;
+    if (eok >= 1)  return `${sign}₩${Math.round(eok).toLocaleString()}억`;
+    const man = abs / 10_000;
+    if (man >= 1)  return `${sign}₩${Math.round(man).toLocaleString()}만`;
+    return `${sign}₩${Math.round(abs).toLocaleString()}`;
   }
-  if (v >= 1e12)  return `$${(v / 1e12).toFixed(2)}T`;
-  if (v >= 1e9)   return `$${(v / 1e9).toFixed(1)}B`;
-  if (v >= 1e6)   return `$${(v / 1e6).toFixed(0)}M`;
-  return `$${v.toLocaleString()}`;
+  const sign = v < 0 ? "-" : "";
+  const abs = Math.abs(v);
+  if (abs >= 1e12) return `${sign}$${(abs / 1e12).toFixed(2)}T`;
+  if (abs >= 1e9)  return `${sign}$${(abs / 1e9).toFixed(1)}B`;
+  if (abs >= 1e6)  return `${sign}$${(abs / 1e6).toFixed(0)}M`;
+  return `${sign}$${abs.toLocaleString()}`;
 }
 function fmtChange(curr: number, prev: number | null) {
   if (prev == null || prev === 0) return null;
@@ -438,6 +443,7 @@ function InsightsTab() {
 
 // ─── 메인 ────────────────────────────────────────────────────────────────────
 export default function EarningsPage() {
+  const [activeTab, setActiveTab] = useState<"calendar" | "results" | "insights">("calendar");
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "var(--gutter)" }}>
       <div className="topbar">
@@ -446,16 +452,14 @@ export default function EarningsPage() {
           <h1>실적</h1>
         </div>
       </div>
-      <Tabs defaultValue="calendar">
-        <TabsList>
-          <TabsTrigger value="calendar">일정</TabsTrigger>
-          <TabsTrigger value="results">결과</TabsTrigger>
-          <TabsTrigger value="insights">AI 인사이트</TabsTrigger>
-        </TabsList>
-        <TabsContent value="calendar" className="mt-4"><CalendarTab /></TabsContent>
-        <TabsContent value="results" className="mt-4"><ResultsTab /></TabsContent>
-        <TabsContent value="insights" className="mt-4"><InsightsTab /></TabsContent>
-      </Tabs>
+      <div className="tabs">
+        <button className={cn("tab", activeTab === "calendar" && "active")} onClick={() => setActiveTab("calendar")}>일정</button>
+        <button className={cn("tab", activeTab === "results" && "active")} onClick={() => setActiveTab("results")}>결과</button>
+        <button className={cn("tab", activeTab === "insights" && "active")} onClick={() => setActiveTab("insights")}>AI 인사이트</button>
+      </div>
+      {activeTab === "calendar" && <CalendarTab />}
+      {activeTab === "results" && <ResultsTab />}
+      {activeTab === "insights" && <InsightsTab />}
     </div>
   );
 }
