@@ -11,6 +11,8 @@ const SECRET_KEY = new TextEncoder().encode(
 
 // 로그인 없이 접근 가능한 공개 경로 (locale prefix 제거 후 비교)
 const PUBLIC_PATHS = [
+  "/",
+  "/landing",
   "/login",
   "/stocks",
   "/krx-market",

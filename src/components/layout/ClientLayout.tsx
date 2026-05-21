@@ -10,7 +10,8 @@ import { ThemeProvider } from "@/contexts/theme-context";
 
 export function ClientLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const isLoginPage = pathname.endsWith("/login") || pathname.endsWith("/landing");
+  const stripped = pathname.replace(/^\/(ko|en)/, "") || "/";
+  const isLoginPage = stripped === "/" || stripped === "/login" || stripped === "/landing";
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   if (isLoginPage) {

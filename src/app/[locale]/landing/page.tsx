@@ -209,7 +209,7 @@ export default function LandingPage() {
                 <span className="now-pulse" />
                 실시간 데이터
               </div>
-              <Link href="/ko" className="ld-btn ld-btn-primary" style={{ height: 32, fontSize: 13 }}>
+              <Link href="/dashboard" className="ld-btn ld-btn-primary" style={{ height: 32, fontSize: 13 }}>
                 대시보드 열기
               </Link>
             </div>
@@ -234,7 +234,7 @@ export default function LandingPage() {
               실시간 시세, 포트폴리오 분석, AI 인사이트까지 — 투자 판단에 필요한 모든 것.
             </p>
             <div className="ld-cta-row">
-              <Link href="/ko" className="ld-btn ld-btn-primary">
+              <Link href="/dashboard" className="ld-btn ld-btn-primary">
                 무료로 시작하기
                 <IconArrowRight size={14} />
               </Link>
@@ -612,7 +612,7 @@ export default function LandingPage() {
                 <li className="muted"><IconX />AI 인사이트</li>
                 <li className="muted"><IconX />패턴 랩</li>
               </ul>
-              <Link href="/ko" className="ld-btn" style={{ justifyContent: "center" }}>
+              <Link href="/dashboard" className="ld-btn" style={{ justifyContent: "center" }}>
                 무료로 시작
               </Link>
             </div>
@@ -633,7 +633,7 @@ export default function LandingPage() {
                 <li><IconCheck />CANSLIM 스코어링</li>
                 <li><IconCheck />포트폴리오 시뮬레이터</li>
               </ul>
-              <Link href="/ko" className="ld-btn ld-btn-primary" style={{ justifyContent: "center" }}>
+              <Link href="/dashboard" className="ld-btn ld-btn-primary" style={{ justifyContent: "center" }}>
                 14일 무료 체험
               </Link>
             </div>
@@ -654,7 +654,7 @@ export default function LandingPage() {
                 <li><IconCheck />우선 지원</li>
                 <li><IconCheck />API 접근</li>
               </ul>
-              <Link href="/ko" className="ld-btn" style={{ justifyContent: "center" }}>
+              <Link href="/dashboard" className="ld-btn" style={{ justifyContent: "center" }}>
                 팀으로 시작
               </Link>
             </div>
@@ -708,7 +708,7 @@ export default function LandingPage() {
           <h2>지금 바로 <em>시작하세요</em></h2>
           <p>14일 무료 체험, 신용카드 불필요. 언제든 취소 가능.</p>
           <div className="ld-cta-row">
-            <Link href="/ko" className="ld-btn ld-btn-primary">
+            <Link href="/dashboard" className="ld-btn ld-btn-primary">
               무료로 시작하기
               <IconArrowRight size={14} />
             </Link>
@@ -735,14 +735,14 @@ export default function LandingPage() {
               <a href="#features">기능</a>
               <a href="#pricing">요금제</a>
               <a href="#how">사용법</a>
-              <Link href="/ko">대시보드</Link>
+              <Link href="/dashboard">대시보드</Link>
             </div>
             <div className="ld-footer-col">
               <h4>분석 도구</h4>
-              <Link href="/ko/pattern-lab">패턴 랩</Link>
-              <Link href="/ko/backtest">백테스트</Link>
-              <Link href="/ko/quant">퀀트 스크리너</Link>
-              <Link href="/ko/canslim">CANSLIM</Link>
+              <Link href="/pattern-lab">패턴 랩</Link>
+              <Link href="/backtest">백테스트</Link>
+              <Link href="/quant">퀀트 스크리너</Link>
+              <Link href="/canslim">CANSLIM</Link>
             </div>
             <div className="ld-footer-col">
               <h4>지원</h4>

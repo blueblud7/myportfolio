@@ -47,7 +47,7 @@ const NAV = [
   {
     section: "포트폴리오",
     items: [
-      { href: "/",          label: "대시보드",          icon: "home",       requiresAuth: true },
+      { href: "/dashboard", label: "대시보드",          icon: "home",       requiresAuth: true },
       { href: "/accounts",  label: "보유 자산",          icon: "wallet",     requiresAuth: true },
       { href: "/watchlist", label: "워치리스트",          icon: "binoculars", requiresAuth: true },
       { href: "/reports",   label: "리포트 & 목표",      icon: "barchart",   requiresAuth: true },
@@ -205,7 +205,7 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
   };
 
   const isActive = (href: string) =>
-    href === "/" ? pathname === "/" || pathname === "" : pathname.includes(href);
+    pathname.includes(href);
 
   return (
     <>
