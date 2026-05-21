@@ -37,10 +37,10 @@ export function TodayWatchWidget() {
 
   if (isLoading) {
     return (
-      <div className="rounded-xl border border-border bg-card p-4">
-        <div className="h-5 w-32 bg-muted/50 rounded animate-pulse mb-3" />
-        <div className="space-y-2">
-          {[1, 2, 3].map((i) => <div key={i} className="h-8 bg-muted/30 rounded animate-pulse" />)}
+      <div className="card">
+        <div className="card-head"><h3 className="card-title">오늘 챙길 것</h3></div>
+        <div className="card-body card-body-padded" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          {[1, 2, 3].map((i) => <div key={i} style={{ height: 32, borderRadius: "var(--radius)", background: "var(--bg-2)" }} />)}
         </div>
       </div>
     );
@@ -48,31 +48,26 @@ export function TodayWatchWidget() {
 
   if (!data || total === 0) {
     return (
-      <div className="rounded-xl border border-border bg-card p-4">
-        <div className="flex items-center gap-2 mb-2">
-          <Bell className="h-4 w-4 text-amber-500" />
-          <h2 className="text-sm font-semibold">오늘 챙길 것</h2>
+      <div className="card">
+        <div className="card-head">
+          <Bell className="h-4 w-4" style={{ color: "var(--warn)" }} />
+          <h3 className="card-title">오늘 챙길 것</h3>
         </div>
-        <p className="text-xs text-muted-foreground">
-          이번주 실적 · 목표가 도달 · 배당락 임박 종목 없음
-        </p>
+        <div className="card-body card-body-padded">
+          <p style={{ fontSize: 12, color: "var(--fg-4)" }}>이번주 실적 · 목표가 도달 · 배당락 임박 종목 없음</p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="rounded-xl border border-border bg-card p-4">
-      <div className="mb-3 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Bell className="h-4 w-4 text-amber-500" />
-          <h2 className="text-sm font-semibold">오늘 챙길 것</h2>
-          <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-700 dark:text-amber-300 font-semibold">
-            {total}
-          </span>
-        </div>
+    <div className="card">
+      <div className="card-head">
+        <Bell className="h-4 w-4" style={{ color: "var(--warn)" }} />
+        <h3 className="card-title">오늘 챙길 것</h3>
+        <span className="badge badge-warn" style={{ marginLeft: 4 }}>{total}</span>
       </div>
-
-      <div className="space-y-4">
+      <div className="card-body card-body-padded" style={{ display: "flex", flexDirection: "column", gap: 16 }}>
         {data.targetsReached.length > 0 && (
           <section>
             <p className="mb-1.5 flex items-center gap-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">

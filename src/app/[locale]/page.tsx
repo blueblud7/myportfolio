@@ -23,7 +23,6 @@ export default function DashboardPage() {
 
   const exchangeRate = exchangeRateData?.rate ?? 1350;
 
-  // 가격 갱신 후 holdings + snapshot 재조회
   const handleRefreshPrices = useCallback(async (h: { ticker: string; manual_price: number | null }[]) => {
     const tickers = [...new Set(
       h.filter((x) => x.ticker !== "CASH" && !x.manual_price).map((x) => x.ticker)
@@ -34,7 +33,6 @@ export default function DashboardPage() {
     fetch("/api/snapshots", { method: "POST" }).then(() => setSnapshotCreated(true));
   }, [mutateHoldings]);
 
-  // 첫 로드 시 가격 갱신
   useEffect(() => {
     if (!initialRefreshed.current && Array.isArray(holdings) && holdings.length > 0) {
       initialRefreshed.current = true;
@@ -42,7 +40,6 @@ export default function DashboardPage() {
     }
   }, [holdings, handleRefreshPrices]);
 
-  // 탭 포커스 시 가격 갱신
   useEffect(() => {
     const onVisible = () => {
       if (document.visibilityState === "visible" && Array.isArray(holdings) && holdings.length > 0) {
@@ -53,7 +50,6 @@ export default function DashboardPage() {
     return () => document.removeEventListener("visibilitychange", onVisible);
   }, [holdings, handleRefreshPrices]);
 
-  // snapshot은 가격 갱신 없을 때 fallback으로만
   useEffect(() => {
     if (!snapshotCreated && initialRefreshed.current === false) {
       fetch("/api/snapshots", { method: "POST" }).then(() => setSnapshotCreated(true));
@@ -88,10 +84,7 @@ export default function DashboardPage() {
         const existing = latestByAccount.get(b.account_id);
         if (!existing) {
           const acct = accounts.find((a) => a.id === b.account_id);
-          latestByAccount.set(b.account_id, {
-            balance: b.balance,
-            currency: acct?.currency ?? "KRW",
-          });
+          latestByAccount.set(b.account_id, { balance: b.balance, currency: acct?.currency ?? "KRW" });
         }
       }
       for (const { balance, currency } of latestByAccount.values()) {
@@ -109,7 +102,6 @@ export default function DashboardPage() {
 
   const allocationByAccount = useMemo(() => {
     if (!Array.isArray(accounts) || !Array.isArray(holdings)) return [];
-
     const valueByAccount: Record<string, number> = {};
     for (const h of holdings as { account_id: number; quantity: number; current_price: number; avg_cost: number; currency: string }[]) {
       const acct = accounts.find((a) => a.id === h.account_id);
@@ -125,18 +117,30 @@ export default function DashboardPage() {
   const allocationByType = useMemo(() => {
     return [
       { name: t("stockLabel"), value: summary.stockValueKrw },
-      { name: t("bankLabel"), value: summary.bankValueKrw },
+      { name: t("bankLabel"),  value: summary.bankValueKrw },
     ].filter((d) => d.value > 0);
   }, [summary, t]);
 
   return (
-    <div className="space-y-4 sm:space-y-5">
-      <h1 className="text-xl sm:text-2xl font-bold">{t("title")}</h1>
+    <div style={{ display: "flex", flexDirection: "column", gap: "var(--gutter)" }}>
+      {/* Topbar */}
+      <div className="topbar">
+        <div>
+          <div className="crumb">대시보드</div>
+          <h1>{t("title")}</h1>
+        </div>
+        <div className="right">
+          <span className="pill">
+            <span className="dot" style={{ background: "var(--up)" }} />
+            {new Date().toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" })} KST
+          </span>
+        </div>
+      </div>
 
-      {/* ① 시장 지수 — 맨 위 */}
+      {/* 시장 지수 테이프 */}
       <MarketIndices />
 
-      {/* ② 포트폴리오 요약 */}
+      {/* 포트폴리오 요약 */}
       <SummaryCards
         totalKrw={summary.totalKrw}
         totalUsd={summary.totalUsd}
@@ -147,30 +151,33 @@ export default function DashboardPage() {
         bankValueKrw={summary.bankValueKrw}
       />
 
-      {/* ③ 오늘 챙길 것 — 실적/목표가/배당락 */}
+      {/* 오늘 챙길 것 */}
       <TodayWatchWidget />
 
-      {/* ④ Today's Signals — 시장 전체 + 내 포트폴리오 탭 */}
+      {/* Today's Signals */}
       <TodaySignals />
 
-      {/* ④ 심리 지표 + P/C Ratio — 2열 */}
-      <div className="grid gap-4 lg:grid-cols-2">
+      {/* 심리 지표 2열 */}
+      <div className="stack-2" style={{ gridTemplateColumns: "1fr 1fr" }}>
         <FomoSentimentWidget />
-        <div className="rounded-xl border bg-card p-4">
-          <h2 className="mb-3 text-sm font-semibold">{t("putCallRatio")}</h2>
-          <PutCallRatioWidget />
+        <div className="card">
+          <div className="card-head">
+            <h3 className="card-title">{t("putCallRatio")}</h3>
+          </div>
+          <div className="card-body card-body-padded">
+            <PutCallRatioWidget />
+          </div>
         </div>
       </div>
 
-      {/* ⑤ 자산 추이 차트 */}
+      {/* 자산 추이 차트 */}
       <TotalAssetChart />
 
-      {/* ⑥ 배분 + 워치리스트 */}
-      <div className="grid gap-4 md:grid-cols-2">
+      {/* 배분 2열 */}
+      <div className="stack-2" style={{ gridTemplateColumns: "1fr 1fr" }}>
         <AllocationChart title={t("byCurrency")} data={allocationByType} />
         <AllocationChart title={t("byAccount")} data={allocationByAccount} />
       </div>
-
     </div>
   );
 }

@@ -39,7 +39,7 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
                   </svg>
                 </button>
               </div>
-              <main style={{ flex: 1 }}>{children}</main>
+              <main style={{ flex: 1, padding: "var(--gutter)", minWidth: 0 }}>{children}</main>
               <GlobalFooterDisclaimer />
             </div>
           </div>

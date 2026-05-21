@@ -2,8 +2,6 @@
 
 import { useState, useMemo } from "react";
 import { useTranslations } from "next-intl";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import {
   AreaChart,
   Area,
@@ -113,180 +111,71 @@ export function TotalAssetChart() {
   };
 
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle>{t("title")}</CardTitle>
-        <div className="flex items-center gap-2">
-          <div className="flex rounded-md border overflow-hidden text-sm">
-            <button
-              onClick={() => setMode("absolute")}
-              className={cn(
-                "px-3 py-1 font-medium transition-colors text-xs",
-                mode === "absolute"
-                  ? "bg-indigo-500 text-white"
-                  : "bg-transparent text-muted-foreground hover:bg-muted"
-              )}
-            >
-              {t("absolute")}
-            </button>
-            <button
-              onClick={() => setMode("return")}
-              className={cn(
-                "px-3 py-1 font-medium transition-colors text-xs",
-                mode === "return"
-                  ? "bg-indigo-500 text-white"
-                  : "bg-transparent text-muted-foreground hover:bg-muted"
-              )}
-            >
-              {t("return")}
-            </button>
+    <div className="card">
+      <div className="card-head">
+        <h3 className="card-title">{t("title")}</h3>
+        <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 8 }}>
+          <div className="seg seg-sm">
+            <button className={`seg-btn${mode === "absolute" ? " active" : ""}`} onClick={() => setMode("absolute")}>{t("absolute")}</button>
+            <button className={`seg-btn${mode === "return" ? " active" : ""}`} onClick={() => setMode("return")}>{t("return")}</button>
           </div>
-          <div className="flex gap-1">
+          <div className="seg seg-sm">
             {periods.map((p) => (
-              <Button
-                key={p.key}
-                variant={period === p.key ? "default" : "ghost"}
-                size="sm"
-                className={cn("h-7 px-2 text-xs")}
-                onClick={() => setPeriod(p.key)}
-              >
-                {p.label}
-              </Button>
+              <button key={p.key} className={`seg-btn${period === p.key ? " active" : ""}`} onClick={() => setPeriod(p.key)}>{p.label}</button>
             ))}
           </div>
         </div>
-      </CardHeader>
-      <CardContent>
+      </div>
+      <div className="card-body card-body-padded">
         {mode === "absolute" ? (
-          // Absolute value mode (existing AreaChart)
           chartData.length === 0 ? (
-            <div className="flex h-[300px] items-center justify-center text-muted-foreground">
-              {t("noData")}
-            </div>
+            <div style={{ height: 300, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--fg-4)", fontSize: 13 }}>{t("noData")}</div>
           ) : (
             <ResponsiveContainer width="100%" height={300}>
               <AreaChart data={chartData}>
-                <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                <XAxis
-                  dataKey="date"
-                  tickFormatter={(v) => format(new Date(v), "MM/dd")}
-                  className="text-xs"
-                />
-                <YAxis
-                  tickFormatter={(v) => formatKRW(v)}
-                  className="text-xs"
-                  width={80}
-                />
-                <Tooltip
-                  formatter={(value) => [formatKRW(value as number), ""]}
-                  labelFormatter={(label) => format(new Date(label), "yyyy-MM-dd")}
-                />
-                <Area
-                  type="monotone"
-                  dataKey="total"
-                  name={t("totalAssets")}
-                  stroke="#6366f1"
-                  fill="#6366f1"
-                  fillOpacity={0.15}
-                  strokeWidth={2}
-                />
-                <Area
-                  type="monotone"
-                  dataKey="stock"
-                  name={t("stock")}
-                  stroke="#22c55e"
-                  fill="#22c55e"
-                  fillOpacity={0.08}
-                  strokeWidth={1.5}
-                />
-                <Area
-                  type="monotone"
-                  dataKey="bank"
-                  name={t("bank")}
-                  stroke="#f59e0b"
-                  fill="#f59e0b"
-                  fillOpacity={0.08}
-                  strokeWidth={1.5}
-                />
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+                <XAxis dataKey="date" tickFormatter={(v) => format(new Date(v), "MM/dd")} tick={{ fontSize: 11, fill: "var(--fg-4)" }} />
+                <YAxis tickFormatter={(v) => formatKRW(v)} width={80} tick={{ fontSize: 11, fill: "var(--fg-4)" }} />
+                <Tooltip formatter={(value) => [formatKRW(value as number), ""]} labelFormatter={(label) => format(new Date(label), "yyyy-MM-dd")} contentStyle={{ background: "var(--bg-2)", border: "1px solid var(--border)", borderRadius: 6, fontSize: 12 }} />
+                <Area type="monotone" dataKey="total"  name={t("totalAssets")} stroke="var(--accent)"  fill="var(--accent)"  fillOpacity={0.12} strokeWidth={1.8} />
+                <Area type="monotone" dataKey="stock"  name={t("stock")}       stroke="var(--up)"     fill="var(--up)"     fillOpacity={0.07} strokeWidth={1.2} />
+                <Area type="monotone" dataKey="bank"   name={t("bank")}        stroke="var(--warn)"   fill="var(--warn)"   fillOpacity={0.07} strokeWidth={1.2} />
               </AreaChart>
             </ResponsiveContainer>
           )
         ) : (
-          // Return % mode (LineChart with benchmarks)
           returnData.length === 0 ? (
-            <div className="flex h-[300px] items-center justify-center text-muted-foreground">
-              {t("noData")}
-            </div>
+            <div style={{ height: 300, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--fg-4)", fontSize: 13 }}>{t("noData")}</div>
           ) : (
             <>
               <ResponsiveContainer width="100%" height={300}>
                 <LineChart data={returnData}>
-                  <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                  <XAxis
-                    dataKey="date"
-                    tickFormatter={(v) => format(new Date(v as string), "MM/dd")}
-                    className="text-xs"
-                  />
-                  <YAxis
-                    tickFormatter={(v) => `${v}%`}
-                    className="text-xs"
-                    width={60}
-                  />
-                  <Tooltip
-                    formatter={(value) => [`${Number(value).toFixed(2)}%`, ""]}
-                    labelFormatter={(label) => format(new Date(label), "yyyy-MM-dd")}
-                  />
-                  <ReferenceLine y={0} stroke="#888" strokeDasharray="3 3" />
-                  <Line
-                    type="monotone"
-                    dataKey="portfolio"
-                    name={t("portfolio")}
-                    stroke="#6366f1"
-                    strokeWidth={2.5}
-                    dot={false}
-                  />
-                  {Object.entries(BENCHMARK_COLORS).map(
-                    ([name, color]) =>
-                      enabledBenchmarks[name] && (
-                        <Line
-                          key={name}
-                          type="monotone"
-                          dataKey={name}
-                          name={name}
-                          stroke={color}
-                          strokeWidth={1.5}
-                          dot={false}
-                          connectNulls
-                        />
-                      )
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+                  <XAxis dataKey="date" tickFormatter={(v) => format(new Date(v as string), "MM/dd")} tick={{ fontSize: 11, fill: "var(--fg-4)" }} />
+                  <YAxis tickFormatter={(v) => `${v}%`} width={60} tick={{ fontSize: 11, fill: "var(--fg-4)" }} />
+                  <Tooltip formatter={(value) => [`${Number(value).toFixed(2)}%`, ""]} labelFormatter={(label) => format(new Date(label), "yyyy-MM-dd")} contentStyle={{ background: "var(--bg-2)", border: "1px solid var(--border)", borderRadius: 6, fontSize: 12 }} />
+                  <ReferenceLine y={0} stroke="var(--border-strong)" strokeDasharray="3 3" />
+                  <Line type="monotone" dataKey="portfolio" name={t("portfolio")} stroke="var(--accent)" strokeWidth={2} dot={false} />
+                  {Object.entries(BENCHMARK_COLORS).map(([name, color]) =>
+                    enabledBenchmarks[name] && (
+                      <Line key={name} type="monotone" dataKey={name} name={name} stroke={color} strokeWidth={1.5} dot={false} connectNulls />
+                    )
                   )}
                 </LineChart>
               </ResponsiveContainer>
-              <div className="mt-3 flex items-center gap-4 justify-center">
+              <div style={{ marginTop: 12, display: "flex", alignItems: "center", gap: 16, justifyContent: "center" }}>
                 {Object.entries(BENCHMARK_COLORS).map(([name, color]) => (
-                  <label
-                    key={name}
-                    className="flex items-center gap-1.5 cursor-pointer text-sm"
-                  >
-                    <input
-                      type="checkbox"
-                      checked={enabledBenchmarks[name] ?? false}
-                      onChange={() => toggleBenchmark(name)}
-                      className="rounded"
-                      style={{ accentColor: color }}
-                    />
-                    <span
-                      className="w-3 h-0.5 inline-block rounded"
-                      style={{ backgroundColor: color }}
-                    />
-                    <span className="text-muted-foreground">{name}</span>
+                  <label key={name} style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", fontSize: 11, color: "var(--fg-3)" }}>
+                    <input type="checkbox" checked={enabledBenchmarks[name] ?? false} onChange={() => toggleBenchmark(name)} style={{ accentColor: color }} />
+                    <span style={{ width: 12, height: 2, background: color, display: "inline-block", borderRadius: 1 }} />
+                    {name}
                   </label>
                 ))}
               </div>
             </>
           )
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }

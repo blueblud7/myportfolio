@@ -215,65 +215,34 @@ export default function AccountsPage() {
   const isFilteredEmpty = filteredAccounts.length === 0;
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-2 sm:gap-3">
-          <h1 className="text-xl sm:text-2xl font-bold">{t("title")}</h1>
-          <div className="flex rounded-md border overflow-hidden text-sm">
+    <div style={{ display: "flex", flexDirection: "column", gap: "var(--gutter)" }}>
+      <div className="topbar">
+        <div>
+          <div className="crumb">포트폴리오</div>
+          <h1>{t("title")}</h1>
+        </div>
+        <div className="right">
+          <div className="seg seg-sm">
             {(["KRW", "USD"] as const).map((cur) => (
-              <button
-                key={cur}
-                onClick={() => setCurrency(cur)}
-                className={cn(
-                  "px-3 py-1 font-medium transition-colors",
-                  currency === cur
-                    ? "bg-blue-500 text-white"
-                    : "bg-transparent text-muted-foreground hover:bg-muted"
-                )}
-              >
-                {cur}
-              </button>
+              <button key={cur} className={`seg-btn${currency === cur ? " active" : ""}`} onClick={() => setCurrency(cur)}>{cur}</button>
             ))}
           </div>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          {/* 뷰 모드 토글 */}
-          <div className="flex rounded-md border overflow-hidden">
-            <button
-              onClick={() => handleViewMode("card")}
-              className={cn(
-                "flex items-center gap-1 px-2.5 py-1.5 text-sm transition-colors",
-                viewMode === "card"
-                  ? "bg-muted text-foreground"
-                  : "text-muted-foreground hover:bg-muted/50"
-              )}
-              title="카드형"
-              aria-label="카드형 보기"
-            >
-              <LayoutGrid className="h-4 w-4" />
+          <div className="seg seg-sm">
+            <button className={`seg-btn${viewMode === "card" ? " active" : ""}`} onClick={() => handleViewMode("card")} title="카드형">
+              <LayoutGrid className="h-3.5 w-3.5" />
             </button>
-            <button
-              onClick={() => handleViewMode("list")}
-              className={cn(
-                "flex items-center gap-1 px-2.5 py-1.5 text-sm transition-colors border-l",
-                viewMode === "list"
-                  ? "bg-muted text-foreground"
-                  : "text-muted-foreground hover:bg-muted/50"
-              )}
-              title="리스트형"
-              aria-label="리스트형 보기"
-            >
-              <List className="h-4 w-4" />
+            <button className={`seg-btn${viewMode === "list" ? " active" : ""}`} onClick={() => handleViewMode("list")} title="리스트형">
+              <List className="h-3.5 w-3.5" />
             </button>
           </div>
-          <Button variant="outline" size="sm" onClick={handleRefreshAll} disabled={refreshing}>
-            <RefreshCw className={cn("h-4 w-4 sm:mr-2", refreshing && "animate-spin")} />
-            <span className="hidden sm:inline">{refreshing ? t("refreshing") : t("refreshAll")}</span>
-          </Button>
-          <Button size="sm" onClick={() => { setEditingAccount(null); setFormOpen(true); }}>
-            <Plus className="h-4 w-4 sm:mr-2" />
-            <span className="hidden sm:inline">{t("newAccount")}</span>
-          </Button>
+          <button className="btn" onClick={handleRefreshAll} disabled={refreshing}>
+            <RefreshCw className={cn("h-3.5 w-3.5", refreshing && "animate-spin")} />
+            <span>{refreshing ? t("refreshing") : t("refreshAll")}</span>
+          </button>
+          <button className="btn btn-primary" onClick={() => { setEditingAccount(null); setFormOpen(true); }}>
+            <Plus className="h-3.5 w-3.5" />
+            <span>{t("newAccount")}</span>
+          </button>
         </div>
       </div>
 

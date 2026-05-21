@@ -47,11 +47,11 @@ export function FomoSentimentWidget() {
   const d = data as SentimentData | undefined;
 
   return (
-    <div className="rounded-xl border bg-card p-4 space-y-4">
-      <div className="flex items-center justify-between">
+    <div className="card">
+      <div className="card-head">
         <div>
-          <h2 className="text-sm font-semibold">시장 심리 (FOMO/Fear)</h2>
-          <p className="text-[10px] text-muted-foreground mt-0.5">VIX · 크립토 공포탐욕 · KOSPI/S&P500 모멘텀</p>
+          <h3 className="card-title">시장 심리 (FOMO/Fear)</h3>
+          <div className="card-sub">VIX · 크립토 공포탐욕 · KOSPI/S&P500 모멘텀</div>
         </div>
         {d && (
           <div className={cn("text-2xl font-black tabular-nums", scoreColor(d.Overall))}>
@@ -59,7 +59,7 @@ export function FomoSentimentWidget() {
           </div>
         )}
       </div>
-
+      <div className="card-body card-body-padded" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       {isLoading || !d ? (
         <div className="space-y-3">
           {["KR", "US", "Crypto"].map((m) => (
@@ -109,6 +109,7 @@ export function FomoSentimentWidget() {
           {new Date(d.timestamp).toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" })} 기준
         </p>
       )}
+      </div>
     </div>
   );
 }
