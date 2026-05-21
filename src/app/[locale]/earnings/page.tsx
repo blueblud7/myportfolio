@@ -20,7 +20,7 @@ function fmtRevenue(v: number, ticker: string) {
     const sign = v < 0 ? "−" : "";
     const abs = Math.abs(v);
     const jo = abs / 1_000_000_000_000;
-    if (jo >= 0.1) return `${sign}₩${jo.toFixed(1)}조`;
+    if (jo >= 1) return `${sign}₩${jo.toFixed(1)}조`;
     const eok = abs / 100_000_000;
     if (eok >= 1)  return `${sign}₩${Math.round(eok).toLocaleString()}억`;
     const man = abs / 10_000;
