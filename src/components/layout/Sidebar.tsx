@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import { usePrivacy } from "@/contexts/privacy-context";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
+import { useReports } from "@/hooks/use-api";
 
 // Inline SVG icon set matching the design
 function Icon({ name, size = 15 }: { name: string; size?: number }) {
@@ -101,6 +102,92 @@ function useSession() {
   return loggedIn;
 }
 
+function SummaryFooter({
+  loggedIn,
+  isPrivate,
+  toggle,
+  handleLogout,
+  handleLogin,
+}: {
+  loggedIn: boolean | null;
+  isPrivate: boolean;
+  toggle: () => void;
+  handleLogout: () => void;
+  handleLogin: () => void;
+}) {
+  const { data: reports } = useReports();
+
+  if (!loggedIn) {
+    return (
+      <div className="sidebar-foot">
+        <button
+          onClick={handleLogin}
+          className="btn btn-primary"
+          style={{ height: 26, padding: "0 12px", fontSize: 11, gap: 6, width: "100%" }}
+        >
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/>
+            <polyline points="10 17 15 12 10 7"/>
+            <line x1="15" y1="12" x2="3" y2="12"/>
+          </svg>
+          로그인
+        </button>
+      </div>
+    );
+  }
+
+  const total = reports?.by_account?.reduce((s, a) => s + a.value_krw, 0) ?? 0;
+  const gainLoss = reports?.all_performers?.reduce((s, p) => s + p.gain_loss, 0) ?? 0;
+  const gainLossPct = total - gainLoss > 0 ? (gainLoss / (total - gainLoss)) * 100 : 0;
+  const hasData = reports != null && total > 0;
+
+  const fmtTotal = (): string => {
+    if (isPrivate) return "•••••••";
+    if (!hasData) return "—";
+    return total >= 1e8
+      ? `₩${(total / 1e8).toFixed(2)}억`
+      : `₩${(total / 1e4).toFixed(0)}만`;
+  };
+
+  const fmtGainLoss = (): string => {
+    if (isPrivate) return "•••";
+    if (!hasData) return "—";
+    return `${gainLoss >= 0 ? "+" : "−"}₩${Math.abs(gainLoss / 1e4).toFixed(0)}만`;
+  };
+
+  return (
+    <div className="sidebar-foot">
+      <div className="summary-card">
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <span className="summary-label">총 자산</span>
+          <button className="btn-ghost" title={isPrivate ? "금액 표시" : "금액 숨김"} onClick={toggle}>
+            <Icon name={isPrivate ? "eye-off" : "eye"} size={13} />
+          </button>
+        </div>
+        <div className={`summary-value${!hasData ? " fg-4" : ""}`}>{fmtTotal()}</div>
+        {hasData && (
+          <div className="summary-row">
+            <span className={`delta ${gainLoss > 0 ? "up" : gainLoss < 0 ? "down" : "plain"}`}>
+              {gainLoss > 0 ? "▲" : gainLoss < 0 ? "▼" : "·"}
+              <span className="num">{Math.abs(gainLossPct).toFixed(2)}%</span>
+            </span>
+            <span className="fg-4 mono" style={{ fontSize: 11 }}>{fmtGainLoss()}</span>
+          </div>
+        )}
+      </div>
+      <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
+        <button
+          onClick={handleLogout}
+          className="btn btn-ghost"
+          style={{ flex: 1, height: 26, fontSize: 11 }}
+        >
+          로그아웃
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function SidebarContent({ onClose }: { onClose?: () => void }) {
   const pathname = usePathname();
   const { isPrivate, toggle } = usePrivacy();
@@ -181,44 +268,13 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
       </nav>
 
       {/* Footer */}
-      <div className="sidebar-foot">
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
-          {loggedIn ? (
-            <>
-              <button
-                onClick={toggle}
-                className="btn btn-ghost"
-                style={{ height: 26, padding: "0 8px", fontSize: 11, gap: 6 }}
-                title={isPrivate ? "금액 표시" : "금액 숨김"}
-              >
-                <Icon name={isPrivate ? "eye-off" : "eye"} size={13} />
-                <span style={{ color: "var(--fg-4)" }}>{isPrivate ? "숨김 중" : "표시 중"}</span>
-              </button>
-              <button
-                onClick={handleLogout}
-                className="btn btn-ghost"
-                style={{ height: 26, padding: "0 8px" }}
-                title="로그아웃"
-              >
-                <Icon name="logout" size={13} />
-              </button>
-            </>
-          ) : (
-            <button
-              onClick={handleLogin}
-              className="btn btn-primary"
-              style={{ height: 26, padding: "0 12px", fontSize: 11, gap: 6, width: "100%" }}
-            >
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/>
-                <polyline points="10 17 15 12 10 7"/>
-                <line x1="15" y1="12" x2="3" y2="12"/>
-              </svg>
-              로그인
-            </button>
-          )}
-        </div>
-      </div>
+      <SummaryFooter
+        loggedIn={loggedIn}
+        isPrivate={isPrivate}
+        toggle={toggle}
+        handleLogout={handleLogout}
+        handleLogin={handleLogin}
+      />
     </>
   );
 }
