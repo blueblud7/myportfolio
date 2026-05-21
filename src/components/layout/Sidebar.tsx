@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { Link, usePathname } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
 import { usePrivacy } from "@/contexts/privacy-context";
@@ -40,43 +41,44 @@ function Icon({ name, size = 15 }: { name: string; size?: number }) {
   }
 }
 
+// requiresAuth: true → 로그인 필요 (비로그인 시 자물쇠 표시)
 const NAV = [
   {
     section: "포트폴리오",
     items: [
-      { href: "/",          label: "대시보드",          icon: "home" },
-      { href: "/accounts",  label: "보유 자산",          icon: "wallet" },
-      { href: "/watchlist", label: "워치리스트",          icon: "binoculars" },
-      { href: "/reports",   label: "리포트 & 목표",      icon: "barchart" },
+      { href: "/",          label: "대시보드",          icon: "home",       requiresAuth: true },
+      { href: "/accounts",  label: "보유 자산",          icon: "wallet",     requiresAuth: true },
+      { href: "/watchlist", label: "워치리스트",          icon: "binoculars", requiresAuth: true },
+      { href: "/reports",   label: "리포트 & 목표",      icon: "barchart",   requiresAuth: true },
     ],
   },
   {
     section: "분석",
     items: [
-      { href: "/stocks",          label: "종목 정보",      icon: "search" },
-      { href: "/krx-market",      label: "한국 시장",      icon: "piechart" },
-      { href: "/analyst-reports", label: "증권사 리포트",  icon: "filedoc" },
-      { href: "/earnings",        label: "실적",           icon: "calendar" },
-      { href: "/quant",           label: "퀀트",           icon: "activity" },
+      { href: "/stocks",          label: "종목 정보",      icon: "search"    },
+      { href: "/krx-market",      label: "한국 시장",      icon: "piechart"  },
+      { href: "/analyst-reports", label: "증권사 리포트",  icon: "filedoc"   },
+      { href: "/earnings",        label: "실적",           icon: "calendar"  },
+      { href: "/quant",           label: "퀀트",           icon: "activity"  },
     ],
   },
   {
     section: "연구실",
     items: [
       { href: "/strategy-lab",   label: "전략 연구소",     icon: "microscope" },
-      { href: "/etf-flow",       label: "ETF 흐름",        icon: "layers" },
-      { href: "/pattern-lab",    label: "패턴 유사도",     icon: "linechart" },
-      { href: "/ten-bagger",     label: "텐베거 스크리너", icon: "rocket" },
-      { href: "/insights",       label: "AI 인사이트",     icon: "sparkles" },
-      { href: "/diary",          label: "저널",            icon: "book" },
+      { href: "/etf-flow",       label: "ETF 흐름",        icon: "layers"     },
+      { href: "/pattern-lab",    label: "패턴 유사도",     icon: "linechart"  },
+      { href: "/ten-bagger",     label: "텐베거 스크리너", icon: "rocket"     },
+      { href: "/insights",       label: "AI 인사이트",     icon: "sparkles",  requiresAuth: true },
+      { href: "/diary",          label: "저널",            icon: "book",      requiresAuth: true },
     ],
   },
   {
     section: "도구",
     items: [
-      { href: "/calculator",    label: "계산기",  icon: "trending" },
-      { href: "/budget",        label: "예산",    icon: "receipt" },
-      { href: "/alerts",        label: "알림",    icon: "bell" },
+      { href: "/calculator",    label: "계산기",  icon: "trending"               },
+      { href: "/budget",        label: "예산",    icon: "receipt", requiresAuth: true },
+      { href: "/alerts",        label: "알림",    icon: "bell",    requiresAuth: true },
     ],
   },
 ];
@@ -86,14 +88,33 @@ interface SidebarProps {
   onMobileClose?: () => void;
 }
 
+// 세션 상태를 가져오는 훅
+function useSession() {
+  const [loggedIn, setLoggedIn] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    fetch("/api/me", { cache: "no-store" })
+      .then(r => setLoggedIn(r.ok))
+      .catch(() => setLoggedIn(false));
+  }, []);
+
+  return loggedIn;
+}
+
 function SidebarContent({ onClose }: { onClose?: () => void }) {
   const pathname = usePathname();
   const { isPrivate, toggle } = usePrivacy();
   const router = useRouter();
+  const loggedIn = useSession();
 
   const handleLogout = async () => {
     await fetch("/api/auth/logout", { method: "POST" });
     window.location.href = "/login";
+  };
+
+  const handleLogin = () => {
+    router.push(`/login?redirect=${encodeURIComponent(pathname)}`);
+    onClose?.();
   };
 
   const isActive = (href: string) =>
@@ -122,17 +143,39 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
         {NAV.map((sec) => (
           <div className="nav-section" key={sec.section}>
             <div className="nav-section-title">{sec.section}</div>
-            {sec.items.map((it) => (
-              <Link
-                key={it.href}
-                href={it.href as Parameters<typeof Link>[0]["href"]}
-                onClick={onClose}
-                className={cn("nav-item", isActive(it.href) && "active")}
-              >
-                <Icon name={it.icon} size={15} />
-                <span>{it.label}</span>
-              </Link>
-            ))}
+            {sec.items.map((it) => {
+              const locked = it.requiresAuth && loggedIn === false;
+              if (locked) {
+                return (
+                  <button
+                    key={it.href}
+                    onClick={handleLogin}
+                    className="nav-item"
+                    style={{ width: "100%", textAlign: "left", opacity: 0.45, cursor: "pointer" }}
+                    title="로그인 후 이용 가능"
+                  >
+                    <Icon name={it.icon} size={15} />
+                    <span style={{ flex: 1 }}>{it.label}</span>
+                    {/* 자물쇠 아이콘 */}
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.6, flexShrink: 0 }}>
+                      <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                      <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                    </svg>
+                  </button>
+                );
+              }
+              return (
+                <Link
+                  key={it.href}
+                  href={it.href as Parameters<typeof Link>[0]["href"]}
+                  onClick={onClose}
+                  className={cn("nav-item", isActive(it.href) && "active")}
+                >
+                  <Icon name={it.icon} size={15} />
+                  <span>{it.label}</span>
+                </Link>
+              );
+            })}
           </div>
         ))}
       </nav>
@@ -140,23 +183,40 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
       {/* Footer */}
       <div className="sidebar-foot">
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
-          <button
-            onClick={toggle}
-            className="btn btn-ghost"
-            style={{ height: 26, padding: "0 8px", fontSize: 11, gap: 6 }}
-            title={isPrivate ? "금액 표시" : "금액 숨김"}
-          >
-            <Icon name={isPrivate ? "eye-off" : "eye"} size={13} />
-            <span style={{ color: "var(--fg-4)" }}>{isPrivate ? "숨김 중" : "표시 중"}</span>
-          </button>
-          <button
-            onClick={handleLogout}
-            className="btn btn-ghost"
-            style={{ height: 26, padding: "0 8px" }}
-            title="로그아웃"
-          >
-            <Icon name="logout" size={13} />
-          </button>
+          {loggedIn ? (
+            <>
+              <button
+                onClick={toggle}
+                className="btn btn-ghost"
+                style={{ height: 26, padding: "0 8px", fontSize: 11, gap: 6 }}
+                title={isPrivate ? "금액 표시" : "금액 숨김"}
+              >
+                <Icon name={isPrivate ? "eye-off" : "eye"} size={13} />
+                <span style={{ color: "var(--fg-4)" }}>{isPrivate ? "숨김 중" : "표시 중"}</span>
+              </button>
+              <button
+                onClick={handleLogout}
+                className="btn btn-ghost"
+                style={{ height: 26, padding: "0 8px" }}
+                title="로그아웃"
+              >
+                <Icon name="logout" size={13} />
+              </button>
+            </>
+          ) : (
+            <button
+              onClick={handleLogin}
+              className="btn btn-primary"
+              style={{ height: 26, padding: "0 12px", fontSize: 11, gap: 6, width: "100%" }}
+            >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/>
+                <polyline points="10 17 15 12 10 7"/>
+                <line x1="15" y1="12" x2="3" y2="12"/>
+              </svg>
+              로그인
+            </button>
+          )}
         </div>
       </div>
     </>

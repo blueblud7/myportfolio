@@ -9,15 +9,43 @@ const SECRET_KEY = new TextEncoder().encode(
   process.env.SESSION_SECRET ?? "myportfolio-secret-blueming-2024-please-change"
 );
 
-function isLoginPath(pathname: string) {
-  return pathname === "/login" || pathname === "/ko/login" || pathname === "/en/login";
+// 로그인 없이 접근 가능한 공개 경로 (locale prefix 제거 후 비교)
+const PUBLIC_PATHS = [
+  "/login",
+  "/stocks",
+  "/krx-market",
+  "/analyst-reports",
+  "/earnings",
+  "/quant",
+  "/etf-flow",
+  "/pattern-lab",
+  "/ten-bagger",
+  "/fomo-agents",
+  "/strategy-lab",
+  "/backtest",
+  "/portfolio-mix",
+  "/calculator",
+  "/compare",
+  "/volatility",
+  "/canslim",
+  "/pattern",
+  "/position-lab",
+];
+
+function stripLocale(pathname: string): string {
+  return pathname.replace(/^\/(ko|en)(?=\/|$)/, "") || "/";
+}
+
+function isPublicPath(pathname: string): boolean {
+  const path = stripLocale(pathname);
+  return PUBLIC_PATHS.some(p => path === p || path.startsWith(p + "/"));
 }
 
 export default async function middleware(req: NextRequest) {
   const pathname = req.nextUrl.pathname;
 
-  // 로그인 페이지는 인증 불필요
-  if (isLoginPath(pathname)) {
+  // 공개 경로는 인증 없이 통과
+  if (isPublicPath(pathname)) {
     return intlMiddleware(req);
   }
 
@@ -32,8 +60,9 @@ export default async function middleware(req: NextRequest) {
     }
   }
 
-  // 미인증 → 로그인으로 리다이렉트
+  // 미인증 → 로그인으로 리다이렉트 (원래 경로를 redirect 파라미터로 전달)
   const loginUrl = new URL("/login", req.url);
+  loginUrl.searchParams.set("redirect", pathname);
   return NextResponse.redirect(loginUrl);
 }
 
