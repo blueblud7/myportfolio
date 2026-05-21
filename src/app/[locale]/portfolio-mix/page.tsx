@@ -8,7 +8,6 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import {
   Play, Loader2, PieChart, Trophy, ShieldAlert, TrendingUp,
@@ -829,6 +828,7 @@ export default function PortfolioMixPage() {
   const [results, setResults] = useState<MixResponse | null>(null);
 
   const [activeTab, setActiveTab] = useState<TabKey>("chart");
+  const [activePageTab, setActivePageTab] = useState<"mix" | "position">("mix");
 
   const run = async () => {
     setLoading(true);
@@ -871,12 +871,11 @@ export default function PortfolioMixPage() {
           <h1>포트폴리오 믹스</h1>
         </div>
       </div>
-      <Tabs defaultValue="mix">
-        <TabsList>
-          <TabsTrigger value="mix">포트폴리오 믹스</TabsTrigger>
-          <TabsTrigger value="position">자금관리 연구소</TabsTrigger>
-        </TabsList>
-        <TabsContent value="mix" className="mt-6">
+      <div className="tabs">
+        <button className={`tab${activePageTab === "mix" ? " active" : ""}`} onClick={() => setActivePageTab("mix")}>포트폴리오 믹스</button>
+        <button className={`tab${activePageTab === "position" ? " active" : ""}`} onClick={() => setActivePageTab("position")}>자금관리 연구소</button>
+      </div>
+      {activePageTab === "mix" && <div className="mt-6">
         <div className="space-y-6">
 
       {/* Settings */}
@@ -1048,11 +1047,10 @@ export default function PortfolioMixPage() {
         </div>
       )}
         </div>
-        </TabsContent>
-        <TabsContent value="position" className="mt-6">
-          <PositionLabPage />
-        </TabsContent>
-      </Tabs>
+      </div>}
+      {activePageTab === "position" && <div className="mt-6">
+        <PositionLabPage />
+      </div>}
     </div>
   );
 }

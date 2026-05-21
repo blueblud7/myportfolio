@@ -4,7 +4,6 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Sparkles, Send, RefreshCw, History, Trash2, ChevronDown, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import FomoAgentsPage from "../fomo-agents/page";
@@ -77,6 +76,7 @@ function MarkdownRenderer({ text }: { text: string }) {
 }
 
 export default function InsightsPage() {
+  const [activeTab, setActiveTab] = useState<"portfolio" | "agents">("portfolio");
   const [analysis, setAnalysis] = useState<string>("");
   const [summary, setSummary] = useState<PortfolioSummary | null>(null);
   const [question, setQuestion] = useState("");
@@ -140,12 +140,11 @@ export default function InsightsPage() {
           <h1>AI 인사이트</h1>
         </div>
       </div>
-      <Tabs defaultValue="portfolio">
-        <TabsList>
-          <TabsTrigger value="portfolio">AI 포트폴리오</TabsTrigger>
-          <TabsTrigger value="agents">AI 투자자 에이전트</TabsTrigger>
-        </TabsList>
-        <TabsContent value="portfolio" className="mt-6">
+      <div className="tabs">
+        <button className={`tab${activeTab === "portfolio" ? " active" : ""}`} onClick={() => setActiveTab("portfolio")}>AI 포트폴리오</button>
+        <button className={`tab${activeTab === "agents" ? " active" : ""}`} onClick={() => setActiveTab("agents")}>AI 투자자 에이전트</button>
+      </div>
+      {activeTab === "portfolio" && <div className="mt-6">
         <div className="space-y-6">
 
       {/* 분석 요청 카드 */}
@@ -341,11 +340,10 @@ export default function InsightsPage() {
         </Card>
       )}
         </div>
-        </TabsContent>
-        <TabsContent value="agents" className="mt-6">
-          <FomoAgentsPage />
-        </TabsContent>
-      </Tabs>
+      </div>}
+      {activeTab === "agents" && <div className="mt-6">
+        <FomoAgentsPage />
+      </div>}
     </div>
   );
 }

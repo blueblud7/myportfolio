@@ -8,7 +8,6 @@ import { usePrivacy } from "@/contexts/privacy-context";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { AllocationChart } from "@/components/dashboard/AllocationChart";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Table,
   TableBody,
@@ -40,6 +39,7 @@ export default function ReportsPage() {
   const { data: report, isLoading, mutate } = useReports();
   const { data: exchangeRateData } = useExchangeRate();
   const exchangeRate = exchangeRateData?.rate ?? 1350;
+  const [activeTab, setActiveTab] = useState<"overview" | "risk" | "rebalancing" | "fx" | "goals">("overview");
   const [perfCurrency, setPerfCurrency] = useState<"KRW" | "USD">("KRW");
   const [fetching, setFetching] = useState(false);
 
@@ -160,28 +160,27 @@ export default function ReportsPage() {
         </div>
       </div>
 
-      <Tabs defaultValue="overview">
-        <TabsList>
-          <TabsTrigger value="overview">{t("tabOverview")}</TabsTrigger>
-          <TabsTrigger value="risk">{tRisk("title")}</TabsTrigger>
-          <TabsTrigger value="rebalancing">{tReb("title")}</TabsTrigger>
-          <TabsTrigger value="fx">{tFx("title")}</TabsTrigger>
-          <TabsTrigger value="goals">목표 &amp; 섹터</TabsTrigger>
-        </TabsList>
+      <div className="tabs">
+        <button className={`tab${activeTab === "overview" ? " active" : ""}`} onClick={() => setActiveTab("overview")}>{t("tabOverview")}</button>
+        <button className={`tab${activeTab === "risk" ? " active" : ""}`} onClick={() => setActiveTab("risk")}>{tRisk("title")}</button>
+        <button className={`tab${activeTab === "rebalancing" ? " active" : ""}`} onClick={() => setActiveTab("rebalancing")}>{tReb("title")}</button>
+        <button className={`tab${activeTab === "fx" ? " active" : ""}`} onClick={() => setActiveTab("fx")}>{tFx("title")}</button>
+        <button className={`tab${activeTab === "goals" ? " active" : ""}`} onClick={() => setActiveTab("goals")}>목표 &amp; 섹터</button>
+      </div>
 
-        <TabsContent value="risk" className="mt-6">
-          <RiskDashboard />
-        </TabsContent>
+      {activeTab === "risk" && <div className="mt-6">
+        <RiskDashboard />
+      </div>}
 
-        <TabsContent value="rebalancing" className="mt-6">
-          <RebalancingDashboard />
-        </TabsContent>
+      {activeTab === "rebalancing" && <div className="mt-6">
+        <RebalancingDashboard />
+      </div>}
 
-        <TabsContent value="fx" className="mt-6">
-          <FxAnalysis />
-        </TabsContent>
+      {activeTab === "fx" && <div className="mt-6">
+        <FxAnalysis />
+      </div>}
 
-        <TabsContent value="overview" className="mt-6">
+      {activeTab === "overview" && <div className="mt-6">
       <div className="grid gap-4 md:grid-cols-2">
         <AllocationChart
           title={t("byCurrency")}
@@ -477,12 +476,11 @@ export default function ReportsPage() {
           )}
         </CardContent>
       </Card>
-        </TabsContent>
+      </div>}
 
-        <TabsContent value="goals" className="mt-6">
-          <GoalsPage />
-        </TabsContent>
-      </Tabs>
+      {activeTab === "goals" && <div className="mt-6">
+        <GoalsPage />
+      </div>}
     </div>
   );
 }

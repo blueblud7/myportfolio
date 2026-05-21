@@ -10,7 +10,6 @@ import { refreshPrices } from "@/hooks/use-api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { HoldingsTable } from "@/components/accounts/HoldingsTable";
 import { HoldingForm } from "@/components/accounts/HoldingForm";
 import { HoldingsPieChart } from "@/components/accounts/HoldingsPieChart";
@@ -62,6 +61,8 @@ export default function AccountDetailPage() {
     localStorage.setItem("portfolio_currency", cur);
   }, []);
   const autoRefreshed = useRef(false);
+
+  const [activeTab, setActiveTab] = useState<"holdings" | "transactions" | "benchmark">("holdings");
 
   const [txFormOpen, setTxFormOpen] = useState(false);
   const [editingTx, setEditingTx] = useState<Transaction | null>(null);
@@ -306,98 +307,52 @@ export default function AccountDetailPage() {
         </Card>
       )}
 
-      <Tabs defaultValue="holdings">
-        <TabsList>
-          <TabsTrigger value="holdings">{t("holdings")}</TabsTrigger>
-          <TabsTrigger value="transactions">{tTx("title")}</TabsTrigger>
-          <TabsTrigger value="benchmark">{t("benchmarkTab")}</TabsTrigger>
-        </TabsList>
+      <div className="tabs">
+        <button className={`tab${activeTab === "holdings" ? " active" : ""}`} onClick={() => setActiveTab("holdings")}>{t("holdings")}</button>
+        <button className={`tab${activeTab === "transactions" ? " active" : ""}`} onClick={() => setActiveTab("transactions")}>{tTx("title")}</button>
+        <button className={`tab${activeTab === "benchmark" ? " active" : ""}`} onClick={() => setActiveTab("benchmark")}>{t("benchmarkTab")}</button>
+      </div>
 
-        <TabsContent value="holdings" className="mt-4">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle>{t("holdings")}</CardTitle>
-              <div className="flex gap-2">
-                {account?.type === "stock" && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setKiwoomOpen(true)}
-                  >
-                    <RefreshCw className="mr-2 h-3.5 w-3.5" />
-                    {t("kiwoomSync")}
-                  </Button>
-                )}
+      {activeTab === "holdings" && (
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle>{t("holdings")}</CardTitle>
+            <div className="flex gap-2">
+              {account?.type === "stock" && (
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={handleRefresh}
-                  disabled={refreshing}
+                  onClick={() => setKiwoomOpen(true)}
                 >
-                  <RefreshCw className={cn("mr-2 h-3.5 w-3.5", refreshing && "animate-spin")} />
-                  {refreshing ? t("refreshing") : t("refresh")}
+                  <RefreshCw className="mr-2 h-3.5 w-3.5" />
+                  {t("kiwoomSync")}
                 </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    if (!holdings) return;
-                    const rows = holdings.map((h: Record<string, unknown>) => ({
-                      ticker: h.ticker,
-                      name: h.name,
-                      quantity: h.quantity,
-                      avg_cost: h.avg_cost,
-                      current_price: h.current_price || h.avg_cost,
-                      currency: h.currency,
-                      date: h.date,
-                      note: h.note,
-                    }));
-                    downloadCsv(`holdings_${account?.name ?? accountId}_${new Date().toISOString().slice(0, 10)}.csv`, rows);
-                  }}
-                >
-                  <Download className="mr-2 h-3.5 w-3.5" />
-                  CSV
-                </Button>
-                <Button
-                  size="sm"
-                  onClick={() => {
-                    setEditingHolding(null);
-                    setFormOpen(true);
-                  }}
-                >
-                  <Plus className="mr-2 h-3.5 w-3.5" />
-                  {t("addHolding")}
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <HoldingsTable
-                holdings={holdings ?? []}
-                accountCurrency={account?.currency ?? "KRW"}
-                exchangeRate={exchangeRate}
-                onEdit={(h) => {
-                  setEditingHolding(h);
-                  setFormOpen(true);
-                }}
-                onDelete={handleDelete}
-              />
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="transactions" className="mt-4">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle>{tTx("title")}</CardTitle>
+              )}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleRefresh}
+                disabled={refreshing}
+              >
+                <RefreshCw className={cn("mr-2 h-3.5 w-3.5", refreshing && "animate-spin")} />
+                {refreshing ? t("refreshing") : t("refresh")}
+              </Button>
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => {
-                  if (!transactions || transactions.length === 0) return;
-                  downloadCsv(
-                    `transactions_${account?.name ?? accountId}_${new Date().toISOString().slice(0, 10)}.csv`,
-                    transactions
-                  );
+                  if (!holdings) return;
+                  const rows = holdings.map((h: Record<string, unknown>) => ({
+                    ticker: h.ticker,
+                    name: h.name,
+                    quantity: h.quantity,
+                    avg_cost: h.avg_cost,
+                    current_price: h.current_price || h.avg_cost,
+                    currency: h.currency,
+                    date: h.date,
+                    note: h.note,
+                  }));
+                  downloadCsv(`holdings_${account?.name ?? accountId}_${new Date().toISOString().slice(0, 10)}.csv`, rows);
                 }}
               >
                 <Download className="mr-2 h-3.5 w-3.5" />
@@ -406,31 +361,75 @@ export default function AccountDetailPage() {
               <Button
                 size="sm"
                 onClick={() => {
-                  setEditingTx(null);
-                  setTxFormOpen(true);
+                  setEditingHolding(null);
+                  setFormOpen(true);
                 }}
               >
                 <Plus className="mr-2 h-3.5 w-3.5" />
-                {tTx("addTransaction")}
+                {t("addHolding")}
               </Button>
-            </CardHeader>
-            <CardContent>
-              <TransactionTable
-                transactions={transactions ?? []}
-                onEdit={(tx) => {
-                  setEditingTx(tx);
-                  setTxFormOpen(true);
-                }}
-                onDelete={handleTxDelete}
-              />
-            </CardContent>
-          </Card>
-        </TabsContent>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <HoldingsTable
+              holdings={holdings ?? []}
+              accountCurrency={account?.currency ?? "KRW"}
+              exchangeRate={exchangeRate}
+              onEdit={(h) => {
+                setEditingHolding(h);
+                setFormOpen(true);
+              }}
+              onDelete={handleDelete}
+            />
+          </CardContent>
+        </Card>
+      )}
 
-        <TabsContent value="benchmark" className="mt-4">
-          <BenchmarkComparison fixedAccountId={accountId} />
-        </TabsContent>
-      </Tabs>
+      {activeTab === "transactions" && (
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle>{tTx("title")}</CardTitle>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                if (!transactions || transactions.length === 0) return;
+                downloadCsv(
+                  `transactions_${account?.name ?? accountId}_${new Date().toISOString().slice(0, 10)}.csv`,
+                  transactions
+                );
+              }}
+            >
+              <Download className="mr-2 h-3.5 w-3.5" />
+              CSV
+            </Button>
+            <Button
+              size="sm"
+              onClick={() => {
+                setEditingTx(null);
+                setTxFormOpen(true);
+              }}
+            >
+              <Plus className="mr-2 h-3.5 w-3.5" />
+              {tTx("addTransaction")}
+            </Button>
+          </CardHeader>
+          <CardContent>
+            <TransactionTable
+              transactions={transactions ?? []}
+              onEdit={(tx) => {
+                setEditingTx(tx);
+                setTxFormOpen(true);
+              }}
+              onDelete={handleTxDelete}
+            />
+          </CardContent>
+        </Card>
+      )}
+
+      {activeTab === "benchmark" && (
+        <BenchmarkComparison fixedAccountId={accountId} />
+      )}
 
       {account && (
         <HoldingForm

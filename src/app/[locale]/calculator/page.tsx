@@ -6,7 +6,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   LineChart,
   Line,
@@ -35,6 +34,7 @@ export default function CalculatorPage() {
   const t = useTranslations("Calculator");
   const tTax = useTranslations("TaxCalc");
   const tDrip = useTranslations("Drip");
+  const [activeTab, setActiveTab] = useState<"compound" | "tax" | "drip">("compound");
   const [initial, setInitial] = useState("100000000");
   const [monthly, setMonthly] = useState("1000000");
   const [years, setYears] = useState("20");
@@ -101,24 +101,23 @@ export default function CalculatorPage() {
         </div>
       </div>
 
-      <Tabs defaultValue="compound">
-        <TabsList>
-          <TabsTrigger value="compound">
-            <TrendingUp className="mr-1.5 h-3.5 w-3.5" />
-            {t("title")}
-          </TabsTrigger>
-          <TabsTrigger value="tax">
-            <Receipt className="mr-1.5 h-3.5 w-3.5" />
-            {tTax("title")}
-          </TabsTrigger>
-          <TabsTrigger value="drip">
-            <RefreshCw className="mr-1.5 h-3.5 w-3.5" />
-            {tDrip("title")}
-          </TabsTrigger>
-        </TabsList>
+      <div className="tabs">
+        <button className={`tab${activeTab === "compound" ? " active" : ""}`} onClick={() => setActiveTab("compound")}>
+          <TrendingUp className="h-3.5 w-3.5" />
+          {t("title")}
+        </button>
+        <button className={`tab${activeTab === "tax" ? " active" : ""}`} onClick={() => setActiveTab("tax")}>
+          <Receipt className="h-3.5 w-3.5" />
+          {tTax("title")}
+        </button>
+        <button className={`tab${activeTab === "drip" ? " active" : ""}`} onClick={() => setActiveTab("drip")}>
+          <RefreshCw className="h-3.5 w-3.5" />
+          {tDrip("title")}
+        </button>
+      </div>
 
         {/* 복리 계산기 탭 */}
-        <TabsContent value="compound" className="mt-6 space-y-6">
+        {activeTab === "compound" && <div className="mt-6 space-y-6">
           <Card>
             <CardHeader>
               <CardTitle className="text-base">{t("settings")}</CardTitle>
@@ -302,18 +301,17 @@ export default function CalculatorPage() {
               </table>
             </CardContent>
           </Card>
-        </TabsContent>
+        </div>}
 
         {/* 양도세 계산기 탭 */}
-        <TabsContent value="tax" className="mt-6">
+        {activeTab === "tax" && <div className="mt-6">
           <CapitalGainsCalculator />
-        </TabsContent>
+        </div>}
 
         {/* DRIP 시뮬레이터 탭 */}
-        <TabsContent value="drip" className="mt-6">
+        {activeTab === "drip" && <div className="mt-6">
           <DripSimulator />
-        </TabsContent>
-      </Tabs>
+        </div>}
     </div>
   );
 }
