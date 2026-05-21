@@ -18,8 +18,6 @@ import {
   Line,
   ReferenceLine,
 } from "recharts";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ArrowLeft, Building2, RefreshCw, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -99,13 +97,13 @@ function StatCard({
   color?: string;
 }) {
   return (
-    <Card>
-      <CardContent className="pt-4 pb-3 px-4">
+    <div className="card">
+      <div className="card-body card-body-padded">
         <p className="text-xs text-muted-foreground">{label}</p>
         <p className={cn("mt-1 text-xl font-bold tabular-nums", color)}>{value}</p>
         {sub && <p className="mt-0.5 text-xs text-muted-foreground">{sub}</p>}
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }
 
@@ -595,31 +593,28 @@ export default function StockDetailPage({
               <span className={cn("text-2xl font-bold tabular-nums", priceColor)}>
                 {fmtPrice(data.price, data.currency)}
               </span>
-              <Badge
-                variant={data.changePct >= 0 ? "default" : "destructive"}
+              <span
                 className={cn(
-                  "font-mono text-xs",
-                  data.changePct >= 0
-                    ? "bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/20"
-                    : "bg-red-500/20 text-red-400 hover:bg-red-500/20"
+                  "badge font-mono text-xs",
+                  data.changePct >= 0 ? "badge-up" : "badge-down"
                 )}
               >
                 {fmtPct(data.changePct)}
-              </Badge>
+              </span>
             </div>
           </div>
 
           <div className="flex flex-wrap gap-2 text-sm">
             {data.sector && (
-              <Badge variant="outline" className="text-xs">
+              <span className="badge badge-outline text-xs">
                 <Building2 className="mr-1 h-3 w-3" />
                 {data.sector}
-              </Badge>
+              </span>
             )}
             {data.industry && (
-              <Badge variant="outline" className="text-xs text-muted-foreground">
+              <span className="badge badge-outline text-xs text-muted-foreground">
                 {data.industry}
-              </Badge>
+              </span>
             )}
           </div>
         </div>
@@ -661,29 +656,27 @@ export default function StockDetailPage({
       </div>
 
       {/* 차트 */}
-      <Card>
-        <CardHeader className="pb-2">
-          <div className="flex items-center justify-between flex-wrap gap-2">
-            <CardTitle className="text-base">주가 차트</CardTitle>
-            <div className="flex gap-1">
-              {(["1W", "1M", "3M", "6M", "1Y"] as Period[]).map((p) => (
-                <button
-                  key={p}
-                  onClick={() => setPeriod(p)}
-                  className={cn(
-                    "rounded px-2.5 py-1 text-xs font-medium transition-colors",
-                    period === p
-                      ? "bg-blue-500/20 text-blue-300"
-                      : "text-muted-foreground hover:bg-zinc-800 hover:text-zinc-200"
-                  )}
-                >
-                  {p}
-                </button>
-              ))}
-            </div>
+      <div className="card">
+        <div className="card-head">
+          <div><h3 className="card-title">주가 차트</h3></div>
+          <div className="flex gap-1">
+            {(["1W", "1M", "3M", "6M", "1Y"] as Period[]).map((p) => (
+              <button
+                key={p}
+                onClick={() => setPeriod(p)}
+                className={cn(
+                  "rounded px-2.5 py-1 text-xs font-medium transition-colors",
+                  period === p
+                    ? "bg-blue-500/20 text-blue-300"
+                    : "text-muted-foreground hover:bg-zinc-800 hover:text-zinc-200"
+                )}
+              >
+                {p}
+              </button>
+            ))}
           </div>
-        </CardHeader>
-        <CardContent>
+        </div>
+        <div className="card-body card-body-padded">
           {chartData.length === 0 ? (
             <div className="flex h-48 items-center justify-center text-sm text-muted-foreground">
               차트 데이터 없음
@@ -745,34 +738,26 @@ export default function StockDetailPage({
               </AreaChart>
             </ResponsiveContainer>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       {/* 밸류에이션 & 수익성 */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-              밸류에이션
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="px-4 pb-4">
+        <div className="card">
+          <div className="card-head"><div><h3 className="card-title text-sm font-semibold text-muted-foreground uppercase tracking-wide">밸류에이션</h3></div></div>
+          <div className="card-body card-body-padded">
             <MetricRow label="PER (Trailing)" value={fmt(data.trailingPE)} />
             <MetricRow label="PER (Forward)" value={fmt(data.forwardPE)} />
             <MetricRow label="PEG Ratio" value={fmt(data.pegRatio)} />
             <MetricRow label="P/B Ratio" value={fmt(data.priceToBook)} />
             <MetricRow label="P/S Ratio" value={fmt(data.priceToSales)} />
             <MetricRow label="EV/EBITDA" value={fmt(data.evToEbitda)} />
-          </CardContent>
-        </Card>
+          </div>
+        </div>
 
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-              수익성 & 배당
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="px-4 pb-4">
+        <div className="card">
+          <div className="card-head"><div><h3 className="card-title text-sm font-semibold text-muted-foreground uppercase tracking-wide">수익성 &amp; 배당</h3></div></div>
+          <div className="card-body card-body-padded">
             <MetricRow label="매출총이익률" value={fmtPct(data.grossMargins)} />
             <MetricRow label="영업이익률" value={fmtPct(data.operatingMargins)} />
             <MetricRow label="순이익률" value={fmtPct(data.profitMargins)} />
@@ -780,18 +765,14 @@ export default function StockDetailPage({
             <MetricRow label="ROA" value={fmtPct(data.returnOnAssets)} />
             <MetricRow label="배당수익률" value={fmtPct(data.dividendYield)} />
             <MetricRow label="배당성향" value={fmtPct(data.payoutRatio)} />
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </div>
 
       {/* 성장 지표 */}
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-            성장
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="grid grid-cols-2 gap-x-8 px-4 pb-4 sm:grid-cols-4">
+      <div className="card">
+        <div className="card-head"><div><h3 className="card-title text-sm font-semibold text-muted-foreground uppercase tracking-wide">성장</h3></div></div>
+        <div className="card-body card-body-padded grid grid-cols-2 gap-x-8 sm:grid-cols-4">
           <div className="py-2">
             <p className="text-xs text-muted-foreground">매출 성장 (YoY)</p>
             <p
@@ -826,15 +807,13 @@ export default function StockDetailPage({
             <p className="text-xs text-muted-foreground">EPS (Forward)</p>
             <p className="mt-1 text-lg font-bold tabular-nums">{fmt(data.forwardEps)}</p>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       {/* 재무제표 */}
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-base">재무제표</CardTitle>
-        </CardHeader>
-        <CardContent>
+      <div className="card">
+        <div className="card-head"><div><h3 className="card-title">재무제표</h3></div></div>
+        <div className="card-body card-body-padded">
           <Tabs defaultValue="income">
             <TabsList className="mb-4">
               <TabsTrigger value="income">손익계산서</TabsTrigger>
@@ -941,42 +920,38 @@ export default function StockDetailPage({
               )}
             </TabsContent>
           </Tabs>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       {/* 투자자별 매매동향 (한국 주식 전용) */}
       {isKorean && (
-        <Card>
-          <CardHeader className="pb-2">
+        <div className="card">
+          <div className="card-head">
             <div className="flex items-center gap-2">
               <Users className="h-4 w-4 text-muted-foreground" />
-              <CardTitle className="text-base">투자자별 매매동향</CardTitle>
+              <h3 className="card-title">투자자별 매매동향</h3>
               <span className="text-xs text-muted-foreground font-normal">KRX 공식</span>
             </div>
-          </CardHeader>
-          <CardContent>
+          </div>
+          <div className="card-body card-body-padded">
             <KrxInvestorChart ticker={ticker} />
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       )}
 
       {/* 피어 비교 */}
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-base">동종업계 피어 비교</CardTitle>
-        </CardHeader>
-        <CardContent>
+      <div className="card">
+        <div className="card-head"><div><h3 className="card-title">동종업계 피어 비교</h3></div></div>
+        <div className="card-body card-body-padded">
           <PeerComparison ticker={ticker} />
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       {/* 기업 정보 */}
       {(data.sector || data.industry || data.description) && (
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base">기업 정보</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
+        <div className="card">
+          <div className="card-head"><div><h3 className="card-title">기업 정보</h3></div></div>
+          <div className="card-body card-body-padded space-y-3">
             <div className="flex flex-wrap gap-3 text-sm">
               {data.sector && (
                 <div>
@@ -996,8 +971,8 @@ export default function StockDetailPage({
                 {data.description}
               </p>
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       )}
     </div>
   );

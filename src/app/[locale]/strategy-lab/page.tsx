@@ -16,9 +16,6 @@ import {
   Legend,
   ReferenceLine,
 } from "recharts";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import {
   Play,
@@ -782,14 +779,14 @@ function AiAnalysisTab({
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-3">
-        <Button
+        <button
           onClick={runAnalysis}
           disabled={loading}
-          className="flex items-center gap-2"
+          className="btn btn-primary flex items-center gap-2"
         >
           {loading ? <Spinner /> : <Sparkles className="h-4 w-4" />}
           {loading ? "AI 분석 중..." : "AI 분석 실행"}
-        </Button>
+        </button>
         <p className="text-xs text-muted-foreground">AI가 백테스트 종합결과 분석합니다</p>
       </div>
 
@@ -983,20 +980,17 @@ export default function StrategyLabPage() {
       </div>
 
       {/* Config Panel */}
-      <Card className="border-border dark:border-zinc-800 bg-card dark:bg-zinc-900/60">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-sm text-foreground">파라미터 설정</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-5">
+      <div className="card">
+        <div className="card-head"><div><h3 className="card-title">파라미터 설정</h3></div></div>
+        <div className="card-body card-body-padded space-y-5">
           {/* Ticker Input */}
           <div className="space-y-2">
             <label className="text-xs font-semibold text-muted-foreground">종목 티커</label>
             <div className="flex flex-wrap gap-1.5 items-center">
               {tickers.map((t) => (
-                <Badge
+                <span
                   key={t}
-                  variant="secondary"
-                  className="gap-1 pr-1 bg-muted dark:bg-zinc-800 text-foreground border-border dark:border-zinc-700"
+                  className="badge badge-outline gap-1 pr-1"
                 >
                   {t}
                   <button
@@ -1005,7 +999,7 @@ export default function StrategyLabPage() {
                   >
                     <X className="h-3 w-3" />
                   </button>
-                </Badge>
+                </span>
               ))}
               <div className="flex gap-1">
                 <input
@@ -1015,9 +1009,9 @@ export default function StrategyLabPage() {
                   onChange={(e) => setTickerInput(e.target.value.toUpperCase())}
                   onKeyDown={(e) => e.key === "Enter" && addTicker()}
                 />
-                <Button size="sm" variant="outline" className="h-7 w-7 p-0 border-border dark:border-zinc-700" onClick={addTicker}>
+                <button className="btn btn-ghost btn-icon h-7 w-7" onClick={addTicker}>
                   <Plus className="h-3 w-3" />
-                </Button>
+                </button>
               </div>
             </div>
             {/* Preset ticker chips */}
@@ -1125,14 +1119,14 @@ export default function StrategyLabPage() {
 
           {/* Run Button */}
           <div className="flex items-center gap-3 pt-1">
-            <Button
+            <button
               onClick={runBacktest}
               disabled={loading || tickers.length === 0}
-              className="flex items-center gap-2 bg-violet-600 hover:bg-violet-500 text-white px-6"
+              className="btn btn-primary flex items-center gap-2 px-6"
             >
               {loading ? <Spinner /> : <Play className="h-4 w-4" />}
               {loading ? "백테스트 실행 중..." : "백테스트 실행"}
-            </Button>
+            </button>
             {tickers.length === 0 && (
               <p className="text-xs text-zinc-600">티커를 하나 이상 추가하세요</p>
             )}
@@ -1143,18 +1137,13 @@ export default function StrategyLabPage() {
               <p className="text-sm text-red-400">{error}</p>
             </div>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       {/* AI Custom Strategy */}
-      <Card className="border-border dark:border-zinc-800 bg-card dark:bg-zinc-900/60">
-        <CardHeader className="pb-3">
-          <CardTitle className="flex items-center gap-2 text-sm text-foreground">
-            <Sparkles className="h-4 w-4 text-violet-400" />
-            AI 전략 생성
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
+      <div className="card">
+        <div className="card-head"><div><h3 className="card-title flex items-center gap-2"><Sparkles className="h-4 w-4 text-violet-400" />AI 전략 생성</h3></div></div>
+        <div className="card-body card-body-padded space-y-3">
           <p className="text-xs text-muted-foreground">
             자연어로 투자 전략을 설명하면 AI가 구조화된 전략 파라미터를 생성합니다
           </p>
@@ -1166,15 +1155,14 @@ export default function StrategyLabPage() {
               value={customStrategy}
               onChange={(e) => setCustomStrategy(e.target.value)}
             />
-            <Button
+            <button
               onClick={generateCustomStrategy}
               disabled={customLoading || !customStrategy.trim()}
-              variant="outline"
-              className="shrink-0 border-border dark:border-zinc-700 hover:bg-violet-500/10 hover:border-violet-500/50 hover:text-violet-300"
+              className="btn shrink-0 hover:bg-violet-500/10 hover:border-violet-500/50 hover:text-violet-300"
             >
               {customLoading ? <Spinner /> : <Sparkles className="h-4 w-4" />}
               <span className="ml-2 hidden sm:inline">AI로 전략 생성</span>
-            </Button>
+            </button>
           </div>
           {customResult && (
             <div className="rounded-lg border border-border dark:border-zinc-800 bg-muted/20 dark:bg-zinc-950/50 p-3">
@@ -1184,21 +1172,16 @@ export default function StrategyLabPage() {
               <pre className="text-xs text-muted-foreground overflow-x-auto whitespace-pre-wrap">{customResult}</pre>
             </div>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       {/* Results */}
       {results ? (
         <div className="space-y-4">
           {/* Summary heatmap */}
-          <Card className="border-border dark:border-zinc-800 bg-card dark:bg-zinc-900/60">
-            <CardHeader className="pb-3">
-              <CardTitle className="flex items-center gap-2 text-sm text-foreground">
-                <Trophy className="h-4 w-4 text-amber-400" />
-                전략별 CAGR 요약 (수익률 순)
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-5">
+          <div className="card">
+            <div className="card-head"><div><h3 className="card-title flex items-center gap-2"><Trophy className="h-4 w-4 text-amber-400" />전략별 CAGR 요약 (수익률 순)</h3></div></div>
+            <div className="card-body card-body-padded space-y-5">
               {/* Ranking bar chart per ticker */}
               <div>
                 <p className="mb-3 text-xs font-semibold text-muted-foreground">📊 전략 순위 (티커별)</p>
@@ -1208,8 +1191,8 @@ export default function StrategyLabPage() {
                 <p className="mb-2 text-xs font-semibold text-muted-foreground">🗂 전체 비교표</p>
                 <SummaryTable results={results} tickers={tickers} />
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
 
           {/* Best/Worst highlight */}
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -1273,9 +1256,9 @@ export default function StrategyLabPage() {
           </div>
 
           {/* Tabs */}
-          <Card className="border-border dark:border-zinc-800 bg-card dark:bg-zinc-900/60">
-            <CardHeader className="pb-0">
-              <div className="flex flex-wrap gap-1 border-b border-border dark:border-zinc-800 pb-3">
+          <div className="card">
+            <div className="card-head" style={{ borderBottom: "none", paddingBottom: 0 }}>
+              <div className="flex flex-wrap gap-1 border-b border-border dark:border-zinc-800 pb-3 w-full">
                 {tabs.map((tab) => (
                   <button
                     key={tab.key}
@@ -1291,8 +1274,8 @@ export default function StrategyLabPage() {
                   </button>
                 ))}
               </div>
-            </CardHeader>
-            <CardContent className="pt-4">
+            </div>
+            <div className="card-body card-body-padded pt-4">
               {activeTab === "chart" && (
                 <EquityChart
                   results={results}
@@ -1310,8 +1293,8 @@ export default function StrategyLabPage() {
               {activeTab === "ai" && (
                 <AiAnalysisTab results={results} tickers={tickers} period={results.period} />
               )}
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         </div>
       ) : (
         !loading && <EmptyState />
@@ -1377,17 +1360,17 @@ function CashOptimizer() {
     : null;
 
   return (
-    <Card className="border-border dark:border-zinc-800 bg-card dark:bg-zinc-900/60">
-      <CardHeader className="pb-3">
-        <CardTitle className="flex items-center gap-2 text-sm text-foreground">
-          <span>💰</span> 현금 비율 최적화 (VIX 기반)
-        </CardTitle>
-        <p className="text-xs text-muted-foreground mt-1">
-          VIX가 설정한 기준점을 초과하면 현금 비율을 높이는 전략의 최적값을 찾습니다.
-          S&P500 대비 리스크 조정 수익률을 히트맵으로 표시합니다.
-        </p>
-      </CardHeader>
-      <CardContent className="space-y-4">
+    <div className="card">
+      <div className="card-head">
+        <div>
+          <h3 className="card-title flex items-center gap-2"><span>💰</span> 현금 비율 최적화 (VIX 기반)</h3>
+          <p className="text-xs text-muted-foreground mt-1">
+            VIX가 설정한 기준점을 초과하면 현금 비율을 높이는 전략의 최적값을 찾습니다.
+            S&P500 대비 리스크 조정 수익률을 히트맵으로 표시합니다.
+          </p>
+        </div>
+      </div>
+      <div className="card-body card-body-padded space-y-4">
         {/* Controls */}
         <div className="flex flex-wrap items-center gap-3">
           <div className="flex gap-1 rounded-lg bg-muted/30 p-0.5">
@@ -1408,11 +1391,11 @@ function CashOptimizer() {
               </button>
             ))}
           </div>
-          <Button size="sm" onClick={run} disabled={loading}
-            className="bg-violet-600 hover:bg-violet-500 text-white">
+          <button onClick={run} disabled={loading}
+            className="btn btn-primary">
             {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Play className="h-3.5 w-3.5" />}
             <span className="ml-1.5">분석 실행</span>
-          </Button>
+          </button>
         </div>
 
         {loading && (
@@ -1497,7 +1480,7 @@ function CashOptimizer() {
             </div>
           </div>
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }

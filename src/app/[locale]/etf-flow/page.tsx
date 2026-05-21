@@ -1,9 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useMemo } from "react";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
 import {
   TrendingUp, RefreshCw, Play, Search, Flame, ChevronDown, ChevronRight,
   BarChart2, Zap, AlertTriangle, CheckCircle2, Target,

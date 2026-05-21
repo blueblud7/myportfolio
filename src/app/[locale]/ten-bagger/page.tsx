@@ -1,9 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { RefreshCw, Play, TrendingUp, BarChart2, Zap } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { TenBaggerCacheRow } from "@/app/api/ten-bagger/route";
