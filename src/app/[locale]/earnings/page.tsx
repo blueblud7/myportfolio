@@ -439,14 +439,11 @@ function InsightsTab() {
 // ─── 메인 ────────────────────────────────────────────────────────────────────
 export default function EarningsPage() {
   return (
-    <div className="space-y-5">
-      <div className="flex items-center gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-purple-500/20">
-          <CalendarDays className="h-5 w-5 text-purple-500" />
-        </div>
+    <div style={{ display: "flex", flexDirection: "column", gap: "var(--gutter)" }}>
+      <div className="topbar">
         <div>
-          <h1 className="text-2xl font-bold">실적 (Earnings)</h1>
-          <p className="text-sm text-muted-foreground">보유·관심 종목의 발표 일정·결과·AI 인사이트</p>
+          <div className="crumb">분석</div>
+          <h1>실적</h1>
         </div>
       </div>
       <Tabs defaultValue="calendar">

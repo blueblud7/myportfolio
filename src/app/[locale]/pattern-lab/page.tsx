@@ -159,15 +159,14 @@ export default function PatternLabPage() {
   const symbolName = SYMBOLS.find((s) => s.value === symbol)?.label ?? symbol;
 
   return (
-    <div className="space-y-6">
-      {/* 헤더 */}
-      <div className="flex items-center gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-500/20">
-          <GitCompare className="h-5 w-5 text-violet-400" />
-        </div>
+    <div style={{ display: "flex", flexDirection: "column", gap: "var(--gutter)" }}>
+      <div className="topbar">
         <div>
-          <h1 className="text-2xl font-bold">패턴 유사도 분석</h1>
-          <p className="text-sm text-muted-foreground">현재 지수 흐름과 가장 유사한 과거 구간을 찾아 이후 전개를 비교합니다</p>
+          <div className="crumb">연구실</div>
+          <h1>패턴 유사도 분석</h1>
+        </div>
+        <div className="right">
+          <span style={{ fontSize: 11, color: "var(--fg-4)" }}>현재 지수와 가장 유사한 과거 구간 비교</span>
         </div>
       </div>
 

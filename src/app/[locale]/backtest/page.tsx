@@ -128,12 +128,12 @@ export default function BacktestPage() {
   })();
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">백테스트</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          CANSLIM + RSI 전략 — 52주 최고가 돌파 매수 / RSI 크로스다운 or 트레일링 스탑 매도
-        </p>
+    <div style={{ display: "flex", flexDirection: "column", gap: "var(--gutter)" }}>
+      <div className="topbar">
+        <div>
+          <div className="crumb">연구실</div>
+          <h1>백테스트</h1>
+        </div>
       </div>
 
       {/* 파라미터 설정 */}

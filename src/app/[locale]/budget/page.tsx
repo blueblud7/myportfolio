@@ -306,19 +306,29 @@ export default function BudgetPage() {
 
   if (isLoading) {
     return (
-      <div className="space-y-4">
-        <h1 className="text-2xl font-bold">생활비 분석</h1>
+      <div style={{ display: "flex", flexDirection: "column", gap: "var(--gutter)" }}>
+        <div className="topbar">
+          <div>
+            <div className="crumb">도구</div>
+            <h1>생활비 분석</h1>
+          </div>
+        </div>
         <div className="h-64 animate-pulse rounded-xl bg-muted" />
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">생활비 분석</h1>
-        <div className="text-sm text-muted-foreground">
-          환율: ₩{formatKRW(exchangeRate)} / USD
+    <div style={{ display: "flex", flexDirection: "column", gap: "var(--gutter)" }}>
+      <div className="topbar">
+        <div>
+          <div className="crumb">도구</div>
+          <h1>생활비 분석</h1>
+        </div>
+        <div className="right">
+          <span style={{ fontSize: 11, color: "var(--fg-4)", fontFamily: "var(--font-mono)" }}>
+            환율: ₩{formatKRW(exchangeRate)} / USD
+          </span>
         </div>
       </div>
 

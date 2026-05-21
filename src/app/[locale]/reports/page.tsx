@@ -145,24 +145,18 @@ export default function ReportsPage() {
     report.by_sector.length === 1 && report.by_sector[0].sector === "Other";
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">{t("title")}</h1>
-        <div className="flex items-center gap-2">
-          {fetchResult && (
-            <span className="text-xs text-muted-foreground">
-              {t("bulkFetchResult", { success: fetchResult.success, total: fetchResult.total })}
-            </span>
-          )}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleBulkFetch}
-            disabled={fetching}
-          >
-            <RefreshCw className={cn("mr-1.5 h-3.5 w-3.5", fetching && "animate-spin")} />
+    <div style={{ display: "flex", flexDirection: "column", gap: "var(--gutter)" }}>
+      <div className="topbar">
+        <div>
+          <div className="crumb">포트폴리오</div>
+          <h1>{t("title")}</h1>
+        </div>
+        <div className="right">
+          {fetchResult && <span style={{ fontSize: 11, color: "var(--fg-4)", fontFamily: "var(--font-mono)" }}>{t("bulkFetchResult", { success: fetchResult.success, total: fetchResult.total })}</span>}
+          <button className="btn" onClick={handleBulkFetch} disabled={fetching}>
+            <RefreshCw className={cn("h-3.5 w-3.5", fetching && "animate-spin")} />
             {fetching ? t("bulkFetching") : t("bulkFetch")}
-          </Button>
+          </button>
         </div>
       </div>
 

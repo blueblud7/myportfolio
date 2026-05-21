@@ -463,17 +463,11 @@ export default function PositionLabPage() {
   void scoreData;
 
   return (
-    <div className="mx-auto max-w-7xl space-y-6 px-4 py-6">
-      {/* Header */}
-      <div className="flex items-start gap-3">
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-500/15">
-          <Wallet className="h-5 w-5 text-amber-400" />
-        </div>
+    <div style={{ display: "flex", flexDirection: "column", gap: "var(--gutter)" }}>
+      <div className="topbar">
         <div>
-          <h1 className="text-xl font-bold text-foreground">자금관리 전략 연구소</h1>
-          <p className="text-sm text-muted-foreground">
-            10가지 매수 전략 비교 · 분할매수 · MDD 트리거 · DCA · 현금비율 최적화
-          </p>
+          <div className="crumb">연구실</div>
+          <h1>자금관리 전략 연구소</h1>
         </div>
       </div>
 

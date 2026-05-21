@@ -974,15 +974,11 @@ export default function StrategyLabPage() {
   const strategyAll = selectedStrategies.includes("all");
 
   return (
-    <div className="mx-auto max-w-7xl space-y-6 px-4 py-6">
-      {/* Header */}
-      <div className="flex items-start gap-3">
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-violet-500/15">
-          <FlaskConical className="h-5 w-5 text-violet-400" />
-        </div>
+    <div style={{ display: "flex", flexDirection: "column", gap: "var(--gutter)" }}>
+      <div className="topbar">
         <div>
-          <h1 className="text-xl font-bold text-foreground">전략 연구소 / Strategy Lab</h1>
-          <p className="text-sm text-muted-foreground">8가지 투자 전략을 여러 티커에 동시에 백테스트합니다</p>
+          <div className="crumb">연구실</div>
+          <h1>전략 연구소</h1>
         </div>
       </div>
 

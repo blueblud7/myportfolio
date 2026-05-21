@@ -93,12 +93,12 @@ export default function CalculatorPage() {
   };
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold flex items-center gap-2">
-          <TrendingUp className="h-6 w-6" />
-          {t("title")}
-        </h1>
+    <div style={{ display: "flex", flexDirection: "column", gap: "var(--gutter)" }}>
+      <div className="topbar">
+        <div>
+          <div className="crumb">도구</div>
+          <h1>{t("title")}</h1>
+        </div>
       </div>
 
       <Tabs defaultValue="compound">

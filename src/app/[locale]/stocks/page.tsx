@@ -60,12 +60,12 @@ export default function StocksPage() {
   };
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">종목 정보</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          종목명 또는 티커를 검색하면 상세 정보를 확인할 수 있습니다.
-        </p>
+    <div style={{ display: "flex", flexDirection: "column", gap: "var(--gutter)" }}>
+      <div className="topbar">
+        <div>
+          <div className="crumb">분석</div>
+          <h1>종목 정보</h1>
+        </div>
       </div>
 
       <div className="relative max-w-lg">

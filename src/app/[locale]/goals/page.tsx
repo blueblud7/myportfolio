@@ -315,15 +315,11 @@ export default function GoalsPage() {
     progressPct !== null && timeProgressPct !== null && progressPct >= timeProgressPct;
 
   return (
-    <div className="space-y-6">
-      {/* ── Header ── */}
-      <div className="flex items-center gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-500/20">
-          <Target className="h-5 w-5 text-blue-400" />
-        </div>
+    <div style={{ display: "flex", flexDirection: "column", gap: "var(--gutter)" }}>
+      <div className="topbar">
         <div>
-          <h1 className="text-2xl font-bold">목표 & 섹터 자금 흐름</h1>
-          <p className="text-sm text-muted-foreground">연간 수익 목표 추적 + 미국·한국 섹터별 자금 유입 현황</p>
+          <div className="crumb">포트폴리오</div>
+          <h1>목표 & 섹터 자금 흐름</h1>
         </div>
       </div>
 

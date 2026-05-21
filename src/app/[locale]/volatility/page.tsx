@@ -423,26 +423,20 @@ export default function VolatilityPage() {
   const highVolCount = sorted.filter((d) => d.hvPct20 >= 60).length;
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
+    <div style={{ display: "flex", flexDirection: "column", gap: "var(--gutter)" }}>
+      <div className="topbar">
         <div>
-          <h1 className="text-2xl font-bold">변동성 분석</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">
-            HV Rank & Percentile — 현재 변동성이 1년 역사 중 몇 번째인지 확인
-          </p>
+          <div className="crumb">분석</div>
+          <h1>변동성 분석</h1>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="right">
           <button
             onClick={() => setViewMode(viewMode === "card" ? "table" : "card")}
-            className="rounded-md border px-3 py-1.5 text-xs font-medium hover:bg-muted"
+            className="btn"
           >
             {viewMode === "card" ? "테이블 뷰" : "카드 뷰"}
           </button>
-          <button
-            onClick={() => mutate()}
-            className="flex items-center gap-1 rounded-md border px-3 py-1.5 text-xs font-medium hover:bg-muted"
-          >
+          <button onClick={() => mutate()} className="btn">
             <RefreshCw className="h-3 w-3" />
             새로고침
           </button>

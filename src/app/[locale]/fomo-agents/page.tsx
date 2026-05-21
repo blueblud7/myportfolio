@@ -374,36 +374,30 @@ export default function FomoAgentsPage() {
     progress.total > 0 ? Math.round((progress.current / progress.total) * 100) : 0;
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-start justify-between gap-4">
+    <div style={{ display: "flex", flexDirection: "column", gap: "var(--gutter)" }}>
+      <div className="topbar">
         <div>
-          <div className="flex items-center gap-2.5">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-violet-500/15">
-              <Brain className="h-5 w-5 text-violet-500" />
-            </div>
-            <h1 className="text-2xl font-bold">AI 투자자 에이전트</h1>
-          </div>
-          <p className="mt-1 text-sm text-muted-foreground">
-            투자자 페르소나가 현재 시장을 분석합니다 · 매일 새벽 6시(KST) 자동 갱신
-            {generatedAt && (
-              <span className="ml-2 text-foreground/70">
-                · 마지막 분석: {new Date(generatedAt).toLocaleString("ko-KR", { timeZone: "Asia/Seoul", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" })}
-              </span>
-            )}
-          </p>
+          <div className="crumb">분석</div>
+          <h1>AI 투자자 에이전트</h1>
         </div>
-        {isUserAdmin && (
-          <button
-            onClick={handleRefresh}
-            disabled={streaming}
-            className="flex items-center gap-1.5 rounded-lg border bg-card px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors disabled:opacity-40"
-            title="Admin only — 즉시 재분석"
-          >
-            <RefreshCw className={cn("h-3.5 w-3.5", streaming && "animate-spin")} />
-            수동 갱신
-          </button>
-        )}
+        <div className="right">
+          {generatedAt && (
+            <span style={{ fontSize: 11, color: "var(--fg-4)", fontFamily: "var(--font-mono)" }}>
+              마지막 분석: {new Date(generatedAt).toLocaleString("ko-KR", { timeZone: "Asia/Seoul", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" })}
+            </span>
+          )}
+          {isUserAdmin && (
+            <button
+              onClick={handleRefresh}
+              disabled={streaming}
+              className="btn"
+              title="Admin only — 즉시 재분석"
+            >
+              <RefreshCw className={cn("h-3.5 w-3.5", streaming && "animate-spin")} />
+              수동 갱신
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Progress section */}

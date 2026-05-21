@@ -133,7 +133,13 @@ export default function InsightsPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div style={{ display: "flex", flexDirection: "column", gap: "var(--gutter)" }}>
+      <div className="topbar">
+        <div>
+          <div className="crumb">분석</div>
+          <h1>AI 인사이트</h1>
+        </div>
+      </div>
       <Tabs defaultValue="portfolio">
         <TabsList>
           <TabsTrigger value="portfolio">AI 포트폴리오</TabsTrigger>
@@ -141,15 +147,6 @@ export default function InsightsPage() {
         </TabsList>
         <TabsContent value="portfolio" className="mt-6">
         <div className="space-y-6">
-      <div className="flex items-center gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-500/20">
-          <Sparkles className="h-5 w-5 text-violet-400" />
-        </div>
-        <div>
-          <h1 className="text-2xl font-bold">AI 포트폴리오 인사이트</h1>
-          <p className="text-sm text-muted-foreground">Claude AI가 내 포트폴리오를 분석합니다</p>
-        </div>
-      </div>
 
       {/* 분석 요청 카드 */}
       <Card>

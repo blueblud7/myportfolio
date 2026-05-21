@@ -13,8 +13,13 @@ export default function QuantPage() {
   const t = useTranslations("Quant");
 
   return (
-    <div className="space-y-6">
-      <h1 className="text-2xl font-bold">{t("title")}</h1>
+    <div style={{ display: "flex", flexDirection: "column", gap: "var(--gutter)" }}>
+      <div className="topbar">
+        <div>
+          <div className="crumb">분석</div>
+          <h1>{t("title")}</h1>
+        </div>
+      </div>
       <Tabs defaultValue="basic">
         <TabsList>
           <TabsTrigger value="basic">섹터 &amp; 달력</TabsTrigger>

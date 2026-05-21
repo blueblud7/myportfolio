@@ -272,14 +272,13 @@ export default function AnalystReportsPage() {
   }, [data?.reports, readIds]);
 
   return (
-    <div className="space-y-5">
-      {/* Header */}
-      <div className="flex items-center gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-500/20">
-          <FileText className="h-5 w-5 text-indigo-400" />
-        </div>
+    <div style={{ display: "flex", flexDirection: "column", gap: "var(--gutter)" }}>
+      <div className="topbar">
         <div>
-          <h1 className="text-2xl font-bold">증권사 리포트</h1>
+          <div className="crumb">분석</div>
+          <h1>증권사 리포트</h1>
+        </div>
+        <div className="right">
           <p className="text-sm text-muted-foreground">
             {data ? `총 ${data.total.toLocaleString()}건` : "로딩 중..."}
             {data && unreadCount > 0 && (

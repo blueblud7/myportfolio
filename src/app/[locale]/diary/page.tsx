@@ -140,21 +140,18 @@ export default function DiaryPage() {
       .filter(Boolean);
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-start justify-between">
+    <div style={{ display: "flex", flexDirection: "column", gap: "var(--gutter)" }}>
+      <div className="topbar">
         <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
-            <BookOpen className="h-6 w-6" />
-            {t("title")}
-          </h1>
-          <p className="text-muted-foreground text-sm mt-1">
-            {t("description")}
-          </p>
+          <div className="crumb">연구실</div>
+          <h1>{t("title")}</h1>
         </div>
-        <Button onClick={openNew} className="gap-2">
-          <Plus className="h-4 w-4" />
-          {t("newEntry")}
-        </Button>
+        <div className="right">
+          <button className="btn btn-primary" onClick={openNew}>
+            <Plus className="h-3.5 w-3.5" />
+            {t("newEntry")}
+          </button>
+        </div>
       </div>
 
       <div className="relative">

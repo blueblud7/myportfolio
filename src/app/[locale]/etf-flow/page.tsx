@@ -170,35 +170,32 @@ export default function EtfFlowPage() {
   const inflowCount = etfs.filter(e => e.volumeRatio >= 1.2).length;
 
   return (
-    <div className="space-y-5">
-      {/* 헤더 */}
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-500/20">
-            <TrendingUp className="h-5 w-5 text-blue-400" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold">ETF 자금 흐름</h1>
-            <p className="text-sm text-muted-foreground">ETF 구성종목별 자금 흐름 → 매수 신호 분석</p>
-          </div>
+    <div style={{ display: "flex", flexDirection: "column", gap: "var(--gutter)" }}>
+      {/* Topbar */}
+      <div className="topbar">
+        <div>
+          <div className="crumb">연구실</div>
+          <h1>ETF 자금 흐름</h1>
         </div>
-        {date && <p className="text-xs text-muted-foreground">기준일: {date}</p>}
+        <div className="right">
+          {date && <span style={{ fontSize: 11, color: "var(--fg-4)", fontFamily: "var(--font-mono)" }}>기준일: {date}</span>}
+        </div>
       </div>
 
       {/* 컨트롤 */}
-      <div className="flex flex-wrap items-center gap-3 rounded-xl border border-border bg-muted/20 px-4 py-3">
-        <Button onClick={() => startAnalysis(false)} disabled={job.running} className="shrink-0 bg-blue-600 text-white hover:bg-blue-700">
-          {job.running ? <RefreshCw className="mr-2 h-4 w-4 animate-spin" /> : <Play className="mr-2 h-4 w-4" />}
-          {job.running ? `ETF 분석 중...` : "ETF 분석 시작"}
-        </Button>
+      <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8, padding: "12px 14px", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)" }}>
+        <button className="btn btn-primary" onClick={() => startAnalysis(false)} disabled={job.running}>
+          {job.running ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <Play className="h-3.5 w-3.5" />}
+          {job.running ? "ETF 분석 중..." : "ETF 분석 시작"}
+        </button>
         {etfs.length > 0 && <>
-          <Button onClick={() => startAnalysis(true)} disabled={job.running} size="sm" variant="outline">
-            <RefreshCw className="mr-1.5 h-3.5 w-3.5" />새로고침
-          </Button>
-          <Button onClick={loadSmartMoney} disabled={smartLoading} size="sm" className="bg-emerald-600 text-white hover:bg-emerald-700">
-            {smartLoading ? <RefreshCw className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Target className="mr-1.5 h-3.5 w-3.5" />}
+          <button className="btn" onClick={() => startAnalysis(true)} disabled={job.running}>
+            <RefreshCw className="h-3.5 w-3.5" />새로고침
+          </button>
+          <button className="btn" onClick={loadSmartMoney} disabled={smartLoading} style={{ color: "var(--up)" }}>
+            {smartLoading ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <Target className="h-3.5 w-3.5" />}
             {smartLoading ? "종목 분석 중..." : "스마트머니 분석"}
-          </Button>
+          </button>
         </>}
         {job.total > 0 && (
           <div className="flex min-w-0 flex-1 items-center gap-2">

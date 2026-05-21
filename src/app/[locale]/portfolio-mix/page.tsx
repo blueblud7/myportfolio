@@ -864,7 +864,13 @@ export default function PortfolioMixPage() {
   ];
 
   return (
-    <div className="mx-auto max-w-7xl space-y-6 px-4 py-6">
+    <div style={{ display: "flex", flexDirection: "column", gap: "var(--gutter)" }}>
+      <div className="topbar">
+        <div>
+          <div className="crumb">연구실</div>
+          <h1>포트폴리오 믹스</h1>
+        </div>
+      </div>
       <Tabs defaultValue="mix">
         <TabsList>
           <TabsTrigger value="mix">포트폴리오 믹스</TabsTrigger>
@@ -872,18 +878,6 @@ export default function PortfolioMixPage() {
         </TabsList>
         <TabsContent value="mix" className="mt-6">
         <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-start gap-3">
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-violet-500/15">
-          <PieChart className="h-5 w-5 text-violet-400" />
-        </div>
-        <div>
-          <h1 className="text-xl font-bold text-foreground">포트폴리오 믹스 연구소</h1>
-          <p className="text-sm text-muted-foreground">
-            20개 멀티에셋 포트폴리오 백테스트 · 월별 리밸런싱 · 위기 방어력 비교 · CAGR/MDD/샤프/칼마르
-          </p>
-        </div>
-      </div>
 
       {/* Settings */}
       <Card className="border-border dark:border-zinc-800 bg-card dark:bg-zinc-900/60">

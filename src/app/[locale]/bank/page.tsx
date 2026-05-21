@@ -70,16 +70,22 @@ export default function BankPage() {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">{t("title")}</h1>
-        <Button
-          onClick={() => setFormOpen(true)}
-          disabled={bankAccounts.length === 0}
-        >
-          <Plus className="mr-2 h-4 w-4" />
-          {t("addBalance")}
-        </Button>
+    <div style={{ display: "flex", flexDirection: "column", gap: "var(--gutter)" }}>
+      <div className="topbar">
+        <div>
+          <div className="crumb">포트폴리오</div>
+          <h1>{t("title")}</h1>
+        </div>
+        <div className="right">
+          <button
+            className="btn btn-primary"
+            onClick={() => setFormOpen(true)}
+            disabled={bankAccounts.length === 0}
+          >
+            <Plus className="h-4 w-4" />
+            {t("addBalance")}
+          </button>
+        </div>
       </div>
 
       {bankAccounts.length === 0 && (

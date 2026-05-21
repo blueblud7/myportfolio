@@ -473,15 +473,11 @@ export default function ComparePage() {
   ];
 
   return (
-    <div className="mx-auto max-w-5xl space-y-6 px-4 py-6">
-      {/* Header */}
-      <div className="flex items-start gap-3">
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-500/15">
-          <GitCompare className="h-5 w-5 text-blue-400" />
-        </div>
+    <div style={{ display: "flex", flexDirection: "column", gap: "var(--gutter)" }}>
+      <div className="topbar">
         <div>
-          <h1 className="text-xl font-bold text-foreground">상대강도 비교</h1>
-          <p className="text-sm text-muted-foreground">두 자산의 상대적 성과를 비교합니다</p>
+          <div className="crumb">분석</div>
+          <h1>상대강도 비교</h1>
         </div>
       </div>
 

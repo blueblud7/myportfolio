@@ -367,34 +367,24 @@ export default function WatchlistPage() {
   };
 
   return (
-    <div className="space-y-5">
-      <div className="flex items-start justify-between gap-3 flex-wrap">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-500/20">
-            <Eye className="h-5 w-5 text-amber-500" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold">워치리스트</h1>
-            <p className="text-sm text-muted-foreground">
-              {items.length > 0 ? `${items.length}개 관심 종목` : "매수 전 추적할 종목"}
-            </p>
-          </div>
+    <div style={{ display: "flex", flexDirection: "column", gap: "var(--gutter)" }}>
+      <div className="topbar">
+        <div>
+          <div className="crumb">포트폴리오</div>
+          <h1>워치리스트</h1>
         </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={handleRefresh}
-            disabled={refreshing || items.length === 0}
-            className="inline-flex items-center gap-1 h-9 px-3 rounded-md border border-border text-sm disabled:opacity-50 hover:bg-muted/40"
-          >
-            <RefreshCw className={cn("h-4 w-4", refreshing && "animate-spin")} />
+        <div className="right">
+          {items.length > 0 && <span style={{ fontSize: 11, color: "var(--fg-4)", fontFamily: "var(--font-mono)" }}>{items.length}개 관심 종목</span>}
+          <button className="btn" onClick={handleRefresh} disabled={refreshing || items.length === 0}>
+            <RefreshCw className={cn("h-3.5 w-3.5", refreshing && "animate-spin")} />
             가격 갱신
           </button>
           <button
+            className="btn btn-primary"
             onClick={() => {
               setEditingItem(null);
               setShowForm(true);
             }}
-            className="inline-flex items-center gap-1 h-9 px-4 rounded-md bg-primary text-primary-foreground text-sm font-medium"
           >
             <Plus className="h-4 w-4" /> 추가
           </button>
