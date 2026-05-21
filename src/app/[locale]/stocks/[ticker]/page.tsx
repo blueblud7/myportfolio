@@ -14,14 +14,18 @@ import {
   Bar,
   Cell,
   LabelList,
+  ComposedChart,
+  Line,
+  ReferenceLine,
 } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, Building2, RefreshCw } from "lucide-react";
+import { ArrowLeft, Building2, RefreshCw, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { StockDetailResponse } from "@/app/api/stock-detail/route";
 import type { StockPeersResponse, PeerItem, PeerRankingItem } from "@/app/api/stock-peers/route";
+import type { KrxStockInvestorDay } from "@/lib/krx";
 
 // ─── 유틸 ────────────────────────────────────────────────────────────────────
 
@@ -365,6 +369,124 @@ function PeerComparison({ ticker }: { ticker: string }) {
   );
 }
 
+// ─── 투자자별 매매동향 차트 (한국 주식 전용) ──────────────────────────────────
+
+function KrxInvestorChart({ ticker }: { ticker: string }) {
+  const [data, setData] = useState<KrxStockInvestorDay[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [view, setView] = useState<"value" | "volume">("value");
+
+  useEffect(() => {
+    setLoading(true);
+    fetch(`/api/krx/investor-trends?ticker=${encodeURIComponent(ticker)}`)
+      .then(r => r.json())
+      .then((d: KrxStockInvestorDay[]) => setData(Array.isArray(d) ? d : []))
+      .catch(() => setData([]))
+      .finally(() => setLoading(false));
+  }, [ticker]);
+
+  if (loading) {
+    return <div className="h-48 animate-pulse rounded-lg bg-muted/30" />;
+  }
+  if (!data.length) {
+    return (
+      <p className="py-6 text-center text-sm text-muted-foreground">
+        데이터 없음 (KRX API 조회 실패 또는 거래 없음)
+      </p>
+    );
+  }
+
+  // 백만원 → 억원 변환
+  const chartData = data.map(d => ({
+    date: d.date.slice(5), // MM-DD
+    외국인: view === "value" ? Math.round(d.foreign / 100) : d.foreignVol,
+    기관: view === "value" ? Math.round(d.institution / 100) : d.institutionVol,
+    개인: view === "value" ? Math.round(d.individual / 100) : d.individualVol,
+  }));
+
+  const unit = view === "value" ? "억원" : "주";
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between">
+        <p className="text-xs text-muted-foreground">30거래일 투자자별 순매수 · KRX 공식 데이터</p>
+        <div className="flex gap-1">
+          {(["value", "volume"] as const).map(v => (
+            <button
+              key={v}
+              onClick={() => setView(v)}
+              className={cn(
+                "rounded px-2 py-0.5 text-xs font-medium transition-colors",
+                view === v ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              {v === "value" ? "금액" : "수량"}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* 범례 */}
+      <div className="flex gap-4 text-xs text-muted-foreground">
+        <span className="flex items-center gap-1"><span className="inline-block w-3 h-1.5 rounded bg-blue-400" />외국인</span>
+        <span className="flex items-center gap-1"><span className="inline-block w-3 h-1.5 rounded bg-orange-400" />기관</span>
+        <span className="flex items-center gap-1"><span className="inline-block w-3 h-1.5 rounded bg-emerald-400" />개인</span>
+      </div>
+
+      <ResponsiveContainer width="100%" height={200}>
+        <ComposedChart data={chartData} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+          <XAxis dataKey="date" tick={{ fill: "var(--fg-4)", fontSize: 10 }} tickLine={false} axisLine={false} interval={4} />
+          <YAxis tick={{ fill: "var(--fg-4)", fontSize: 10 }} tickLine={false} axisLine={false} width={52}
+            tickFormatter={(v: number) => v >= 0 ? `+${(v/100).toFixed(0)}` : `${(v/100).toFixed(0)}`}
+          />
+          <Tooltip
+            contentStyle={{ background: "var(--bg-2)", border: "1px solid var(--border)", borderRadius: 8, fontSize: 11 }}
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            formatter={(value: any) => [`${(value as number) > 0 ? "+" : ""}${(value as number).toLocaleString()} ${unit}`]}
+          />
+          <ReferenceLine y={0} stroke="var(--border)" strokeWidth={1} />
+          <Bar dataKey="외국인" fill="#60a5fa" radius={[2, 2, 0, 0]} maxBarSize={8} />
+          <Bar dataKey="기관" fill="#fb923c" radius={[2, 2, 0, 0]} maxBarSize={8} />
+          <Bar dataKey="개인" fill="#34d399" radius={[2, 2, 0, 0]} maxBarSize={8} />
+        </ComposedChart>
+      </ResponsiveContainer>
+
+      {/* 최근 5일 요약 테이블 */}
+      {data.length > 0 && (
+        <div className="overflow-x-auto">
+          <table className="w-full text-xs">
+            <thead>
+              <tr className="border-b border-border/50">
+                <th className="py-1.5 text-left font-medium text-muted-foreground">날짜</th>
+                <th className="py-1.5 text-right font-medium text-blue-400">외국인</th>
+                <th className="py-1.5 text-right font-medium text-orange-400">기관</th>
+                <th className="py-1.5 text-right font-medium text-emerald-400">개인</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.slice(-5).reverse().map(d => (
+                <tr key={d.date} className="border-b border-border/30">
+                  <td className="py-1 text-muted-foreground font-mono">{d.date.slice(5)}</td>
+                  <td className={cn("py-1 text-right tabular-nums font-mono", d.foreign > 0 ? "text-emerald-400" : d.foreign < 0 ? "text-red-400" : "text-muted-foreground")}>
+                    {d.foreign > 0 ? "+" : ""}{Math.round(d.foreign / 100).toLocaleString()}억
+                  </td>
+                  <td className={cn("py-1 text-right tabular-nums font-mono", d.institution > 0 ? "text-emerald-400" : d.institution < 0 ? "text-red-400" : "text-muted-foreground")}>
+                    {d.institution > 0 ? "+" : ""}{Math.round(d.institution / 100).toLocaleString()}억
+                  </td>
+                  <td className={cn("py-1 text-right tabular-nums font-mono", d.individual > 0 ? "text-emerald-400" : d.individual < 0 ? "text-red-400" : "text-muted-foreground")}>
+                    {d.individual > 0 ? "+" : ""}{Math.round(d.individual / 100).toLocaleString()}억
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── 메인 페이지 ──────────────────────────────────────────────────────────────
 
 export default function StockDetailPage({
@@ -378,6 +500,8 @@ export default function StockDetailPage({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [period, setPeriod] = useState<Period>("1Y");
+
+  const isKorean = /^\d[A-Z0-9]{5}$/i.test(ticker);
 
   useEffect(() => {
     setLoading(true);
@@ -819,6 +943,22 @@ export default function StockDetailPage({
           </Tabs>
         </CardContent>
       </Card>
+
+      {/* 투자자별 매매동향 (한국 주식 전용) */}
+      {isKorean && (
+        <Card>
+          <CardHeader className="pb-2">
+            <div className="flex items-center gap-2">
+              <Users className="h-4 w-4 text-muted-foreground" />
+              <CardTitle className="text-base">투자자별 매매동향</CardTitle>
+              <span className="text-xs text-muted-foreground font-normal">KRX 공식</span>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <KrxInvestorChart ticker={ticker} />
+          </CardContent>
+        </Card>
+      )}
 
       {/* 피어 비교 */}
       <Card>
