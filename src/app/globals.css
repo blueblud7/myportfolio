@@ -524,7 +524,13 @@ input, select, textarea { font: inherit; color: inherit; }
   .app { grid-template-columns: 1fr !important; }
   .sidebar { display: none; }
   .stack-3 { grid-template-columns: 1fr; }
+  .stack-4 { grid-template-columns: repeat(2, 1fr); }
   .desktop-only { display: none !important; }
+  /* 버튼 보조 텍스트: 아이콘만 표시 */
+  .btn-label { display: none; }
+  /* 카드 헤더 버튼 영역 줄바꿈 */
+  .card-head { flex-wrap: wrap; }
+  .card-head > div:last-child { flex-wrap: wrap; gap: 6px; }
 }
 @media (min-width: 681px) {
   .mobile-only { display: none !important; }

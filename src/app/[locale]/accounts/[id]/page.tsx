@@ -234,7 +234,7 @@ export default function AccountDetailPage() {
       <div className="stack-4">
         <div className="card card-body-padded">
           <div className="section-title"><span>{t("valuation")}</span></div>
-          <div className="num" style={{ fontSize: 22, fontWeight: 500, letterSpacing: "-0.02em", marginTop: 4 }}>
+          <div className="num" style={{ fontSize: "clamp(16px, 4vw, 22px)", fontWeight: 500, letterSpacing: "-0.02em", marginTop: 4 }}>
             <Money
               value={currency === "USD"
                 ? ((account?.currency ?? "KRW") === "KRW" ? totalValue / exchangeRate : totalValue)
@@ -245,7 +245,7 @@ export default function AccountDetailPage() {
         </div>
         <div className="card card-body-padded">
           <div className="section-title"><span>{t("totalGainLoss")}</span></div>
-          <div className={cn("num", gainLossColor(totalGainLoss))} style={{ fontSize: 22, fontWeight: 500, letterSpacing: "-0.02em", marginTop: 4 }}>
+          <div className={cn("num", gainLossColor(totalGainLoss))} style={{ fontSize: "clamp(16px, 4vw, 22px)", fontWeight: 500, letterSpacing: "-0.02em", marginTop: 4 }}>
             <Money
               value={currency === "USD"
                 ? ((account?.currency ?? "KRW") === "KRW" ? totalGainLoss / exchangeRate : totalGainLoss)
@@ -256,13 +256,13 @@ export default function AccountDetailPage() {
         </div>
         <div className="card card-body-padded">
           <div className="section-title"><span>{t("returnRate")}</span></div>
-          <div className={cn("num", gainLossColor(totalGainLossPct))} style={{ fontSize: 22, fontWeight: 500, letterSpacing: "-0.02em", marginTop: 4 }}>
+          <div className={cn("num", gainLossColor(totalGainLossPct))} style={{ fontSize: "clamp(16px, 4vw, 22px)", fontWeight: 500, letterSpacing: "-0.02em", marginTop: 4 }}>
             {formatPercent(totalGainLossPct)}
           </div>
         </div>
         <div className="card card-body-padded">
           <div className="section-title"><span>{t("dailyProfit")}</span></div>
-          <div className={cn("num", gainLossColor(totalDailyProfit))} style={{ fontSize: 22, fontWeight: 500, letterSpacing: "-0.02em", marginTop: 4 }}>
+          <div className={cn("num", gainLossColor(totalDailyProfit))} style={{ fontSize: "clamp(16px, 4vw, 22px)", fontWeight: 500, letterSpacing: "-0.02em", marginTop: 4 }}>
             <Money
               value={currency === "USD"
                 ? ((account?.currency ?? "KRW") === "KRW" ? totalDailyProfit / exchangeRate : totalDailyProfit)
@@ -294,23 +294,25 @@ export default function AccountDetailPage() {
         <div className="card">
           <div className="card-head">
             <div><h3 className="card-title">{t("holdings")}</h3></div>
-            <div style={{ display: "flex", gap: 8 }}>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
               {account?.type === "stock" && (
                 <button
                   className="btn"
                   onClick={() => setKiwoomOpen(true)}
+                  title={t("kiwoomSync")}
                 >
                   <RefreshCw className="h-3.5 w-3.5" />
-                  {t("kiwoomSync")}
+                  <span className="btn-label">{t("kiwoomSync")}</span>
                 </button>
               )}
               <button
                 className="btn"
                 onClick={handleRefresh}
                 disabled={refreshing}
+                title={t("refresh")}
               >
                 <RefreshCw className={cn("h-3.5 w-3.5", refreshing && "animate-spin")} />
-                {refreshing ? t("refreshing") : t("refresh")}
+                <span className="btn-label">{refreshing ? t("refreshing") : t("refresh")}</span>
               </button>
               <button
                 className="btn"
@@ -328,9 +330,10 @@ export default function AccountDetailPage() {
                   }));
                   downloadCsv(`holdings_${account?.name ?? accountId}_${new Date().toISOString().slice(0, 10)}.csv`, rows);
                 }}
+                title="CSV"
               >
                 <Download className="h-3.5 w-3.5" />
-                CSV
+                <span className="btn-label">CSV</span>
               </button>
               <button
                 className="btn btn-primary"
@@ -373,9 +376,10 @@ export default function AccountDetailPage() {
                     transactions
                   );
                 }}
+                title="CSV"
               >
                 <Download className="h-3.5 w-3.5" />
-                CSV
+                <span className="btn-label">CSV</span>
               </button>
               <button
                 className="btn btn-primary"
