@@ -523,4 +523,9 @@ input, select, textarea { font: inherit; color: inherit; }
 @media (max-width: 680px) {
   .app { grid-template-columns: 1fr !important; }
   .sidebar { display: none; }
+  .stack-3 { grid-template-columns: 1fr; }
+  .desktop-only { display: none !important; }
+}
+@media (min-width: 681px) {
+  .mobile-only { display: none !important; }
 }

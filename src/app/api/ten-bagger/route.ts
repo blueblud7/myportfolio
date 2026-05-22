@@ -20,6 +20,8 @@ export interface TenBaggerCacheRow {
   recoveryPct: number | null;
   score: number;
   signalsCount: number;
+  earlyScore: number;
+  phase: "early" | "breakout" | "momentum";
   sparkline: number[];
 }
 
@@ -36,8 +38,10 @@ export async function GET(req: NextRequest) {
              low_52w, high_52w, from_52w_low,
              local_min_price, local_min_date, from_local_min,
              vol_base_price, vol_base_date, from_vol_base,
-             volume_ratio, recovery_pct, score, signals_count, sparkline,
-             analyzed_date
+             volume_ratio, recovery_pct, score, signals_count,
+             COALESCE(early_score, 0) AS early_score,
+             COALESCE(phase, 'breakout') AS phase,
+             sparkline, analyzed_date
       FROM ten_bagger_cache
       WHERE index_name = ${index}
         AND score >= ${minScore}
@@ -67,6 +71,8 @@ export async function GET(req: NextRequest) {
       recoveryPct: r.recovery_pct != null ? Number(r.recovery_pct) : null,
       score: Number(r.score ?? 0),
       signalsCount: Number(r.signals_count ?? 0),
+      earlyScore: Number(r.early_score ?? 0),
+      phase: (r.phase as "early" | "breakout" | "momentum") ?? "breakout",
       sparkline:
         r.sparkline == null
           ? []

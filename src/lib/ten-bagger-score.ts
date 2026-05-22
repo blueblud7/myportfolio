@@ -22,6 +22,8 @@ export interface TenBaggerResult {
   recoveryPct: number | null;       // 52주 저점~고점 내 현재 위치 (%)
   score: number;
   signalsCount: number;             // 2x 이상 신호 개수 (max 3)
+  earlyScore: number;               // 초기 셋업 점수 (낮은 배수 + 신선 수급 보상)
+  phase: "early" | "breakout" | "momentum";
   sparkline: number[];
 }
 
@@ -184,6 +186,69 @@ function signalVolBase(bars: DailyBar[], currentPrice: number) {
   return { volBasePrice: null, volBaseDate: null, fromVolBase: null, volumeRatio };
 }
 
+function daysAgo(dateStr: string | null): number {
+  if (!dateStr) return 999;
+  return Math.floor((Date.now() - new Date(dateStr).getTime()) / 86400000);
+}
+
+// 현재가가 여정의 어느 단계인지 분류
+// early:     아직 저점 근처 (진입 기회)
+// breakout:  이탈 진행 중 (모멘텀 초입)
+// momentum:  이미 크게 오름 (추격 주의)
+function classifyPhase(
+  from52wLow: number | null,
+  recoveryPct: number | null,
+): "early" | "breakout" | "momentum" {
+  const multi = from52wLow ?? 1.0;
+  const pct   = recoveryPct ?? 50;
+  if (multi >= 3.0 || pct >= 78) return "momentum";
+  if (multi <= 1.5 && pct < 50)  return "early";
+  return "breakout";
+}
+
+// 초기 셋업 점수: 아직 안 올랐지만 수급이 들어오기 시작한 종목에 높은 점수
+// 배수가 낮을수록 + 수급이 신선할수록 + 위치가 낮을수록 유리
+function computeEarlyScore(params: {
+  from52wLow: number | null;
+  volumeRatio: number | null;
+  recoveryPct: number | null;
+  volBaseDate: string | null;
+}): number {
+  const { from52wLow, volumeRatio, recoveryPct, volBaseDate } = params;
+  let score = 0;
+
+  // 1. 저점 근접도 — 낮을수록 아직 초기 (max 30)
+  if (from52wLow != null) {
+    if (from52wLow < 1.15)      score += 30;
+    else if (from52wLow < 1.30) score += 24;
+    else if (from52wLow < 1.50) score += 15;
+    else if (from52wLow < 2.00) score += 5;
+    // >= 2x: 이미 많이 올랐으므로 0점
+  }
+
+  // 2. 수급 신선도 — 최근에 들어온 수급일수록 좋음 (max 30)
+  const days = daysAgo(volBaseDate);
+  if (days <= 20)      score += 30;
+  else if (days <= 45) score += 22;
+  else if (days <= 90) score += 12;
+
+  // 3. 거래량 빌드업 — 적당히 오르는 중이 최고; 이미 폭발한 건 감점 (max 20)
+  if (volumeRatio != null) {
+    if (volumeRatio >= 1.5 && volumeRatio < 3.0) score += 20; // 축적 단계
+    else if (volumeRatio >= 1.2)                  score += 12; // 시작 단계
+    else if (volumeRatio >= 3.0)                  score += 6;  // 이미 폭발 = 늦었을 수도
+  }
+
+  // 4. 52주 위치 스위트스팟 — 하단 탈출 초입 (max 20)
+  if (recoveryPct != null) {
+    if (recoveryPct >= 12 && recoveryPct <= 45) score += 20;
+    else if (recoveryPct >= 6 && recoveryPct <= 58) score += 10;
+    else if (recoveryPct >= 58 && recoveryPct <= 70) score += 4;
+  }
+
+  return Math.min(score, 100);
+}
+
 function computeScore(params: {
   from52wLow: number | null;
   fromLocalMin: number | null;
@@ -270,6 +335,15 @@ export async function scoreTenBagger(ticker: string): Promise<TenBaggerResult | 
     recoveryPct: sig1.recoveryPct,
   });
 
+  const earlyScore = computeEarlyScore({
+    from52wLow: sig1.from52wLow,
+    volumeRatio: sig3.volumeRatio,
+    recoveryPct: sig1.recoveryPct,
+    volBaseDate: sig3.volBaseDate,
+  });
+
+  const phase = classifyPhase(sig1.from52wLow, sig1.recoveryPct);
+
   const sparkline = bars.slice(-90).map((b) => b.close);
 
   return {
@@ -290,6 +364,8 @@ export async function scoreTenBagger(ticker: string): Promise<TenBaggerResult | 
     recoveryPct: sig1.recoveryPct,
     score,
     signalsCount,
+    earlyScore,
+    phase,
     sparkline,
   };
 }

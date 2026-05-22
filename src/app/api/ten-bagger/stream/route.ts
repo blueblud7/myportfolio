@@ -31,10 +31,15 @@ async function ensureTable() {
       recovery_pct    NUMERIC,
       score           NUMERIC  DEFAULT 0,
       signals_count   INTEGER  DEFAULT 0,
+      early_score     INTEGER  DEFAULT 0,
+      phase           TEXT     DEFAULT 'breakout',
       sparkline       JSONB,
       PRIMARY KEY (ticker, index_name, analyzed_date)
     )
   `;
+  // 기존 테이블에 컬럼이 없으면 추가
+  await sql`ALTER TABLE ten_bagger_cache ADD COLUMN IF NOT EXISTS early_score INTEGER DEFAULT 0`.catch(() => {});
+  await sql`ALTER TABLE ten_bagger_cache ADD COLUMN IF NOT EXISTS phase TEXT DEFAULT 'breakout'`.catch(() => {});
 }
 
 async function getCachedTickers(indexName: string, date: string): Promise<Set<string>> {
@@ -59,14 +64,15 @@ async function saveResult(
       low_52w, high_52w, from_52w_low,
       local_min_price, local_min_date, from_local_min,
       vol_base_price, vol_base_date, from_vol_base,
-      volume_ratio, recovery_pct, score, signals_count, sparkline
+      volume_ratio, recovery_pct, score, signals_count,
+      early_score, phase, sparkline
     ) VALUES (
       ${ticker}, ${indexName}, ${date}, ${r.name}, ${r.currency}, ${r.price},
       ${r.low52w}, ${r.high52w}, ${r.from52wLow},
       ${r.localMinPrice}, ${r.localMinDate}, ${r.fromLocalMin},
       ${r.volBasePrice}, ${r.volBaseDate}, ${r.fromVolBase},
       ${r.volumeRatio}, ${r.recoveryPct}, ${r.score}, ${r.signalsCount},
-      ${JSON.stringify(r.sparkline)}
+      ${r.earlyScore}, ${r.phase}, ${JSON.stringify(r.sparkline)}
     )
     ON CONFLICT (ticker, index_name, analyzed_date) DO UPDATE SET
       name            = EXCLUDED.name,
@@ -85,6 +91,8 @@ async function saveResult(
       recovery_pct    = EXCLUDED.recovery_pct,
       score           = EXCLUDED.score,
       signals_count   = EXCLUDED.signals_count,
+      early_score     = EXCLUDED.early_score,
+      phase           = EXCLUDED.phase,
       sparkline       = EXCLUDED.sparkline
   `;
 }

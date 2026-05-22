@@ -5,7 +5,6 @@ import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { useAccounts, useHoldings, useExchangeRate, refreshPrices, useAccountDailyChange } from "@/hooks/use-api";
 import { AccountForm } from "@/components/accounts/AccountForm";
-import { HoldingsPieChart } from "@/components/accounts/HoldingsPieChart";
 import { AccountsOverview } from "@/components/accounts/AccountsOverview";
 import { AccountTrendChart } from "@/components/accounts/AccountTrendChart";
 import { Plus, Pencil, Trash2, ArrowRight, RefreshCw, LayoutGrid, List, GripVertical } from "lucide-react";
@@ -461,9 +460,6 @@ export default function AccountsPage() {
                         </div>
                       )}
                     </div>
-                  )}
-                  {(accountAllocations[account.id]?.length ?? 0) > 1 && (
-                    <HoldingsPieChart data={accountAllocations[account.id]} compact />
                   )}
                   <Link href={`/accounts/${account.id}`}>
                     <button className="btn" style={{ width: "100%" }}>
