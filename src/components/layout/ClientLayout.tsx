@@ -177,7 +177,7 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
               onMobileClose={() => setMobileMenuOpen(false)}
             />
             <div style={{ minWidth: 0, overflowY: "auto", overflowX: "hidden", display: "flex", flexDirection: "column" }}>
-              <div className="mobile-header" style={{ display: "none" }}>
+              <div className="mobile-header">
                 <button
                   onClick={() => setMobileMenuOpen(true)}
                   style={{ padding: "8px", color: "var(--fg-3)" }}

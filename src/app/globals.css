@@ -520,9 +520,23 @@ input, select, textarea { font: inherit; color: inherit; }
   .sidebar { width: 64px; overflow: hidden; }
   .nav-item span:not(.nav-meta), .brand-name, .brand-sub, .sidebar-cmd, .summary-card, .nav-section-title { display: none; }
 }
+/* 모바일 헤더(햄버거): 기본 숨김, 모바일에서만 표시 */
+.mobile-header { display: none; }
+
 @media (max-width: 680px) {
   .app { grid-template-columns: 1fr !important; }
   .sidebar { display: none; }
+  .mobile-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px var(--gutter);
+    border-bottom: 1px solid var(--border);
+    background: var(--bg);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
   .stack-3 { grid-template-columns: 1fr; }
   .stack-4 { grid-template-columns: repeat(2, 1fr); }
   .desktop-only { display: none !important; }
