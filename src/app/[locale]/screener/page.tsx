@@ -535,9 +535,9 @@ export default function ScreenerPage() {
       <div className="rounded-xl border border-border/40 bg-surface/50 px-4 py-3 text-xs text-muted-foreground">
         <p className="font-medium mb-1">데이터 안내</p>
         <ul className="space-y-0.5 list-disc list-inside">
-          <li>PER · PBR · EPS는 KRX 공식 발표 기준 (당기순이익 기반 Trailing 12개월)</li>
-          <li>Forward EPS · Forward PER는 KRX 데이터 미지원 — 개별 종목 상세에서 Yahoo Finance 기준으로 제공</li>
-          <li>장 마감 후 확정 수치 / 당일 거래 중에는 잠정치</li>
+          <li>시세 · 시가총액 · 거래대금 · 등락률 → KRX 공식 Open API (장 마감 후 확정)</li>
+          <li>PER · PBR · EPS · 배당수익률 → KRX 공식 API에 별도 서비스 신청 필요 (현재 미지원으로 표시)</li>
+          <li>Forward EPS · Forward PER 는 KRX 미지원 — 개별 종목 상세 페이지에서 Yahoo Finance 기준으로 제공</li>
         </ul>
       </div>
     </div>

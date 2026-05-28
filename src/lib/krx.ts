@@ -1,7 +1,8 @@
-// KRX (한국거래소) Open API
-// OTP 인증 방식: GenerateOTP → CheckOTP
+// KRX (한국거래소) 공식 Open API (Data Marketplace)
+// Base URL: https://data-dbg.krx.co.kr/svc/apis/
+// 인증: AUTH_KEY 헤더
 
-const KRX_BASE = "https://openapi.krx.co.kr";
+const KRX_BASE = "https://data-dbg.krx.co.kr/svc/apis";
 
 function formatKrxDate(d: Date): string {
   const y = d.getFullYear();
@@ -10,47 +11,44 @@ function formatKrxDate(d: Date): string {
   return `${y}${m}${day}`;
 }
 
-// KST 기준으로 가장 최근 거래일 (주말 제외)
-function recentTradingDay(daysBack = 0): string {
+// KST 기준으로 가장 최근 거래일 (주말 제외). KRX는 당일 데이터는 장 마감 후 제공되므로 1일 전부터 시도.
+function recentTradingDay(daysBack = 1): string {
   const now = new Date();
-  // KST = UTC+9
-  now.setTime(now.getTime() + 9 * 60 * 60 * 1000);
+  now.setTime(now.getTime() + 9 * 60 * 60 * 1000); // KST
   now.setDate(now.getDate() - daysBack);
   while (now.getDay() === 0 || now.getDay() === 6) now.setDate(now.getDate() - 1);
   return formatKrxDate(now);
 }
 
-async function krxRequest(bld: string, params: Record<string, string>): Promise<Record<string, string>[]> {
+// 공식 API 호출: GET /svc/apis/{endpoint}?basDd=YYYYMMDD
+// 헤더 AUTH_KEY 필수. 시세는 당일 데이터가 없을 수 있어 N일 이전까지 자동 재시도.
+async function krxApi(endpoint: string, basDd?: string, retries = 5): Promise<Record<string, string>[]> {
   const key = process.env.KRX_API_KEY;
   if (!key) return [];
 
-  try {
-    const form = new URLSearchParams({ name: "fileDown", auth: key, bld, ...params });
-
-    const otpRes = await fetch(`${KRX_BASE}/contents/COM/GenerateOTP.cmd`, {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8" },
-      body: form.toString(),
-      cache: "no-store",
-    });
-    if (!otpRes.ok) return [];
-    const otp = (await otpRes.text()).trim();
-    if (!otp || otp.length < 10) return [];
-
-    const dataRes = await fetch(`${KRX_BASE}/contents/COM/CheckOTP.cmd`, {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8" },
-      body: new URLSearchParams({ code: otp }).toString(),
-      cache: "no-store",
-    });
-    if (!dataRes.ok) return [];
-
-    const json = await dataRes.json() as Record<string, unknown>;
-    const data = json.OutBlock_1 ?? json.output ?? json.output2 ?? json.output1 ?? [];
-    return Array.isArray(data) ? (data as Record<string, string>[]) : [];
-  } catch {
-    return [];
+  let target = basDd ?? recentTradingDay();
+  for (let attempt = 0; attempt < retries; attempt++) {
+    try {
+      const url = `${KRX_BASE}/${endpoint}?basDd=${target}`;
+      const res = await fetch(url, {
+        headers: { AUTH_KEY: key, "User-Agent": "Mozilla/5.0" },
+        cache: "no-store",
+      });
+      if (res.ok) {
+        const json = await res.json() as Record<string, unknown>;
+        const data = json.OutBlock_1 ?? json.output ?? [];
+        if (Array.isArray(data) && data.length > 0) {
+          return data as Record<string, string>[];
+        }
+        // 빈 응답이면 주말/공휴일 → 하루 더 과거로
+      }
+    } catch { /* fallthrough */ }
+    // 다음 영업일 후보 (1일 더 과거)
+    const d = new Date(`${target.slice(0,4)}-${target.slice(4,6)}-${target.slice(6,8)}T00:00:00Z`);
+    do { d.setDate(d.getDate() - 1); } while (d.getDay() === 0 || d.getDay() === 6);
+    target = formatKrxDate(d);
   }
+  return [];
 }
 
 const parseNum = (s: string | undefined): number => {
@@ -58,11 +56,6 @@ const parseNum = (s: string | undefined): number => {
   return parseFloat(s.replace(/[,+\s]/g, "")) || 0;
 };
 
-const parseNullNum = (s: string | undefined): number | null => {
-  if (!s || s.trim() === "-" || s.trim() === "") return null;
-  const n = parseFloat(s.replace(/,/g, ""));
-  return isNaN(n) ? null : n;
-};
 
 // ─── 1. 전체 시장 주가 시세 ───────────────────────────────────────────────────
 
@@ -83,28 +76,50 @@ export interface KrxStockPrice {
   shares: number;
 }
 
-export async function getKrxAllPrices(mktId: "STK" | "KSQ", date?: string): Promise<KrxStockPrice[]> {
-  const trdDd = date ?? recentTradingDay();
-  const rows = await krxRequest("dbms/MDC/STAT/standard/MDCSTAT01501", { trdDd, mktId });
+// stk_bydd_trd는 KOSPI+KOSDAQ를 한번에 반환 → MKT_NM 기준 필터 + 종목코드 정규화
+let _allPricesCache: { ts: number; data: KrxStockPrice[] } | null = null;
+const ALL_PRICES_TTL = 30 * 60 * 1000; // 30분
 
-  return rows
-    .filter(r => r.ISU_SRT_CD && r.ISU_SRT_CD.match(/^\d/))
-    .map(r => ({
-      code: r.ISU_SRT_CD,
-      name: r.ISU_NM ?? "",
-      market: mktId === "STK" ? "KOSPI" : "KOSDAQ",
-      sector: r.SECT_TP_NM ?? "",
-      close: parseNum(r.TDD_CLSPRC),
-      change: parseNum(r.CMPPREVDD_PRC),
-      changePct: parseNum(r.FLUC_RT),
-      open: parseNum(r.TDD_OPNPRC),
-      high: parseNum(r.TDD_HGPRC),
-      low: parseNum(r.TDD_LWPRC),
-      volume: parseNum(r.ACC_TRDVOL),
-      tradingValue: Math.round(parseNum(r.ACC_TRDVAL) / 1_0000), // 원 → 억원
-      marketCap: Math.round(parseNum(r.MKTCAP) / 1_0000),
-      shares: parseNum(r.LIST_SHRS),
-    }));
+async function fetchAllStockPrices(date?: string): Promise<KrxStockPrice[]> {
+  if (!date && _allPricesCache && Date.now() - _allPricesCache.ts < ALL_PRICES_TTL) {
+    return _allPricesCache.data;
+  }
+  const rows = await krxApi("sto/stk_bydd_trd", date);
+  const result: KrxStockPrice[] = rows
+    .filter(r => r.ISU_CD && r.MKT_NM)
+    .map(r => {
+      // ISU_CD는 ISIN(KR7XXXXXXXXX) 형태 → 6자리 단축코드 추출
+      const code = r.ISU_CD.length === 12 && r.ISU_CD.startsWith("KR7")
+        ? r.ISU_CD.slice(3, 9)
+        : r.ISU_CD;
+      const mkt = r.MKT_NM ?? "";
+      const market: "KOSPI" | "KOSDAQ" = mkt.includes("KOSDAQ") ? "KOSDAQ" : "KOSPI";
+      return {
+        code,
+        name: r.ISU_NM ?? "",
+        market,
+        sector: r.SECT_TP_NM ?? "",
+        close: parseNum(r.TDD_CLSPRC),
+        change: parseNum(r.CMPPREVDD_PRC),
+        changePct: parseNum(r.FLUC_RT),
+        open: parseNum(r.TDD_OPNPRC),
+        high: parseNum(r.TDD_HGPRC),
+        low: parseNum(r.TDD_LWPRC),
+        volume: parseNum(r.ACC_TRDVOL),
+        tradingValue: Math.round(parseNum(r.ACC_TRDVAL) / 1_0000), // 원 → 억원
+        marketCap: Math.round(parseNum(r.MKTCAP) / 1_0000),
+        shares: parseNum(r.LIST_SHRS),
+      };
+    })
+    .filter(p => /^\d/.test(p.code));
+  if (!date) _allPricesCache = { ts: Date.now(), data: result };
+  return result;
+}
+
+export async function getKrxAllPrices(mktId: "STK" | "KSQ", date?: string): Promise<KrxStockPrice[]> {
+  const all = await fetchAllStockPrices(date);
+  const target = mktId === "STK" ? "KOSPI" : "KOSDAQ";
+  return all.filter(p => p.market === target);
 }
 
 // ─── 2. PER/PBR/배당수익률 ───────────────────────────────────────────────────
@@ -120,22 +135,11 @@ export interface KrxValuation {
   divPerShare: number | null;
 }
 
-export async function getKrxValuations(mktId: "STK" | "KSQ", date?: string): Promise<KrxValuation[]> {
-  const trdDd = date ?? recentTradingDay();
-  const rows = await krxRequest("dbms/MDC/STAT/standard/MDCSTAT03901", { trdDd, mktId });
-
-  return rows
-    .filter(r => r.ISU_SRT_CD && r.ISU_SRT_CD.match(/^\d/))
-    .map(r => ({
-      code: r.ISU_SRT_CD,
-      name: r.ISU_NM ?? "",
-      eps: parseNullNum(r.EPS),
-      bps: parseNullNum(r.BPS),
-      per: parseNullNum(r.PER),
-      pbr: parseNullNum(r.PBR),
-      divYield: parseNullNum(r.DIV_YLD),
-      divPerShare: parseNullNum(r.DPS),
-    }));
+// KRX 공식 Open API는 PER/PBR/EPS 데이터를 별도 서비스로 분리, 추가 신청 필요.
+// 현재는 시세 서비스만 사용 가능 → 빈 배열 반환 (스크리너에서 "—" 표시)
+// 필요 시 사용자가 openapi.krx.co.kr에서 "주식 PER/PBR/배당수익률" 서비스 추가 신청.
+export async function getKrxValuations(_mktId: "STK" | "KSQ", _date?: string): Promise<KrxValuation[]> {
+  return [];
 }
 
 // ─── 3. 개별 종목 PER/PBR (단일 종목) ────────────────────────────────────────
@@ -161,12 +165,8 @@ export interface KrxMarketInvestor {
   foreignPct: number;     // 외국인 순매수 비율 (%)
 }
 
-export async function getKrxMarketInvestors(mktId: "STK" | "KSQ", date?: string): Promise<KrxMarketInvestor | null> {
-  const trdDd = date ?? recentTradingDay();
-  const rows = await krxRequest("dbms/MDC/STAT/standard/MDCSTAT03901", { trdDd, mktId });
-  if (!rows.length) return null;
-
-  // MDCSTAT03901은 시장 요약을 포함 - 별도로 투자자 요약 엔드포인트 사용
+export async function getKrxMarketInvestors(_mktId: "STK" | "KSQ", _date?: string): Promise<KrxMarketInvestor | null> {
+  // KRX 공식 API에 투자자 거래동향은 별도 서비스 (현재 미신청)
   return null;
 }
 
@@ -183,68 +183,11 @@ export interface KrxStockInvestorDay {
 }
 
 export async function getKrxStockInvestors(
-  stockCode: string,
-  days = 30
+  _stockCode: string,
+  _days = 30
 ): Promise<KrxStockInvestorDay[]> {
-  const now = new Date();
-  now.setTime(now.getTime() + 9 * 60 * 60 * 1000); // KST
-  const endDate = formatKrxDate(now);
-  const startD = new Date(now);
-  startD.setDate(startD.getDate() - days * 2); // 주말/공휴일 여유
-  const startDate = formatKrxDate(startD);
-
-  // ISIN 시도 1: KR7{code}003 (KOSPI 일반주)
-  // ISIN 시도 2: KR7{code}006 (KOSDAQ 일반주)
-  // fallback: 6자리 코드 직접
-  const isinCandidates = [`KR7${stockCode}003`, `KR7${stockCode}006`, stockCode];
-
-  let rows: Record<string, string>[] = [];
-  for (const isin of isinCandidates) {
-    rows = await krxRequest("dbms/MDC/STAT/standard/MDCSTAT09052", {
-      isuCd: isin,
-      strtDd: startDate,
-      endDd: endDate,
-    });
-    if (rows.length > 0) break;
-  }
-
-  if (!rows.length) return [];
-
-  // 날짜별 투자자 타입별로 집계
-  const byDate = new Map<string, KrxStockInvestorDay>();
-
-  for (const r of rows) {
-    const rawDate = r.TRD_DD ?? r.TRD_D ?? "";
-    if (!rawDate) continue;
-    // KRX date: "YYYY/MM/DD" or "YYYYMMDD" → normalize to "YYYY-MM-DD"
-    const date = rawDate.length === 8
-      ? `${rawDate.slice(0, 4)}-${rawDate.slice(4, 6)}-${rawDate.slice(6, 8)}`
-      : rawDate.replace(/\//g, "-").slice(0, 10);
-
-    if (!byDate.has(date)) {
-      byDate.set(date, { date, foreign: 0, institution: 0, individual: 0, foreignVol: 0, institutionVol: 0, individualVol: 0 });
-    }
-    const entry = byDate.get(date)!;
-
-    const invstType = (r.INVST_TP_NM ?? r.INVST_TP ?? "").trim();
-    const netVal = parseNum(r.NETBID_TRDVAL ?? r.NET_BID_TRDVAL ?? r.NET_TRDVAL ?? "0");
-    const netVol = parseNum(r.NETBID_TRDVOL ?? r.NET_BID_TRDVOL ?? r.NET_TRDVOL ?? "0");
-
-    if (invstType.includes("외국인")) {
-      entry.foreign = netVal;
-      entry.foreignVol = netVol;
-    } else if (invstType.includes("기관")) {
-      entry.institution = netVal;
-      entry.institutionVol = netVol;
-    } else if (invstType.includes("개인")) {
-      entry.individual = netVal;
-      entry.individualVol = netVol;
-    }
-  }
-
-  return Array.from(byDate.values())
-    .sort((a, b) => a.date.localeCompare(b.date))
-    .slice(-days);
+  // KRX 공식 API에 투자자별 매매동향은 별도 서비스 (현재 미신청) → 빈 배열
+  return [];
 }
 
 // ─── 6. 시장 전체 투자자별 순매수 추이 (기간별) ───────────────────────────────
@@ -255,52 +198,9 @@ export interface KrxMarketInvestorDay {
   kosdaq: { foreign: number; institution: number; individual: number };
 }
 
-export async function getKrxMarketInvestorTrend(days = 20): Promise<KrxMarketInvestorDay[]> {
-  const now = new Date();
-  now.setTime(now.getTime() + 9 * 60 * 60 * 1000);
-  const endDate = formatKrxDate(now);
-  const startD = new Date(now);
-  startD.setDate(startD.getDate() - days * 2);
-  const startDate = formatKrxDate(startD);
-
-  const [kospiRows, kosdaqRows] = await Promise.all([
-    krxRequest("dbms/MDC/STAT/standard/MDCSTAT02901", { strtDd: startDate, endDd: endDate, mktId: "STK" }),
-    krxRequest("dbms/MDC/STAT/standard/MDCSTAT02901", { strtDd: startDate, endDd: endDate, mktId: "KSQ" }),
-  ]);
-
-  const aggregate = (rows: Record<string, string>[], market: "kospi" | "kosdaq") => {
-    const byDate = new Map<string, { foreign: number; institution: number; individual: number }>();
-    for (const r of rows) {
-      const rawDate = r.TRD_DD ?? "";
-      if (!rawDate) continue;
-      const date = rawDate.length === 8
-        ? `${rawDate.slice(0, 4)}-${rawDate.slice(4, 6)}-${rawDate.slice(6, 8)}`
-        : rawDate.replace(/\//g, "-").slice(0, 10);
-      if (!byDate.has(date)) byDate.set(date, { foreign: 0, institution: 0, individual: 0 });
-      const entry = byDate.get(date)!;
-      const invstType = (r.INVST_TP_NM ?? "").trim();
-      const netVal = parseNum(r.NETBID_TRDVAL ?? "0");
-      if (invstType.includes("외국인") && !invstType.includes("기타")) entry.foreign = netVal;
-      else if (invstType.includes("기관합계") || invstType === "기관계") entry.institution = netVal;
-      else if (invstType.includes("개인")) entry.individual = netVal;
-    }
-    return byDate;
-  };
-
-  const kospiMap = aggregate(kospiRows, "kospi");
-  const kosdaqMap = aggregate(kosdaqRows, "kosdaq");
-
-  const allDates = new Set([...kospiMap.keys(), ...kosdaqMap.keys()]);
-  const ZERO = { foreign: 0, institution: 0, individual: 0 };
-
-  return Array.from(allDates)
-    .sort()
-    .slice(-days)
-    .map(date => ({
-      date,
-      kospi:  kospiMap.get(date)  ?? ZERO,
-      kosdaq: kosdaqMap.get(date) ?? ZERO,
-    }));
+export async function getKrxMarketInvestorTrend(_days = 20): Promise<KrxMarketInvestorDay[]> {
+  // KRX 공식 API에 투자자별 매매동향은 별도 서비스 (현재 미신청) → 빈 배열
+  return [];
 }
 
 // ─── 7. 외국인/기관 순매수 상위 종목 ─────────────────────────────────────────
@@ -315,31 +215,12 @@ export interface KrxTopStock {
 }
 
 export async function getKrxTopBuyStocks(
-  investorType: "foreign" | "institution",
-  mktId: "STK" | "KSQ",
-  date?: string
+  _investorType: "foreign" | "institution",
+  _mktId: "STK" | "KSQ",
+  _date?: string
 ): Promise<KrxTopStock[]> {
-  const trdDd = date ?? recentTradingDay();
-
-  // MDCSTAT03501: 투자자별 거래동향 (전종목)
-  const rows = await krxRequest("dbms/MDC/STAT/standard/MDCSTAT03501", {
-    trdDd,
-    mktId,
-    invstTpCd: investorType === "foreign" ? "C000" : "9000",
-  });
-
-  return rows
-    .filter(r => r.ISU_SRT_CD && r.ISU_SRT_CD.match(/^\d/))
-    .map(r => ({
-      code: r.ISU_SRT_CD,
-      name: r.ISU_NM ?? "",
-      netBuyVal: parseNum(r.NETBID_TRDVAL ?? "0"),
-      netBuyVol: parseNum(r.NETBID_TRDVOL ?? "0"),
-      close: parseNum(r.TDD_CLSPRC ?? "0"),
-      changePct: parseNum(r.FLUC_RT ?? "0"),
-    }))
-    .sort((a, b) => b.netBuyVal - a.netBuyVal)
-    .slice(0, 20);
+  // KRX 공식 API에 투자자별 매매동향은 별도 서비스 (현재 미신청) → 빈 배열
+  return [];
 }
 
 // ─── 8. 지수 시세 (KOSPI/KOSDAQ 섹터 지수) ───────────────────────────────────
@@ -354,19 +235,18 @@ export interface KrxIndexItem {
 }
 
 export async function getKrxIndices(idxType: "1" | "2" = "1", date?: string): Promise<KrxIndexItem[]> {
-  const trdDd = date ?? recentTradingDay();
-  const rows = await krxRequest("dbms/MDC/STAT/standard/MDCSTAT11901", {
-    trdDd,
-    idxIndMktDiv: idxType, // 1: KOSPI, 2: KOSDAQ
-  });
+  // idxType=1 → KOSPI 지수, idxType=2 → KOSDAQ 지수
+  // KOSPI는 권한 있음(/idx/kospi_dd_trd), KOSDAQ는 미신청(/idx/kosdaq_dd_trd → 401)
+  const endpoint = idxType === "1" ? "idx/kospi_dd_trd" : "idx/kosdaq_dd_trd";
+  const rows = await krxApi(endpoint, date);
 
   return rows.map(r => ({
-    indexCode: r.IDX_IND_CD ?? r.IDX_IND_NM ?? "",
-    indexName: r.IDX_IND_NM ?? "",
+    indexCode: r.IDX_NM ?? r.IDX_CLSS ?? "",
+    indexName: r.IDX_NM ?? "",
     close: parseNum(r.CLSPRC_IDX),
     change: parseNum(r.CMPPREVDD_IDX),
     changePct: parseNum(r.FLUC_RT),
-    marketCap: Math.round(parseNum(r.MKTCAP) / 1_0000),
+    marketCap: Math.round(parseNum(r.MKTCAP ?? "0") / 1_0000),
   }));
 }
 

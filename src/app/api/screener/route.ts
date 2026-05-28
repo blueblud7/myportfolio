@@ -82,7 +82,7 @@ export async function GET(req: NextRequest) {
 
   if (stocks.length === 0) {
     return NextResponse.json(
-      { error: "KRX 데이터 없음. KRX_API_KEY 환경변수를 확인하세요.", stocks: [], total: 0, sectors: [] },
+      { error: "KRX 데이터를 불러올 수 없습니다. KRX_API_KEY 환경변수와 API 서비스 신청 상태를 확인하세요.", stocks: [], total: 0, sectors: [] },
       { status: 503 }
     );
   }
