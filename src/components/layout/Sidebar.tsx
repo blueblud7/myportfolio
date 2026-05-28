@@ -59,6 +59,7 @@ const NAV = [
     items: [
       { href: "/stocks",          label: "종목 정보",      icon: "search"    },
       { href: "/krx-market",      label: "한국 시장",      icon: "piechart"  },
+      { href: "/screener",        label: "종목 스크리너",  icon: "filter"    },
       { href: "/analyst-reports", label: "증권사 리포트",  icon: "filedoc"   },
       { href: "/earnings",        label: "실적",           icon: "calendar"  },
       { href: "/quant",           label: "퀀트",           icon: "activity"  },

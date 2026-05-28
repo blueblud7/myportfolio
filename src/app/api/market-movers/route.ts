@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { getKrxAllPrices } from "@/lib/krx";
 
 export interface MarketMoverItem {
   ticker: string;
@@ -60,44 +61,47 @@ async function fetchYfScreener(scrId: string, count = 7): Promise<MarketMoverIte
   }
 }
 
-// ─── KR: Yahoo Finance quotes for major KOSPI stocks ─────────────────────────
+// ─── KR: KRX 전체 종목 기반 급등/급락주 (fallback: Yahoo Finance 30개 대형주) ─
 
-const KR_TICKERS = [
-  "005930.KS", // 삼성전자
-  "000660.KS", // SK하이닉스
-  "207940.KS", // 삼성바이오로직스
-  "005380.KS", // 현대차
-  "068270.KS", // 셀트리온
-  "000270.KS", // 기아
-  "005490.KS", // POSCO홀딩스
-  "035420.KS", // NAVER
-  "035720.KS", // 카카오
-  "051910.KS", // LG화학
-  "006400.KS", // 삼성SDI
-  "066570.KS", // LG전자
-  "055550.KS", // 신한지주
-  "105560.KS", // KB금융
-  "003550.KS", // LG
-  "012330.KS", // 현대모비스
-  "096770.KS", // SK이노베이션
-  "028260.KS", // 삼성물산
-  "017670.KS", // SK텔레콤
-  "086790.KS", // 하나금융지주
-  "034730.KS", // SK
-  "009150.KS", // 삼성전기
-  "011200.KS", // HMM
-  "032830.KS", // 삼성생명
-  "000810.KS", // 삼성화재
-  "373220.KS", // LG에너지솔루션
-  "247540.KS", // 에코프로비엠
-  "091990.KS", // 셀트리온헬스케어
-  "036570.KS", // 엔씨소프트
-  "003670.KS", // 포스코퓨처엠
+async function fetchKrMoversKrx(count = 7): Promise<{ gainers: MarketMoverItem[]; losers: MarketMoverItem[]; active: MarketMoverItem[] } | null> {
+  const [kospi, kosdaq] = await Promise.all([
+    getKrxAllPrices("STK").catch(() => []),
+    getKrxAllPrices("KSQ").catch(() => []),
+  ]);
+  const all = [...kospi, ...kosdaq].filter(p => p.close > 0);
+  if (all.length < 20) return null; // KRX_API_KEY 미설정 등
+
+  const stocks: MarketMoverItem[] = all.map(p => ({
+    ticker: p.code,
+    name: p.name,
+    price: p.close,
+    changePct: p.changePct,
+    volume: p.volume,
+    avgVolume: 0,
+    currency: "KRW",
+  }));
+
+  const byChange = [...stocks].sort((a, b) => b.changePct - a.changePct);
+  const byVolume = [...stocks].sort((a, b) => b.volume - a.volume);
+  return {
+    gainers: byChange.filter(s => s.changePct > 0).slice(0, count),
+    losers: byChange.filter(s => s.changePct < 0).slice(-count).reverse(),
+    active: byVolume.slice(0, count),
+  };
+}
+
+const KR_FALLBACK_TICKERS = [
+  "005930.KS", "000660.KS", "207940.KS", "005380.KS", "068270.KS",
+  "000270.KS", "005490.KS", "035420.KS", "035720.KS", "051910.KS",
+  "006400.KS", "066570.KS", "055550.KS", "105560.KS", "003550.KS",
+  "012330.KS", "096770.KS", "028260.KS", "017670.KS", "086790.KS",
+  "034730.KS", "009150.KS", "011200.KS", "032830.KS", "000810.KS",
+  "373220.KS", "247540.KS", "091990.KS", "036570.KS", "003670.KS",
 ];
 
-async function fetchKrMovers(count = 7): Promise<{ gainers: MarketMoverItem[]; losers: MarketMoverItem[]; active: MarketMoverItem[] }> {
+async function fetchKrMoversFallback(count = 7): Promise<{ gainers: MarketMoverItem[]; losers: MarketMoverItem[]; active: MarketMoverItem[] }> {
   try {
-    const symbols = KR_TICKERS.join(",");
+    const symbols = KR_FALLBACK_TICKERS.join(",");
     const url = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${encodeURIComponent(symbols)}&fields=symbol,shortName,regularMarketPrice,regularMarketChangePercent,regularMarketVolume,averageDailyVolume3Month,currency`;
     const res = await fetch(url, { headers: YF_HEADERS, next: { revalidate: 300 } });
     if (!res.ok) return { gainers: [], losers: [], active: [] };
@@ -113,7 +117,7 @@ async function fetchKrMovers(count = 7): Promise<{ gainers: MarketMoverItem[]; l
         price: Number(q.regularMarketPrice ?? 0),
         changePct: Number(q.regularMarketChangePercent ?? 0),
         volume: Number(q.regularMarketVolume ?? 0),
-        avgVolume: Number(q.averageDailyVolume3Month ?? q.averageDailyVolume10Day ?? 0),
+        avgVolume: Number(q.averageDailyVolume3Month ?? 0),
         currency: q.currency ?? "KRW",
       }))
       .filter((q) => q.ticker && q.price > 0);
@@ -128,6 +132,12 @@ async function fetchKrMovers(count = 7): Promise<{ gainers: MarketMoverItem[]; l
   } catch {
     return { gainers: [], losers: [], active: [] };
   }
+}
+
+async function fetchKrMovers(count = 7): Promise<{ gainers: MarketMoverItem[]; losers: MarketMoverItem[]; active: MarketMoverItem[] }> {
+  const krx = await fetchKrMoversKrx(count);
+  if (krx) return krx;
+  return fetchKrMoversFallback(count);
 }
 
 // ─── Cache & handler ──────────────────────────────────────────────────────────
