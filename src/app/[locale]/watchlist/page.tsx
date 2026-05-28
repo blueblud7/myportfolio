@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import { Eye, Plus, Trash2, Pencil, RefreshCw, Check, X } from "lucide-react";
+import { useState, useEffect, useCallback, useMemo } from "react";
+import { Eye, Plus, Trash2, Pencil, RefreshCw, Check, X, LayoutGrid, Table2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { StockSearchInput } from "@/components/ui/stock-search-input";
 import type { WatchlistItem } from "@/app/api/watchlist/route";
+import type { FundamentalsResult } from "@/app/api/fundamentals/route";
 
 function formatPrice(price: number, currency: string): string {
   if (currency === "KRW") return `₩${Math.round(price).toLocaleString("ko-KR")}`;
@@ -307,12 +308,148 @@ function WatchRow({
   );
 }
 
+function fmtNum(v: number | null, digits = 2): string {
+  if (v === null || v === undefined) return "—";
+  return v.toLocaleString("ko-KR", { maximumFractionDigits: digits });
+}
+
+function fiftyTwoWeekPosition(price: number, low: number, high: number): number | null {
+  if (!low || !high || high === low) return null;
+  return Math.max(0, Math.min(100, ((price - low) / (high - low)) * 100));
+}
+
+function PerCell({ value }: { value: number | null }) {
+  if (value === null) return <span className="text-muted-foreground">—</span>;
+  if (value <= 0) return <span className="text-muted-foreground text-xs">적자</span>;
+  const cls = value < 10 ? "text-emerald-400" : value < 20 ? "" : value < 30 ? "text-amber-400" : "text-red-400";
+  return <span className={cls}>{value.toFixed(1)}</span>;
+}
+
+function PbrCell({ value }: { value: number | null }) {
+  if (value === null) return <span className="text-muted-foreground">—</span>;
+  if (value <= 0) return <span className="text-muted-foreground">—</span>;
+  const cls = value < 0.8 ? "text-emerald-400" : value < 1.5 ? "" : value < 3 ? "text-amber-400" : "text-red-400";
+  return <span className={cls}>{value.toFixed(2)}</span>;
+}
+
+function RangeBar({ pct }: { pct: number | null }) {
+  if (pct === null) return <span className="text-muted-foreground text-xs">—</span>;
+  const color = pct >= 85 ? "bg-red-500" : pct >= 50 ? "bg-emerald-500" : "bg-amber-500";
+  return (
+    <div className="flex items-center gap-2 min-w-[80px]">
+      <div className="relative h-1.5 flex-1 rounded-full bg-zinc-700/50">
+        <div className={cn("absolute left-0 h-full rounded-full", color)} style={{ width: `${pct}%` }} />
+      </div>
+      <span className="text-[10px] text-muted-foreground font-mono tabular-nums w-7 text-right">{pct.toFixed(0)}%</span>
+    </div>
+  );
+}
+
+function CompareTable({ items, funds }: { items: WatchlistItem[]; funds: Record<string, FundamentalsResult | undefined> }) {
+  return (
+    <div className="card">
+      <div className="card-head">
+        <span className="card-title">펀더멘털 가로비교</span>
+        <span className="text-xs text-muted-foreground">{items.length}개 종목 · Yahoo Finance</span>
+      </div>
+      <div className="card-body">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-border/40 text-xs text-muted-foreground">
+                <th className="px-3 py-2 text-left">종목</th>
+                <th className="px-3 py-2 text-right">현재가</th>
+                <th className="px-3 py-2 text-right">등락률</th>
+                <th className="px-3 py-2 text-left">52주 위치</th>
+                <th className="px-3 py-2 text-right">Trailing PER</th>
+                <th className="px-3 py-2 text-right">Forward PER</th>
+                <th className="px-3 py-2 text-right">PBR</th>
+                <th className="px-3 py-2 text-right">EPS (TTM)</th>
+                <th className="px-3 py-2 text-right">Fwd EPS</th>
+                <th className="px-3 py-2 text-right">매출 성장</th>
+                <th className="px-3 py-2 text-right">영업이익률</th>
+              </tr>
+            </thead>
+            <tbody>
+              {items.map(item => {
+                const f = funds[item.ticker];
+                const pos = f ? fiftyTwoWeekPosition(f.price, f.fiftyTwoWeekLow, f.fiftyTwoWeekHigh) : null;
+                return (
+                  <tr key={item.id} className="border-b border-border/20 hover:bg-muted/20 transition-colors">
+                    <td className="px-3 py-2">
+                      <a href={`/stocks/${item.ticker}`} className="hover:text-accent transition-colors">
+                        <div className="font-medium">{item.name}</div>
+                        <div className="text-xs text-muted-foreground font-mono">{item.ticker}</div>
+                      </a>
+                    </td>
+                    <td className="px-3 py-2 text-right font-mono tabular-nums">
+                      {item.current_price > 0 ? formatPrice(item.current_price, item.currency) : "—"}
+                    </td>
+                    <td className={cn(
+                      "px-3 py-2 text-right font-mono tabular-nums font-semibold",
+                      item.change_pct > 0 ? "text-emerald-400" : item.change_pct < 0 ? "text-red-400" : "text-muted-foreground"
+                    )}>
+                      {item.change_pct >= 0 ? "+" : ""}{item.change_pct.toFixed(2)}%
+                    </td>
+                    <td className="px-3 py-2"><RangeBar pct={pos} /></td>
+                    <td className="px-3 py-2 text-right font-mono tabular-nums"><PerCell value={f?.trailingPE ?? null} /></td>
+                    <td className="px-3 py-2 text-right font-mono tabular-nums"><PerCell value={f?.forwardPE ?? null} /></td>
+                    <td className="px-3 py-2 text-right font-mono tabular-nums"><PbrCell value={f?.priceToBook ?? null} /></td>
+                    <td className="px-3 py-2 text-right font-mono tabular-nums text-muted-foreground">{fmtNum(f?.trailingEps ?? null)}</td>
+                    <td className="px-3 py-2 text-right font-mono tabular-nums text-muted-foreground">{fmtNum(f?.forwardEps ?? null)}</td>
+                    <td className={cn(
+                      "px-3 py-2 text-right font-mono tabular-nums",
+                      (f?.revenueGrowth ?? 0) > 0 ? "text-emerald-400" : (f?.revenueGrowth ?? 0) < 0 ? "text-red-400" : "text-muted-foreground"
+                    )}>
+                      {f?.revenueGrowth != null ? `${f.revenueGrowth > 0 ? "+" : ""}${f.revenueGrowth.toFixed(1)}%` : "—"}
+                    </td>
+                    <td className={cn(
+                      "px-3 py-2 text-right font-mono tabular-nums",
+                      (f?.operatingMargins ?? 0) > 10 ? "text-emerald-400" : (f?.operatingMargins ?? 0) < 0 ? "text-red-400" : "text-muted-foreground"
+                    )}>
+                      {f?.operatingMargins != null ? `${f.operatingMargins.toFixed(1)}%` : "—"}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+        <p className="px-4 py-3 text-xs text-muted-foreground border-t border-border/40">
+          PER 10미만(초록) · 10–20(기본) · 20–30(주황) · 30+(빨강) / PBR 0.8미만(초록) · 0.8–1.5(기본) · 1.5–3(주황) · 3+(빨강)
+        </p>
+      </div>
+    </div>
+  );
+}
+
 export default function WatchlistPage() {
   const [items, setItems] = useState<WatchlistItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [editingItem, setEditingItem] = useState<WatchlistItem | null>(null);
+  const [view, setView] = useState<"card" | "compare">("card");
+  const [funds, setFunds] = useState<Record<string, FundamentalsResult | undefined>>({});
+  const [fundsLoading, setFundsLoading] = useState(false);
+
+  const tickersKey = useMemo(() => items.map(i => i.ticker).sort().join(","), [items]);
+
+  useEffect(() => {
+    if (view !== "compare" || items.length === 0) return;
+    const tickers = items.map(i => i.ticker).filter(t => t !== "CASH").slice(0, 20);
+    if (tickers.length === 0) return;
+    setFundsLoading(true);
+    fetch(`/api/fundamentals?tickers=${tickers.join(",")}`)
+      .then(r => r.json())
+      .then((data: FundamentalsResult[]) => {
+        const map: Record<string, FundamentalsResult> = {};
+        for (const f of data) map[f.ticker] = f;
+        setFunds(map);
+      })
+      .catch(() => {})
+      .finally(() => setFundsLoading(false));
+  }, [view, tickersKey, items]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -375,6 +512,16 @@ export default function WatchlistPage() {
         </div>
         <div className="right">
           {items.length > 0 && <span style={{ fontSize: 11, color: "var(--fg-4)", fontFamily: "var(--font-mono)" }}>{items.length}개 관심 종목</span>}
+          <div className="seg seg-sm">
+            <button className={cn("seg-btn", view === "card" && "active")} onClick={() => setView("card")}>
+              <LayoutGrid className="h-3.5 w-3.5" />
+              카드
+            </button>
+            <button className={cn("seg-btn", view === "compare" && "active")} onClick={() => setView("compare")}>
+              <Table2 className="h-3.5 w-3.5" />
+              비교
+            </button>
+          </div>
           <button className="btn" onClick={handleRefresh} disabled={refreshing || items.length === 0}>
             <RefreshCw className={cn("h-3.5 w-3.5", refreshing && "animate-spin")} />
             가격 갱신
@@ -413,6 +560,14 @@ export default function WatchlistPage() {
           <Eye className="h-10 w-10 opacity-20" />
           <p className="text-sm">관심 종목이 없습니다</p>
         </div>
+      ) : view === "compare" ? (
+        fundsLoading && Object.keys(funds).length === 0 ? (
+          <div className="space-y-2">
+            {[1,2,3,4,5].map(i => <div key={i} className="h-10 animate-pulse rounded bg-muted/30" />)}
+          </div>
+        ) : (
+          <CompareTable items={items} funds={funds} />
+        )
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {items.map((item) => (

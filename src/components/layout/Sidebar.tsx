@@ -39,6 +39,11 @@ function Icon({ name, size = 15 }: { name: string; size?: number }) {
     case "receipt":  return <svg {...p}><polyline points="9 7 6 7 3 7"/><path d="M3 7v11a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V7"/><line x1="3" y1="11" x2="21" y2="11"/><line x1="8" y1="3" x2="8" y2="7"/><line x1="16" y1="3" x2="16" y2="7"/></svg>;
     case "bell":     return <svg {...p}><path d="M6 16V11a6 6 0 1 1 12 0v5l1.5 2H4.5z"/><path d="M10 21a2 2 0 0 0 4 0"/></svg>;
     case "linechart": return <svg {...p}><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>;
+    case "bank":     return <svg {...p}><path d="M3 21h18M3 10h18M5 6l7-4 7 4M4 10v11M20 10v11M8 14v3M12 14v3M16 14v3"/></svg>;
+    case "scale":    return <svg {...p}><path d="M12 3v18M5 21h14M6 8l-3 7a4 4 0 0 0 8 0L8 8M18 8l-3 7a4 4 0 0 0 8 0l-3-7"/></svg>;
+    case "users":    return <svg {...p}><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>;
+    case "history":  return <svg {...p}><path d="M3 12a9 9 0 1 0 9-9 9.74 9.74 0 0 0-7 3L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l3 3"/></svg>;
+    case "pie":      return <svg {...p}><path d="M12 2v10l8.66 5A10 10 0 1 1 12 2z"/></svg>;
     default: return null;
   }
 }
@@ -50,8 +55,10 @@ const NAV = [
     items: [
       { href: "/dashboard", label: "대시보드",          icon: "home",       requiresAuth: true },
       { href: "/accounts",  label: "보유 자산",          icon: "wallet",     requiresAuth: true },
+      { href: "/bank",      label: "은행 잔액",          icon: "bank",       requiresAuth: true },
       { href: "/watchlist", label: "워치리스트",          icon: "binoculars", requiresAuth: true },
       { href: "/reports",   label: "리포트 & 목표",      icon: "barchart",   requiresAuth: true },
+      { href: "/tax",       label: "양도소득세",          icon: "scale",     requiresAuth: true },
     ],
   },
   {
@@ -63,12 +70,16 @@ const NAV = [
       { href: "/analyst-reports", label: "증권사 리포트",  icon: "filedoc"   },
       { href: "/earnings",        label: "실적",           icon: "calendar"  },
       { href: "/quant",           label: "퀀트",           icon: "activity"  },
+      { href: "/fomo-agents",     label: "AI 에이전트",    icon: "users"     },
     ],
   },
   {
     section: "연구실",
     items: [
       { href: "/strategy-lab",   label: "전략 연구소",     icon: "microscope" },
+      { href: "/backtest",       label: "백테스트",        icon: "history"    },
+      { href: "/portfolio-mix",  label: "포트폴리오 믹스", icon: "pie"        },
+      { href: "/position-lab",   label: "포지션 사이징",   icon: "scale"      },
       { href: "/etf-flow",       label: "ETF 흐름",        icon: "layers"     },
       { href: "/pattern-lab",    label: "패턴 유사도",     icon: "linechart"  },
       { href: "/ten-bagger",     label: "텐베거 스크리너", icon: "rocket"     },
