@@ -44,6 +44,7 @@ function Icon({ name, size = 15 }: { name: string; size?: number }) {
     case "users":    return <svg {...p}><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>;
     case "history":  return <svg {...p}><path d="M3 12a9 9 0 1 0 9-9 9.74 9.74 0 0 0-7 3L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l3 3"/></svg>;
     case "pie":      return <svg {...p}><path d="M12 2v10l8.66 5A10 10 0 1 1 12 2z"/></svg>;
+    case "compass":  return <svg {...p}><circle cx="12" cy="12" r="9"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/></svg>;
     default: return null;
   }
 }
@@ -70,6 +71,7 @@ const NAV = [
       { href: "/analyst-reports", label: "증권사 리포트",  icon: "filedoc"   },
       { href: "/earnings",        label: "실적",           icon: "calendar"  },
       { href: "/quant",           label: "퀀트",           icon: "activity"  },
+      { href: "/market-timing",   label: "시장 심리 백테스트", icon: "compass"   },
       { href: "/fomo-agents",     label: "AI 에이전트",    icon: "users"     },
     ],
   },
