@@ -3,6 +3,7 @@ import { getDb } from "@/lib/db";
 import { getSessionUser } from "@/lib/auth";
 import { encrypt, encryptNum, decryptNum } from "@/lib/crypto";
 import { decryptTransactionFields, type TransactionEncFields } from "@/lib/transactions-crypto";
+import { getExchangeRateForDate } from "@/lib/exchange-rate";
 import type { Transaction } from "@/types";
 
 async function ensureSchema(sql: ReturnType<typeof getDb>) {
@@ -11,6 +12,10 @@ async function ensureSchema(sql: ReturnType<typeof getDb>) {
   await sql`ALTER TABLE transactions ADD COLUMN IF NOT EXISTS fees_enc TEXT`;
   await sql`ALTER TABLE transactions ADD COLUMN IF NOT EXISTS total_amount_enc TEXT`;
   await sql`ALTER TABLE transactions ADD COLUMN IF NOT EXISTS note_enc TEXT`;
+  // 거래 시점 환율(KRW/통화) + 실현손익(매도) 컬럼
+  await sql`ALTER TABLE transactions ADD COLUMN IF NOT EXISTS fx_rate DOUBLE PRECISION`;
+  await sql`ALTER TABLE transactions ADD COLUMN IF NOT EXISTS realized_pnl_enc TEXT`;
+  await sql`ALTER TABLE transactions ADD COLUMN IF NOT EXISTS avg_cost_at_sale_enc TEXT`;
   await sql`ALTER TABLE transactions ALTER COLUMN quantity DROP NOT NULL`.catch(() => {});
   await sql`ALTER TABLE transactions ALTER COLUMN price DROP NOT NULL`.catch(() => {});
   await sql`ALTER TABLE transactions ALTER COLUMN fees DROP NOT NULL`.catch(() => {});
@@ -18,6 +23,18 @@ async function ensureSchema(sql: ReturnType<typeof getDb>) {
   await sql`ALTER TABLE transactions ALTER COLUMN note DROP NOT NULL`.catch(() => {});
 
   await sql`CREATE TABLE IF NOT EXISTS _migrations (name TEXT PRIMARY KEY, ran_at TIMESTAMPTZ DEFAULT NOW())`;
+
+  // 거래 시점 환율 백필: KRW 거래는 1, USD 거래는 거래일 기준 환율로 채움
+  const [fxDone] = await sql`SELECT name FROM _migrations WHERE name = 'backfill_tx_fx_rate_v1'` as { name: string }[];
+  if (!fxDone) {
+    const fxRows = await sql`SELECT id, currency, date FROM transactions WHERE fx_rate IS NULL` as { id: number; currency: string; date: string }[];
+    for (const r of fxRows) {
+      const fx = r.currency === "USD" ? await getExchangeRateForDate(r.date) : 1;
+      await sql`UPDATE transactions SET fx_rate = ${fx} WHERE id = ${r.id}`;
+    }
+    await sql`INSERT INTO _migrations (name) VALUES ('backfill_tx_fx_rate_v1') ON CONFLICT DO NOTHING`;
+  }
+
   const [done] = await sql`SELECT name FROM _migrations WHERE name = 'encrypt_transactions_v1'` as { name: string }[];
   if (done) return;
 
@@ -125,16 +142,38 @@ export async function POST(req: NextRequest) {
   const priceN = Number(price ?? 0);
   const feesN = Number(fees ?? 0);
   const totalAmount = qtyN * priceN + feesN;
+  const txCurrency = currency ?? "KRW";
+
+  // 거래 시점 환율 (KRW 거래는 1, USD 거래는 거래일 기준)
+  const fxRate = txCurrency === "USD" ? await getExchangeRateForDate(date) : 1;
+
+  // 매도라면 보유 평균단가 기준 실현손익을 계산해 함께 저장
+  let realizedEnc: string | null = null;
+  let avgCostAtSaleEnc: string | null = null;
+  if (type === "sell" && ticker) {
+    const cur = await sql`
+      SELECT avg_cost, avg_cost_enc FROM holdings
+      WHERE account_id=${account_id} AND ticker=${ticker} LIMIT 1`;
+    if (cur.length > 0) {
+      const h = cur[0];
+      const avgCost = h.avg_cost_enc ? (decryptNum(h.avg_cost_enc) ?? 0) : Number(h.avg_cost ?? 0);
+      const realized = (priceN - avgCost) * qtyN - feesN;
+      realizedEnc = encryptNum(realized);
+      avgCostAtSaleEnc = encryptNum(avgCost);
+    }
+  }
 
   const [tx] = await sql`
     INSERT INTO transactions (
       account_id, type, ticker, name, currency, date,
-      quantity_enc, price_enc, fees_enc, total_amount_enc, note_enc
+      quantity_enc, price_enc, fees_enc, total_amount_enc, note_enc,
+      fx_rate, realized_pnl_enc, avg_cost_at_sale_enc
     )
     VALUES (
-      ${account_id}, ${type}, ${ticker ?? ""}, ${name ?? ""}, ${currency ?? "KRW"}, ${date},
+      ${account_id}, ${type}, ${ticker ?? ""}, ${name ?? ""}, ${txCurrency}, ${date},
       ${encryptNum(qtyN)}, ${encryptNum(priceN)}, ${encryptNum(feesN)}, ${encryptNum(totalAmount)},
-      ${encrypt(note ?? "")}
+      ${encrypt(note ?? "")},
+      ${fxRate}, ${realizedEnc}, ${avgCostAtSaleEnc}
     )
     RETURNING *
   ` as TxRow[];

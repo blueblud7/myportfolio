@@ -225,6 +225,39 @@ export interface CapitalGainsSummary {
   usd_holdings: CapitalGainsHolding[];
 }
 
+export interface RealizedPnlTx {
+  id: number;
+  ticker: string;
+  name: string;
+  currency: string;
+  date: string;
+  quantity: number;
+  sell_price: number;
+  avg_cost: number;
+  /** 실현손익 (거래 통화 기준) */
+  realized: number;
+  /** 실현손익 (원화 환산, 거래 시점 환율 적용) */
+  realized_krw: number;
+}
+
+export interface RealizedPnlByTicker {
+  ticker: string;
+  name: string;
+  currency: string;
+  realized: number;
+  realized_krw: number;
+  count: number;
+}
+
+export interface RealizedPnlSummary {
+  year: number;
+  years: number[];
+  total_krw: number;
+  by_currency: Record<string, number>;
+  by_ticker: RealizedPnlByTicker[];
+  transactions: RealizedPnlTx[];
+}
+
 export type RiskPeriod = "1M" | "3M" | "6M" | "1Y" | "ALL";
 
 export interface RiskMetrics {
@@ -256,6 +289,12 @@ export interface Transaction {
   date: string;
   note: string;
   created_at: string;
+  /** 거래 시점 환율 (KRW/통화, KRW 거래는 1) */
+  fx_rate?: number | null;
+  /** 매도 시 계산된 실현손익 (거래 통화 기준) */
+  realized_pnl?: number | null;
+  /** 매도 시점 평균단가 (거래 통화 기준) */
+  avg_cost_at_sale?: number | null;
 }
 
 export interface DiaryMoodPattern {

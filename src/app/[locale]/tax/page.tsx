@@ -224,7 +224,7 @@ export default function TaxPage() {
         <p className="font-medium mb-1 text-foreground">한국 거주자 해외주식 양도소득세 (USD 종목 한정)</p>
         <ul className="space-y-0.5 list-disc list-inside">
           <li>연 250만원 기본공제 후 22% 세율 (지방세 포함) — 다음 해 5월 신고</li>
-          <li>매도 시점 환율로 KRW 환산하여 손익 계산 / 거래 단위 평단가 기준</li>
+          <li>취득가액은 매수 시점 환율, 양도가액은 매도 시점 환율로 각각 KRW 환산 (법정 기준)</li>
           <li>KRW 종목은 (대주주 외) 비과세 — 표시하지 않습니다</li>
         </ul>
       </div>

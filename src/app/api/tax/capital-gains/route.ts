@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
-import { getCachedExchangeRate } from "@/lib/exchange-rate";
+import { getCachedExchangeRate, getExchangeRateForDate } from "@/lib/exchange-rate";
 import { getSessionUser } from "@/lib/auth";
 import { decryptNum } from "@/lib/crypto";
 import type { CapitalGainsSummary, CapitalGainsTx, CapitalGainsHolding } from "@/types";
@@ -21,7 +21,7 @@ export async function GET(req: NextRequest) {
 
   // 해당 연도의 USD sell 거래 목록
   const sellRaw = await sql`
-    SELECT t.id, t.ticker, t.name, t.quantity, t.quantity_enc, t.price, t.price_enc, t.date
+    SELECT t.id, t.ticker, t.name, t.quantity, t.quantity_enc, t.price, t.price_enc, t.date, t.fx_rate
     FROM transactions t
     JOIN accounts a ON t.account_id = a.id
     WHERE t.type = 'sell'
@@ -30,7 +30,7 @@ export async function GET(req: NextRequest) {
       AND t.date <= ${`${year}-12-31`}
       AND a.user_id = ${user.id}
     ORDER BY t.date ASC
-  ` as { id: number; ticker: string; name: string; quantity: number | null; quantity_enc: string | null; price: number | null; price_enc: string | null; date: string }[];
+  ` as { id: number; ticker: string; name: string; quantity: number | null; quantity_enc: string | null; price: number | null; price_enc: string | null; date: string; fx_rate: number | null }[];
   const sellTxs = sellRaw.map(t => ({
     ...t,
     quantity: t.quantity_enc ? (decryptNum(t.quantity_enc) ?? 0) : (t.quantity ?? 0),
@@ -41,9 +41,9 @@ export async function GET(req: NextRequest) {
   const txResults: CapitalGainsTx[] = [];
 
   for (const sell of sellTxs) {
-    // 이 sell 거래 이전의 buy 거래들로 avg_cost 계산
+    // 이 sell 거래 이전의 buy 거래들로 avg_cost 계산 (취득가액은 매수 시점 환율로 원화 환산)
     const buyRaw = await sql`
-      SELECT t.quantity, t.quantity_enc, t.price, t.price_enc FROM transactions t
+      SELECT t.quantity, t.quantity_enc, t.price, t.price_enc, t.date, t.fx_rate FROM transactions t
       JOIN accounts a ON t.account_id = a.id
       WHERE t.ticker = ${sell.ticker}
         AND t.currency = 'USD'
@@ -52,17 +52,22 @@ export async function GET(req: NextRequest) {
         AND t.id < ${sell.id}
         AND a.user_id = ${user.id}
       ORDER BY t.date ASC
-    ` as { quantity: number | null; quantity_enc: string | null; price: number | null; price_enc: string | null }[];
+    ` as { quantity: number | null; quantity_enc: string | null; price: number | null; price_enc: string | null; date: string; fx_rate: number | null }[];
     const buys = buyRaw.map(b => ({
       quantity: b.quantity_enc ? (decryptNum(b.quantity_enc) ?? 0) : (b.quantity ?? 0),
       price: b.price_enc ? (decryptNum(b.price_enc) ?? 0) : (b.price ?? 0),
+      fx: b.fx_rate ?? exchangeRate,
+      date: b.date,
     }));
 
-    let avgCost = 0;
+    let avgCost = 0;       // USD 평균단가 (참고용)
+    let avgCostKrw = 0;    // 원화 평균 취득단가 (매수 시점 환율 가중)
     if (buys.length > 0) {
       const totalQty = buys.reduce((s, b) => s + b.quantity, 0);
       const totalCost = buys.reduce((s, b) => s + b.quantity * b.price, 0);
+      const totalCostKrw = buys.reduce((s, b) => s + b.quantity * b.price * b.fx, 0);
       avgCost = totalQty > 0 ? totalCost / totalQty : 0;
+      avgCostKrw = totalQty > 0 ? totalCostKrw / totalQty : 0;
     } else {
       // buy 기록이 없으면 현재 holdings avg_cost 사용
       const holding = await sql`
@@ -77,10 +82,16 @@ export async function GET(req: NextRequest) {
       } else {
         avgCost = 0;
       }
+      // 매수 이력이 없으면 매수 시점 환율을 알 수 없어 현재 환율로 취득가액 근사
+      avgCostKrw = avgCost * exchangeRate;
     }
 
+    // 양도가액은 매도 시점 환율, 취득가액은 매수 시점 환율(가중평균)로 원화 환산 — 법정 기준
+    const sellFx = sell.fx_rate ?? (await getExchangeRateForDate(sell.date));
     const realizedGainUsd = (sell.price - avgCost) * sell.quantity;
-    const realizedGainKrw = realizedGainUsd * exchangeRate;
+    const proceedsKrw = sell.price * sell.quantity * sellFx;
+    const acquisitionKrw = avgCostKrw * sell.quantity;
+    const realizedGainKrw = proceedsKrw - acquisitionKrw;
 
     txResults.push({
       ticker: sell.ticker,
@@ -95,7 +106,7 @@ export async function GET(req: NextRequest) {
   }
 
   const totalRealizedUsd = txResults.reduce((s, t) => s + t.realized_gain_usd, 0);
-  const totalRealizedKrw = totalRealizedUsd * exchangeRate;
+  const totalRealizedKrw = txResults.reduce((s, t) => s + t.realized_gain_krw, 0);
   const taxableKrw = Math.max(0, totalRealizedKrw - DEDUCTION_KRW);
   const taxKrw = taxableKrw * TAX_RATE;
 

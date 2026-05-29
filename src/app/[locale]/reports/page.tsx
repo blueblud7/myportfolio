@@ -25,6 +25,7 @@ import { BenchmarkComparison } from "@/components/reports/BenchmarkComparison";
 import { RiskDashboard } from "@/components/reports/RiskDashboard";
 import { RebalancingDashboard } from "@/components/rebalancing/RebalancingDashboard";
 import { FxAnalysis } from "@/components/reports/FxAnalysis";
+import { RealizedPnl } from "@/components/reports/RealizedPnl";
 import GoalsPage from "../goals/page";
 
 const MASK = "•••••";
@@ -420,6 +421,8 @@ export default function ReportsPage() {
       </Card>
 
       <BenchmarkComparison />
+
+      <RealizedPnl />
 
       <DividendCalendar />
 
