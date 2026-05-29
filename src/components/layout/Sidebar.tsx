@@ -72,7 +72,6 @@ const NAV = [
       { href: "/earnings",        label: "실적",           icon: "calendar"  },
       { href: "/quant",           label: "퀀트",           icon: "activity"  },
       { href: "/market-timing",   label: "시장 심리 백테스트", icon: "compass"   },
-      { href: "/fomo-agents",     label: "AI 에이전트",    icon: "users"     },
     ],
   },
   {
@@ -84,7 +83,6 @@ const NAV = [
       { href: "/position-lab",   label: "포지션 사이징",   icon: "scale"      },
       { href: "/etf-flow",       label: "ETF 흐름",        icon: "layers"     },
       { href: "/pattern-lab",    label: "패턴 유사도",     icon: "linechart"  },
-      { href: "/ten-bagger",     label: "텐베거 스크리너", icon: "rocket"     },
       { href: "/insights",       label: "AI 인사이트",     icon: "sparkles",  requiresAuth: true },
       { href: "/diary",          label: "저널",            icon: "book",      requiresAuth: true },
     ],
@@ -93,7 +91,6 @@ const NAV = [
     section: "도구",
     items: [
       { href: "/calculator",    label: "계산기",  icon: "trending"               },
-      { href: "/budget",        label: "예산",    icon: "receipt", requiresAuth: true },
       { href: "/alerts",        label: "알림",    icon: "bell",    requiresAuth: true },
     ],
   },

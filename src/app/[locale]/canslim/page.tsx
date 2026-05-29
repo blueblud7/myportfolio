@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Filter, RefreshCw, CheckCircle2, XCircle, MinusCircle, Search, Play } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { FeatureTabs, SCREENER_TABS } from "@/components/layout/FeatureTabs";
 import type { CanSlimResult } from "@/app/api/canslim/route";
 import { INDEX_LABELS, ALL_TICKERS, type IndexName } from "@/lib/index-tickers";
 
@@ -212,6 +213,8 @@ export default function CanSlimPage() {
           </div>
         </div>
       </div>
+
+      <FeatureTabs tabs={SCREENER_TABS} />
 
       {/* 인덱스 탭 */}
       <div className="flex gap-1 rounded-xl bg-muted/30 p-1">

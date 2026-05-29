@@ -23,6 +23,9 @@ import type { Account, Transaction } from "@/types";
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
+// 키움 OpenAPI 연동은 응답 파싱이 미완성이라(실험적) 기본 비활성화. 검증 후 true 로 변경.
+const KIWOOM_ENABLED = false;
+
 export default function AccountDetailPage() {
   const t = useTranslations("AccountDetail");
   const tTx = useTranslations("Transactions");
@@ -295,7 +298,7 @@ export default function AccountDetailPage() {
           <div className="card-head">
             <div><h3 className="card-title">{t("holdings")}</h3></div>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-              {account?.type === "stock" && (
+              {KIWOOM_ENABLED && account?.type === "stock" && (
                 <button
                   className="btn"
                   onClick={() => setKiwoomOpen(true)}

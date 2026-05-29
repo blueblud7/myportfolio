@@ -7,6 +7,7 @@ import {
   ChevronUp, ChevronDown, ChevronsUpDown, Search, X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { FeatureTabs, SCREENER_TABS } from "@/components/layout/FeatureTabs";
 import type { ScreenerStock } from "@/app/api/screener/route";
 
 const fetcher = (url: string) => fetch(url).then(r => r.json());
@@ -428,6 +429,8 @@ export default function ScreenerPage() {
           </button>
         </div>
       </div>
+
+      <FeatureTabs tabs={SCREENER_TABS} />
 
       {/* 프리셋 */}
       <div className="flex flex-wrap gap-2">

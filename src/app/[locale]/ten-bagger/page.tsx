@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { RefreshCw, Play, TrendingUp, BarChart2, Zap } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { FeatureTabs, SCREENER_TABS } from "@/components/layout/FeatureTabs";
 import type { TenBaggerCacheRow } from "@/app/api/ten-bagger/route";
 import { INDEX_LABELS, type IndexName } from "@/lib/index-tickers";
 
@@ -244,6 +245,8 @@ export default function TenBaggerPage() {
           </span>
         </div>
       </div>
+
+      <FeatureTabs tabs={SCREENER_TABS} />
 
       {/* 신호 설명 카드 */}
       <div className="stack-3">

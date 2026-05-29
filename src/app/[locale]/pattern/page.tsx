@@ -7,6 +7,7 @@ import {
 } from "recharts";
 import { cn } from "@/lib/utils";
 import { GitBranch, Search, TrendingDown, TrendingUp, BarChart2, Activity } from "lucide-react";
+import { FeatureTabs, PATTERN_TABS } from "@/components/layout/FeatureTabs";
 import type { StockAnalysisResult, PatternMatch } from "@/app/api/stock-analysis/route";
 
 // ─── Mini SVG Sparkline ────────────────────────────────────────────────────
@@ -691,6 +692,8 @@ export default function PatternPage() {
           </p>
         </div>
       </div>
+
+      <FeatureTabs tabs={PATTERN_TABS} />
 
       {/* Input Panel */}
       <div className="flex flex-wrap items-end gap-3 rounded-xl border border-border dark:border-zinc-800 bg-card/80 dark:bg-zinc-900/60 px-4 py-4">

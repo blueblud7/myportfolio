@@ -7,6 +7,7 @@ import {
 } from "recharts";
 import { GitCompare, RefreshCw, TrendingUp, TrendingDown, Minus } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { FeatureTabs, PATTERN_TABS } from "@/components/layout/FeatureTabs";
 import type { PatternMatchResponse, PatternMatch } from "@/app/api/pattern-match/route";
 
 // ── 상수 ────────────────────────────────────────────────────────────────────
@@ -169,6 +170,8 @@ export default function PatternLabPage() {
           <span style={{ fontSize: 11, color: "var(--fg-4)" }}>현재 지수와 가장 유사한 과거 구간 비교</span>
         </div>
       </div>
+
+      <FeatureTabs tabs={PATTERN_TABS} />
 
       {/* 컨트롤 */}
       <div className="rounded-xl border border-border bg-muted/20 p-4 space-y-4">
