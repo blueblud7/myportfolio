@@ -245,7 +245,8 @@ function ResultTable({ stocks, sortKey, sortDir, onSort }: {
   }
 
   return (
-    <div className="overflow-x-auto">
+    <>
+    <div className="overflow-x-auto desktop-only">
       <table className="w-full text-sm">
         <thead>
           <tr className="border-b border-border/40">
@@ -305,6 +306,51 @@ function ResultTable({ stocks, sortKey, sortDir, onSort }: {
         </tbody>
       </table>
     </div>
+
+    {/* 모바일 카드 리스트 */}
+    <div className="mobile-only">
+      {stocks.map((s, i) => (
+        <a
+          key={s.code}
+          href={`/stocks/${s.code}`}
+          className="flex flex-col gap-1.5 border-b border-border/20 px-1 py-3"
+        >
+          <div className="flex items-start justify-between gap-2">
+            <div className="min-w-0">
+              <div className="font-medium truncate">
+                <span className="text-muted-foreground font-mono text-xs mr-1.5">{i + 1}</span>
+                {s.name}
+              </div>
+              <div className="mt-0.5 flex items-center gap-1.5">
+                <span className="text-xs text-muted-foreground font-mono">{s.code}</span>
+                <span className={cn(
+                  "text-[10px] px-1 rounded font-medium",
+                  s.market === "KOSPI" ? "bg-blue-900/50 text-blue-300" : "bg-emerald-900/50 text-emerald-300"
+                )}>
+                  {s.market === "KOSPI" ? "코스피" : "코스닥"}
+                </span>
+                {s.sector && <span className="text-[10px] text-muted-foreground truncate">{s.sector}</span>}
+              </div>
+            </div>
+            <div className="shrink-0 text-right">
+              <div className="font-mono tabular-nums font-semibold">{s.price.toLocaleString()}</div>
+              <div className={cn("font-mono tabular-nums text-xs font-semibold", pctColor(s.changePct))}>
+                {fmtPct(s.changePct)}
+              </div>
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-xs font-mono text-muted-foreground">
+            <span>PER <PerBadge value={s.per} /></span>
+            <span>PBR <PbrBadge value={s.pbr} /></span>
+            <span>배당 {s.divYield !== null && s.divYield > 0
+              ? <span className="text-amber-400">{s.divYield.toFixed(2)}%</span>
+              : "—"}</span>
+            <span>시총 {fmtCap(s.marketCap)}</span>
+          </div>
+        </a>
+      ))}
+    </div>
+    </>
   );
 }
 
