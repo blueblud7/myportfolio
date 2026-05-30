@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import YahooFinance from "yahoo-finance2";
 import { getDb } from "@/lib/db";
-import { KR_ETF_LIST } from "@/lib/etf-kr-tickers";
+import { KR_ETF_LIST, getEtfCategory, type EtfCategory } from "@/lib/etf-kr-tickers";
 import { fetchKrxEtfPrices, fetchKrxEtfHoldings, type KrxEtfPrice } from "@/lib/krx-api";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -9,6 +9,32 @@ const yf = new (YahooFinance as any)({ suppressNotices: ["yahooSurvey"] });
 
 const BATCH_SIZE = 4;
 const BATCH_DELAY_MS = 300;
+// KRX 전종목 중 거래대금 상위 N개만 분석 (신규 상장 ETF 자동 반영 + 처리량 제한)
+const ETF_UNIVERSE_SIZE = 200;
+
+interface EtfUniverseItem {
+  ticker: string;
+  name: string;
+  category: EtfCategory;
+}
+
+/**
+ * 분석 대상 ETF 유니버스를 구성한다.
+ * KRX 시세가 있으면 거래대금 상위 N개(정식 종목명 사용)를, 없으면 시드 목록으로 폴백.
+ */
+function buildUniverse(krxPrices: Map<string, KrxEtfPrice>): EtfUniverseItem[] {
+  if (krxPrices.size > 0) {
+    return Array.from(krxPrices.values())
+      .sort((a, b) => b.tradingValue - a.tradingValue)
+      .slice(0, ETF_UNIVERSE_SIZE)
+      .map((k) => ({
+        ticker: k.ticker,
+        name: k.name || k.ticker,
+        category: getEtfCategory(k.ticker),
+      }));
+  }
+  return KR_ETF_LIST.map((e) => ({ ticker: e.ticker, name: e.name, category: e.category }));
+}
 
 async function ensureTable(sql: ReturnType<typeof getDb>) {
   await sql`
@@ -169,8 +195,18 @@ export async function GET(req: NextRequest) {
       try {
         await ensureTable(sql);
         const cached = forceRefresh ? new Set<string>() : await getCached(sql, today);
-        const remaining = KR_ETF_LIST.filter((e) => !cached.has(e.ticker));
-        const total = KR_ETF_LIST.length;
+
+        // ── KRX 전종목 시세 1회 bulk 조회 → 유니버스 구성 ───────────────
+        send({ type: "info", message: "KRX 시세 로딩 중..." });
+        const krxPrices = await fetchKrxEtfPrices();
+        const universe = buildUniverse(krxPrices);
+        send({
+          type: "info",
+          message: `KRX ${krxPrices.size}개 ETF 시세 로드 · 분석 대상 ${universe.length}개`,
+        });
+
+        const remaining = universe.filter((e) => !cached.has(e.ticker));
+        const total = universe.length;
         let analyzed = cached.size;
 
         send({ type: "start", total, analyzed, remaining: remaining.length });
@@ -180,14 +216,6 @@ export async function GET(req: NextRequest) {
           controller.close();
           return;
         }
-
-        // ── KRX 전종목 시세 1회 bulk 조회 ──────────────────────────────
-        send({ type: "info", message: "KRX 시세 로딩 중..." });
-        const krxPrices = await fetchKrxEtfPrices();
-        send({
-          type: "info",
-          message: `KRX ${krxPrices.size}개 ETF 시세 로드 완료`,
-        });
 
         // ── 개별 ETF 처리 (Yahoo chart만 호출) ─────────────────────────
         for (let i = 0; i < remaining.length; i += BATCH_SIZE) {
@@ -209,6 +237,7 @@ export async function GET(req: NextRequest) {
             if (d) {
               const upsert = forceRefresh
                 ? sql`ON CONFLICT (ticker, analyzed_date) DO UPDATE SET
+                    name=EXCLUDED.name, category=EXCLUDED.category,
                     price=EXCLUDED.price, change_pct=EXCLUDED.change_pct,
                     week_change_pct=EXCLUDED.week_change_pct, month_change_pct=EXCLUDED.month_change_pct,
                     volume=EXCLUDED.volume, avg_volume=EXCLUDED.avg_volume,

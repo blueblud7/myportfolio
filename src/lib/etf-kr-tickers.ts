@@ -17,12 +17,13 @@ export type EtfCategory =
   | "부동산/리츠"
   | "테마"
   | "해외"
-  | "채권/배당";
+  | "채권/배당"
+  | "기타";
 
 export const ETF_CATEGORIES: EtfCategory[] = [
   "지수", "레버리지/인버스", "반도체/IT", "2차전지",
   "바이오/헬스케어", "금융/은행", "에너지/화학", "소비/유통",
-  "방산/항공", "부동산/리츠", "테마", "해외", "채권/배당",
+  "방산/항공", "부동산/리츠", "테마", "해외", "채권/배당", "기타",
 ];
 
 export const KR_ETF_LIST: EtfInfo[] = ([
@@ -72,7 +73,6 @@ export const KR_ETF_LIST: EtfInfo[] = ([
   // ── 2차전지 ───────────────────────────────────────────
   { ticker: "305720", name: "KODEX 2차전지산업",            category: "2차전지" },
   { ticker: "418050", name: "TIGER 2차전지테마",            category: "2차전지" },
-  { ticker: "381180", name: "KODEX 배터리산업",             category: "2차전지" },
   { ticker: "395490", name: "TIGER 2차전지&자동화",         category: "2차전지" },
   { ticker: "411900", name: "ACE 2차전지&전기차",           category: "2차전지" },
   { ticker: "438100", name: "HANARO 2차전지소재",           category: "2차전지" },
@@ -123,7 +123,6 @@ export const KR_ETF_LIST: EtfInfo[] = ([
 
   // ── 부동산/리츠 ───────────────────────────────────────
   { ticker: "352560", name: "TIGER 부동산인프라고배당",     category: "부동산/리츠" },
-  { ticker: "395160", name: "TIGER 미국리츠부동산",         category: "부동산/리츠" },
   { ticker: "432320", name: "KODEX 한국부동산리츠인프라",   category: "부동산/리츠" },
 
   // ── 테마 ──────────────────────────────────────────────
@@ -160,3 +159,13 @@ export const KR_ETF_LIST: EtfInfo[] = ([
   { ticker: "211560", name: "TIGER 배당성장",               category: "채권/배당" },
   { ticker: "227830", name: "KODEX 배당가치",               category: "채권/배당" },
 ] as EtfInfo[]).filter((v, i, a) => a.findIndex(x => x.ticker === v.ticker) === i);
+
+// ticker → category 매핑 (종목명은 KRX 정식명을 쓰므로, 이 목록은 카테고리 분류 용도로만 사용)
+const CATEGORY_BY_TICKER: Record<string, EtfCategory> = Object.fromEntries(
+  KR_ETF_LIST.map((e) => [e.ticker, e.category]),
+);
+
+/** 6자리 ETF 티커의 카테고리를 반환. 매핑이 없으면(신규 상장 등) "기타". */
+export function getEtfCategory(ticker: string): EtfCategory {
+  return CATEGORY_BY_TICKER[ticker] ?? "기타";
+}
