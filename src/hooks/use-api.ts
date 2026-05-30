@@ -1,8 +1,12 @@
 import useSWR from "swr";
 import type { Account, Snapshot, ReportData, BankBalance, DiaryEntry, BenchmarkPoint, DividendScheduleResponse, PerformanceCompareResponse, PerformancePeriod, PerformanceSubjectType, SectorEtfResponse, ReturnsCalendarResponse, Transaction, RiskMetrics, RiskPeriod, CapitalGainsSummary, RebalancingSummary, DiaryMoodPattern, FxAnalysisResponse, PriceAlert, AccountSnapshot } from "@/types";
 
-const fetcher = (url: string) => fetch(url).then((r) => r.json());
-const arrayFetcher = (url: string) => fetch(url).then((r) => r.json()).then((d) => Array.isArray(d) ? d : []);
+// 비정상 응답(401 등)에서는 null 반환 → 컴포넌트의 `if (!data)` 가드가 정상 작동
+// (기존엔 {error:"..."} 객체가 반환돼 가드를 통과한 뒤 .length/스프레드에서 크래시)
+const fetcher = (url: string) =>
+  fetch(url).then((r) => (r.ok ? r.json() : null));
+const arrayFetcher = (url: string) =>
+  fetch(url).then((r) => (r.ok ? r.json() : [])).then((d) => (Array.isArray(d) ? d : []));
 
 export function useAccounts() {
   return useSWR<Account[]>("/api/accounts", arrayFetcher);
@@ -25,7 +29,7 @@ export function useSnapshots(start?: string, end?: string) {
   if (start) params.set("start", start);
   if (end) params.set("end", end);
   const key = `/api/snapshots${params.toString() ? `?${params}` : ""}`;
-  return useSWR<Snapshot[]>(key, fetcher);
+  return useSWR<Snapshot[]>(key, arrayFetcher);
 }
 
 export function useReports() {
@@ -36,7 +40,7 @@ export function useBankBalances(accountId?: number) {
   const key = accountId
     ? `/api/bank-balances?account_id=${accountId}`
     : "/api/bank-balances";
-  return useSWR<BankBalance[]>(key, fetcher);
+  return useSWR<BankBalance[]>(key, arrayFetcher);
 }
 
 export function useDiary(year?: string, month?: string) {

@@ -16,7 +16,7 @@ interface IndexData {
   oilCurve?: "contango" | "backwardation" | null;
 }
 
-const fetcher = (url: string) => fetch(url).then((r) => r.json());
+const fetcher = (url: string) => fetch(url).then((r) => (r.ok ? r.json() : null));
 
 function fmt(price: number, key: string) {
   if (key === "btc") return price.toLocaleString("en-US", { maximumFractionDigits: 0 });

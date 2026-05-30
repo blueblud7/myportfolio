@@ -5,7 +5,7 @@ import useSWR from "swr";
 import { cn } from "@/lib/utils";
 import type { KrxTopStock } from "@/lib/krx";
 
-const fetcher = (url: string) => fetch(url).then(r => r.json());
+const fetcher = (url: string) => fetch(url).then(r => (r.ok ? r.json() : null));
 
 interface TopStocksData {
   foreign: KrxTopStock[];

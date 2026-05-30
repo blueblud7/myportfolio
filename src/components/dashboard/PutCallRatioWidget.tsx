@@ -16,7 +16,7 @@ import {
 import { cn } from "@/lib/utils";
 import type { PCRResponse, PCRData } from "@/app/api/put-call-ratio/route";
 
-const fetcher = (url: string) => fetch(url).then((r) => r.json());
+const fetcher = (url: string) => fetch(url).then((r) => (r.ok ? r.json() : null));
 
 const PERIOD_KEYS = ["1w", "1m", "3m", "6m", "1y"] as const;
 type Period = (typeof PERIOD_KEYS)[number];

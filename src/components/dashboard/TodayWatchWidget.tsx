@@ -5,7 +5,7 @@ import { Bell, CalendarDays, Target, Coins } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { TodayWatchResponse } from "@/app/api/today-watch/route";
 
-const fetcher = (url: string) => fetch(url).then((r) => r.json());
+const fetcher = (url: string) => fetch(url).then((r) => (r.ok ? r.json() : null));
 
 function formatPrice(price: number, currency: string): string {
   if (currency === "KRW") return `₩${Math.round(price).toLocaleString("ko-KR")}`;
