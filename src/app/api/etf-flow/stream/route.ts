@@ -3,6 +3,7 @@ import YahooFinance from "yahoo-finance2";
 import { getDb } from "@/lib/db";
 import { KR_ETF_LIST, getEtfCategory, type EtfCategory } from "@/lib/etf-kr-tickers";
 import { fetchKrxEtfPrices, fetchKrxEtfHoldings, type KrxEtfPrice } from "@/lib/krx-api";
+import { getKrxStockNameMap } from "@/lib/krx";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const yf = new (YahooFinance as any)({ suppressNotices: ["yahooSurvey"] });
@@ -133,6 +134,7 @@ async function buildEtfRecord(
   ticker: string,
   krxData: KrxEtfPrice | undefined,
   chartData: Awaited<ReturnType<typeof fetchYahooChartData>>,
+  nameMap: Map<string, string>,
 ) {
   if (!krxData && !chartData) return null;
 
@@ -162,6 +164,13 @@ async function buildEtfRecord(
   if (holdings.length === 0) {
     holdings = chartData?.yahooHoldings ?? [];
   }
+
+  // 구성종목 이름 교정: 6자리 한국 종목코드는 KRX 정식 한글명으로 덮어씀
+  // (Yahoo 폴백의 영문명/오래된 이름 방지). 해외 종목 등 비-6자리는 원본 유지.
+  holdings = holdings.map((h) => {
+    const krwName = /^\d{6}$/.test(h.ticker) ? nameMap.get(h.ticker) : undefined;
+    return krwName ? { ...h, name: krwName } : h;
+  });
 
   if (price <= 0 && sparkline.length === 0) return null;
 
@@ -198,7 +207,10 @@ export async function GET(req: NextRequest) {
 
         // ── KRX 전종목 시세 1회 bulk 조회 → 유니버스 구성 ───────────────
         send({ type: "info", message: "KRX 시세 로딩 중..." });
-        const krxPrices = await fetchKrxEtfPrices();
+        const [krxPrices, krxNameMap] = await Promise.all([
+          fetchKrxEtfPrices(),
+          getKrxStockNameMap().catch(() => new Map<string, string>()),
+        ]);
         const universe = buildUniverse(krxPrices);
         send({
           type: "info",
@@ -232,7 +244,7 @@ export async function GET(req: NextRequest) {
             const krxData = krxPrices.get(etf.ticker);
             analyzed++;
 
-            const d = await buildEtfRecord(etf.ticker, krxData, chartData);
+            const d = await buildEtfRecord(etf.ticker, krxData, chartData, krxNameMap);
 
             if (d) {
               const upsert = forceRefresh

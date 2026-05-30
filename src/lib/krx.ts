@@ -122,6 +122,14 @@ export async function getKrxAllPrices(mktId: "STK" | "KSQ", date?: string): Prom
   return all.filter(p => p.market === target);
 }
 
+/** 전 종목(KOSPI+KOSDAQ) 6자리 코드 → 정식 한글명 맵. ETF 구성종목 이름 교정용. */
+export async function getKrxStockNameMap(date?: string): Promise<Map<string, string>> {
+  const all = await fetchAllStockPrices(date);
+  const map = new Map<string, string>();
+  for (const s of all) if (s.code && s.name) map.set(s.code, s.name);
+  return map;
+}
+
 // ─── 2. PER/PBR/배당수익률 ───────────────────────────────────────────────────
 
 export interface KrxValuation {
