@@ -41,6 +41,17 @@ interface Filters {
 
 type SortKey = "per" | "pbr" | "divYield" | "changePct" | "marketCap" | "eps" | "tradingValue";
 
+// ─── 정렬 옵션 (데스크탑 헤더 + 모바일 셀렉트 공용) ────────────────────────────
+const SORT_OPTIONS: { key: SortKey; label: string }[] = [
+  { key: "changePct", label: "등락률" },
+  { key: "marketCap", label: "시가총액" },
+  { key: "per", label: "PER" },
+  { key: "pbr", label: "PBR" },
+  { key: "eps", label: "EPS" },
+  { key: "divYield", label: "배당수익률" },
+  { key: "tradingValue", label: "거래대금" },
+];
+
 const DEFAULT_FILTERS: Filters = {
   mktId: "both",
   sector: "all",
@@ -230,11 +241,13 @@ function FilterPanel({
 }
 
 // ─── 결과 테이블 ──────────────────────────────────────────────────────────────
-function ResultTable({ stocks, sortKey, sortDir, onSort }: {
+function ResultTable({ stocks, sortKey, sortDir, onSort, onSortKey, onToggleDir }: {
   stocks: ScreenerStock[];
   sortKey: SortKey;
   sortDir: "asc" | "desc";
   onSort: (col: SortKey) => void;
+  onSortKey: (key: SortKey) => void;
+  onToggleDir: () => void;
 }) {
   if (stocks.length === 0) {
     return (
@@ -254,13 +267,9 @@ function ResultTable({ stocks, sortKey, sortDir, onSort }: {
             <th className="px-3 py-2 text-left text-xs font-semibold text-muted-foreground">종목</th>
             <th className="px-3 py-2 text-left text-xs font-semibold text-muted-foreground">업종</th>
             <th className="px-3 py-2 text-right text-xs font-semibold text-muted-foreground">현재가</th>
-            <SortHeader label="등락률" col="changePct" current={sortKey} dir={sortDir} onSort={onSort} />
-            <SortHeader label="시가총액" col="marketCap" current={sortKey} dir={sortDir} onSort={onSort} />
-            <SortHeader label="PER" col="per" current={sortKey} dir={sortDir} onSort={onSort} />
-            <SortHeader label="PBR" col="pbr" current={sortKey} dir={sortDir} onSort={onSort} />
-            <SortHeader label="EPS" col="eps" current={sortKey} dir={sortDir} onSort={onSort} />
-            <SortHeader label="배당수익률" col="divYield" current={sortKey} dir={sortDir} onSort={onSort} />
-            <SortHeader label="거래대금" col="tradingValue" current={sortKey} dir={sortDir} onSort={onSort} />
+            {SORT_OPTIONS.map(opt => (
+              <SortHeader key={opt.key} label={opt.label} col={opt.key} current={sortKey} dir={sortDir} onSort={onSort} />
+            ))}
           </tr>
         </thead>
         <tbody>
@@ -305,6 +314,27 @@ function ResultTable({ stocks, sortKey, sortDir, onSort }: {
           ))}
         </tbody>
       </table>
+    </div>
+
+    {/* 모바일 정렬 컨트롤 */}
+    <div className="mobile-only flex items-center gap-2 border-b border-border/20 px-1 py-2">
+      <label className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide shrink-0">정렬</label>
+      <select
+        value={sortKey}
+        onChange={e => onSortKey(e.target.value as SortKey)}
+        className="h-8 flex-1 rounded-lg border border-border bg-background px-2 text-sm focus:outline-none focus:ring-1 focus:ring-accent"
+      >
+        {SORT_OPTIONS.map(opt => (
+          <option key={opt.key} value={opt.key}>{opt.label}</option>
+        ))}
+      </select>
+      <button
+        type="button"
+        onClick={onToggleDir}
+        className="h-8 shrink-0 inline-flex items-center gap-1 rounded-lg border border-border bg-background px-2.5 text-sm text-muted-foreground hover:text-foreground focus:outline-none focus:ring-1 focus:ring-accent"
+      >
+        {sortDir === "asc" ? "오름차순 ▲" : "내림차순 ▼"}
+      </button>
     </div>
 
     {/* 모바일 카드 리스트 */}
@@ -549,6 +579,8 @@ export default function ScreenerPage() {
               sortKey={sortKey}
               sortDir={sortDir}
               onSort={handleSort}
+              onSortKey={key => { setSortKey(key); setPage(0); }}
+              onToggleDir={() => { setSortDir(d => d === "asc" ? "desc" : "asc"); setPage(0); }}
             />
           </div>
         )}

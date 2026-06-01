@@ -63,6 +63,22 @@ function fmtPrice(val: number, currency: string): string {
   return `$${val.toFixed(val < 10 ? 3 : 2)}`;
 }
 
+// ─── 재무제표 지표 정의 ───────────────────────────────────────────────────────
+
+const INCOME_METRICS = [
+  { key: "revenue", label: "매출액" },
+  { key: "netIncome", label: "순이익" },
+  { key: "ebitda", label: "EBITDA" },
+  { key: "eps", label: "EPS" },
+] as const;
+
+const BALANCE_METRICS = [
+  { key: "totalAssets", label: "총자산" },
+  { key: "totalDebt", label: "총부채" },
+  { key: "cash", label: "현금성자산" },
+  { key: "stockholdersEquity", label: "자기자본" },
+] as const;
+
 // ─── 기간 필터링 ──────────────────────────────────────────────────────────────
 
 type Period = "1W" | "1M" | "3M" | "6M" | "1Y";
@@ -824,51 +840,72 @@ export default function StockDetailPage({
               {data.incomeStatement.length === 0 ? (
                 <p className="text-sm text-muted-foreground py-4 text-center">데이터 없음</p>
               ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b border-border/50">
-                        <th className="py-2 text-left font-medium text-muted-foreground text-xs">
-                          항목
-                        </th>
-                        {data.incomeStatement.map((r) => (
-                          <th
-                            key={r.date}
-                            className="py-2 text-right font-medium text-muted-foreground text-xs"
-                          >
-                            {r.date}
+                <>
+                  <div className="overflow-x-auto desktop-only">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-border/50">
+                          <th className="py-2 text-left font-medium text-muted-foreground text-xs">
+                            항목
                           </th>
+                          {data.incomeStatement.map((r) => (
+                            <th
+                              key={r.date}
+                              className="py-2 text-right font-medium text-muted-foreground text-xs"
+                            >
+                              {r.date}
+                            </th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {INCOME_METRICS.map(({ key, label }) => (
+                          <tr key={key} className="border-b border-border/30 last:border-0">
+                            <td className="py-2 text-muted-foreground">{label}</td>
+                            {data.incomeStatement.map((r) => {
+                              const val = r[key];
+                              return (
+                                <td key={r.date} className="py-2 text-right font-mono">
+                                  {val == null
+                                    ? "—"
+                                    : key === "eps"
+                                    ? fmt(val)
+                                    : fmtMarketCap(val, data.currency)}
+                                </td>
+                              );
+                            })}
+                          </tr>
                         ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {(
-                        [
-                          { key: "revenue", label: "매출액" },
-                          { key: "netIncome", label: "순이익" },
-                          { key: "ebitda", label: "EBITDA" },
-                          { key: "eps", label: "EPS" },
-                        ] as const
-                      ).map(({ key, label }) => (
-                        <tr key={key} className="border-b border-border/30 last:border-0">
-                          <td className="py-2 text-muted-foreground">{label}</td>
-                          {data.incomeStatement.map((r) => {
+                      </tbody>
+                    </table>
+                  </div>
+                  <div className="mobile-only flex flex-col gap-3">
+                    {data.incomeStatement.map((r) => (
+                      <div key={r.date} className="rounded-lg border border-border/50 p-3">
+                        <div className="mb-2 text-xs font-medium text-muted-foreground">
+                          {r.date}
+                        </div>
+                        <div className="grid grid-cols-2 gap-x-4 gap-y-2">
+                          {INCOME_METRICS.map(({ key, label }) => {
                             const val = r[key];
                             return (
-                              <td key={r.date} className="py-2 text-right font-mono">
-                                {val == null
-                                  ? "—"
-                                  : key === "eps"
-                                  ? fmt(val)
-                                  : fmtMarketCap(val, data.currency)}
-                              </td>
+                              <div key={key} className="flex flex-col">
+                                <span className="text-xs text-muted-foreground">{label}</span>
+                                <span className="font-mono text-sm">
+                                  {val == null
+                                    ? "—"
+                                    : key === "eps"
+                                    ? fmt(val)
+                                    : fmtMarketCap(val, data.currency)}
+                                </span>
+                              </div>
                             );
                           })}
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </>
               )}
             </TabsContent>
 
@@ -876,47 +913,64 @@ export default function StockDetailPage({
               {data.balanceSheet.length === 0 ? (
                 <p className="text-sm text-muted-foreground py-4 text-center">데이터 없음</p>
               ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b border-border/50">
-                        <th className="py-2 text-left font-medium text-muted-foreground text-xs">
-                          항목
-                        </th>
-                        {data.balanceSheet.map((r) => (
-                          <th
-                            key={r.date}
-                            className="py-2 text-right font-medium text-muted-foreground text-xs"
-                          >
-                            {r.date}
+                <>
+                  <div className="overflow-x-auto desktop-only">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-border/50">
+                          <th className="py-2 text-left font-medium text-muted-foreground text-xs">
+                            항목
                           </th>
+                          {data.balanceSheet.map((r) => (
+                            <th
+                              key={r.date}
+                              className="py-2 text-right font-medium text-muted-foreground text-xs"
+                            >
+                              {r.date}
+                            </th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {BALANCE_METRICS.map(({ key, label }) => (
+                          <tr key={key} className="border-b border-border/30 last:border-0">
+                            <td className="py-2 text-muted-foreground">{label}</td>
+                            {data.balanceSheet.map((r) => {
+                              const val = r[key];
+                              return (
+                                <td key={r.date} className="py-2 text-right font-mono">
+                                  {val == null ? "—" : fmtMarketCap(val, data.currency)}
+                                </td>
+                              );
+                            })}
+                          </tr>
                         ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {(
-                        [
-                          { key: "totalAssets", label: "총자산" },
-                          { key: "totalDebt", label: "총부채" },
-                          { key: "cash", label: "현금성자산" },
-                          { key: "stockholdersEquity", label: "자기자본" },
-                        ] as const
-                      ).map(({ key, label }) => (
-                        <tr key={key} className="border-b border-border/30 last:border-0">
-                          <td className="py-2 text-muted-foreground">{label}</td>
-                          {data.balanceSheet.map((r) => {
+                      </tbody>
+                    </table>
+                  </div>
+                  <div className="mobile-only flex flex-col gap-3">
+                    {data.balanceSheet.map((r) => (
+                      <div key={r.date} className="rounded-lg border border-border/50 p-3">
+                        <div className="mb-2 text-xs font-medium text-muted-foreground">
+                          {r.date}
+                        </div>
+                        <div className="grid grid-cols-2 gap-x-4 gap-y-2">
+                          {BALANCE_METRICS.map(({ key, label }) => {
                             const val = r[key];
                             return (
-                              <td key={r.date} className="py-2 text-right font-mono">
-                                {val == null ? "—" : fmtMarketCap(val, data.currency)}
-                              </td>
+                              <div key={key} className="flex flex-col">
+                                <span className="text-xs text-muted-foreground">{label}</span>
+                                <span className="font-mono text-sm">
+                                  {val == null ? "—" : fmtMarketCap(val, data.currency)}
+                                </span>
+                              </div>
                             );
                           })}
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </>
               )}
             </TabsContent>
           </Tabs>
