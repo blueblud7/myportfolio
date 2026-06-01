@@ -84,6 +84,8 @@
   --font-sans: "Geist", ui-sans-serif, system-ui, -apple-system, "Pretendard", "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
   --font-serif: "Newsreader", ui-serif, Georgia, serif;
+  /* 제목·히어로 전용 명조체 (마루부리) */
+  --font-display: var(--font-maruburi), "Newsreader", ui-serif, Georgia, "Apple SD Gothic Neo", serif;
 
   /* Sizing */
   --radius-sm: 4px;
@@ -150,6 +152,9 @@ button { font: inherit; color: inherit; background: none; border: none; cursor: 
 input, select, textarea { font: inherit; color: inherit; }
 .mono { font-family: var(--font-mono); font-feature-settings: "tnum", "zero"; letter-spacing: -0.01em; }
 .serif { font-family: var(--font-serif); }
+.display { font-family: var(--font-display); }
+/* 앱 본문 영역 페이지 제목에 마루부리 명조체 적용 */
+.topbar h1 { font-family: var(--font-display); font-weight: 600; }
 .num { font-family: var(--font-mono); font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
 
 @layer base {
