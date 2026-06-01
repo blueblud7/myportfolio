@@ -7,6 +7,7 @@ import { LanguageSwitcher } from "./LanguageSwitcher";
 import { RefreshCw, LogOut, Sun, Moon, Menu } from "lucide-react";
 import { useTheme } from "@/contexts/theme-context";
 import { cn } from "@/lib/utils";
+import { PushToggle } from "@/components/PushToggle";
 
 export function Header({ onMenuToggle }: { onMenuToggle?: () => void }) {
   const router = useRouter();
@@ -60,6 +61,9 @@ export function Header({ onMenuToggle }: { onMenuToggle?: () => void }) {
             <RefreshCw className={cn("h-3 w-3", refreshing && "animate-spin")} />
           </button>
         </div>
+
+        {/* 푸시 알림 토글 */}
+        <PushToggle />
 
         {/* 테마 토글 */}
         <button

@@ -42,3 +42,39 @@ self.addEventListener("fetch", (event) => {
       .catch(() => caches.match(req)),
   );
 });
+
+// Web Push: 페이로드 {title, body, url?} 를 받아 알림 표시
+self.addEventListener("push", (event) => {
+  let data = {};
+  try {
+    data = event.data ? event.data.json() : {};
+  } catch {
+    data = { title: "포트폴리오 알림", body: event.data ? event.data.text() : "" };
+  }
+  const title = data.title || "포트폴리오 알림";
+  const options = {
+    body: data.body || "",
+    icon: "/icon.svg",
+    badge: "/icon.svg",
+    data: { url: data.url || "/" },
+  };
+  event.waitUntil(self.registration.showNotification(title, options));
+});
+
+// 알림 클릭: 열려 있는 탭에 포커스, 없으면 새 탭으로 열기
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const targetUrl = (event.notification.data && event.notification.data.url) || "/";
+  event.waitUntil(
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clientList) => {
+      for (const client of clientList) {
+        const url = new URL(client.url);
+        if (url.origin === self.location.origin && "focus" in client) {
+          client.navigate(targetUrl).catch(() => {});
+          return client.focus();
+        }
+      }
+      if (self.clients.openWindow) return self.clients.openWindow(targetUrl);
+    }),
+  );
+});
