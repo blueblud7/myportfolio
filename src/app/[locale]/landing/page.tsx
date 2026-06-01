@@ -1,5 +1,85 @@
 import Link from "next/link";
 import "./landing.css";
+import JsonLd from "@/components/seo/JsonLd";
+import {
+  SITE_DESCRIPTION,
+  SITE_LOGO,
+  SITE_NAME,
+  SITE_URL,
+} from "@/lib/seo";
+
+/* ── FAQ (단일 소스: JSON-LD와 렌더 <details> 양쪽에서 재사용) ── */
+const faqs: { q: string; a: string }[] = [
+  {
+    q: "실제 증권사 계좌와 연동되나요?",
+    a: "현재는 CSV 임포트와 수동 입력을 지원합니다. 주요 증권사 API 연동은 2025년 하반기 출시 예정입니다.",
+  },
+  {
+    q: "내 금융 데이터는 어떻게 보호되나요?",
+    a: "모든 민감 데이터는 AES-256으로 암호화되며 서버에 원문이 저장되지 않습니다. 잔액 숨기기 모드로 화면 캡처 시에도 금액이 표시되지 않습니다.",
+  },
+  {
+    q: "무료 플랜에서 유료로 업그레이드하면 데이터가 유지되나요?",
+    a: "네, 모든 기존 데이터·설정·포트폴리오 히스토리가 그대로 이관됩니다.",
+  },
+  {
+    q: "패턴 랩은 어떻게 동작하나요?",
+    a: "최근 주가 흐름과 가장 유사한 과거 패턴을 유사도 알고리즘으로 매칭하고, 이후 전개 시나리오를 10년 범위로 시각화합니다. 투자 판단에 참고용으로 활용하세요.",
+  },
+  {
+    q: "해외 주식도 지원하나요?",
+    a: "미국 주식(NYSE, NASDAQ), 국내 주식(KOSPI, KOSDAQ), 주요 ETF를 지원합니다. 환율은 실시간으로 원화 환산됩니다.",
+  },
+];
+
+/* ── JSON-LD 구조화 데이터 (GEO) ── */
+const softwareAppLd = {
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  name: SITE_NAME,
+  applicationCategory: "FinanceApplication",
+  operatingSystem: "Web",
+  description: SITE_DESCRIPTION,
+  url: SITE_URL,
+  offers: [
+    {
+      "@type": "Offer",
+      name: "Starter",
+      price: "0",
+      priceCurrency: "KRW",
+      category: "free",
+    },
+    { "@type": "Offer", name: "Pro", price: "9900", priceCurrency: "KRW" },
+    { "@type": "Offer", name: "Team", price: "24900", priceCurrency: "KRW" },
+  ],
+};
+
+const organizationLd = {
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  name: SITE_NAME,
+  url: SITE_URL,
+  logo: SITE_LOGO,
+};
+
+const websiteLd = {
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  name: SITE_NAME,
+  url: SITE_URL,
+  description: SITE_DESCRIPTION,
+  inLanguage: "ko",
+};
+
+const faqLd = {
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  mainEntity: faqs.map((faq) => ({
+    "@type": "Question",
+    name: faq.q,
+    acceptedAnswer: { "@type": "Answer", text: faq.a },
+  })),
+};
 
 /* ── Deterministic sparkline data ── */
 const series = (n: number, base: number, vol = 0.02, seed = 1): number[] => {
@@ -189,6 +269,7 @@ export default function LandingPage() {
 
   return (
     <div className="landing">
+      <JsonLd data={[softwareAppLd, organizationLd, websiteLd, faqLd]} />
 
       {/* ── NAV ── */}
       <header>
@@ -671,28 +752,7 @@ export default function LandingPage() {
             <h2>궁금한 점이 있으신가요?</h2>
           </div>
           <div className="ld-faq">
-            {[
-              {
-                q: "실제 증권사 계좌와 연동되나요?",
-                a: "현재는 CSV 임포트와 수동 입력을 지원합니다. 주요 증권사 API 연동은 2025년 하반기 출시 예정입니다.",
-              },
-              {
-                q: "내 금융 데이터는 어떻게 보호되나요?",
-                a: "모든 민감 데이터는 AES-256으로 암호화되며 서버에 원문이 저장되지 않습니다. 잔액 숨기기 모드로 화면 캡처 시에도 금액이 표시되지 않습니다.",
-              },
-              {
-                q: "무료 플랜에서 유료로 업그레이드하면 데이터가 유지되나요?",
-                a: "네, 모든 기존 데이터·설정·포트폴리오 히스토리가 그대로 이관됩니다.",
-              },
-              {
-                q: "패턴 랩은 어떻게 동작하나요?",
-                a: "최근 주가 흐름과 가장 유사한 과거 패턴을 유사도 알고리즘으로 매칭하고, 이후 전개 시나리오를 10년 범위로 시각화합니다. 투자 판단에 참고용으로 활용하세요.",
-              },
-              {
-                q: "해외 주식도 지원하나요?",
-                a: "미국 주식(NYSE, NASDAQ), 국내 주식(KOSPI, KOSDAQ), 주요 ETF를 지원합니다. 환율은 실시간으로 원화 환산됩니다.",
-              },
-            ].map((item) => (
+            {faqs.map((item) => (
               <details key={item.q} className="ld-faq-item">
                 <summary>{item.q}</summary>
                 <p>{item.a}</p>
