@@ -19,7 +19,8 @@ export function useHoldings(accountId?: number, swrOptions?: { refreshInterval?:
 
 export function useExchangeRate() {
   return useSWR<{ rate: number }>("/api/exchange-rate", fetcher, {
-    revalidateOnFocus: false,
+    revalidateOnFocus: true, // 탭 복귀 시 최신 환율 재조회 (진입 시 갱신 = pull UX)
+    refreshInterval: 5 * 60 * 1000, // 탭이 열려 있으면 5분마다 갱신
     dedupingInterval: 60000,
   });
 }

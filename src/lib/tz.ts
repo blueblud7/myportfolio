@@ -14,3 +14,13 @@ export function todayPST(): string {
 export function formatPST(date: Date): string {
   return FMT.format(date);
 }
+
+const KST_FMT = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul" });
+
+/**
+ * Returns today's date string in KST (Asia/Seoul): "yyyy-MM-dd".
+ * 환율 등 한국 사용자 기준 "오늘"이 중요한 데이터에 사용 (미국 장 데이터는 todayPST 사용).
+ */
+export function todayKST(): string {
+  return KST_FMT.format(new Date());
+}
