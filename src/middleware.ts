@@ -56,6 +56,19 @@ function isPublicPath(pathname: string): boolean {
 export default async function middleware(req: NextRequest) {
   const pathname = req.nextUrl.pathname;
 
+  // 메타데이터/SEO 라우트는 인증·i18n 미들웨어를 거치지 않고 통과
+  // (OG/트위터 이미지, sitemap, robots 등은 크롤러가 접근해야 함)
+  if (
+    pathname === "/opengraph-image" ||
+    pathname === "/twitter-image" ||
+    pathname === "/sitemap.xml" ||
+    pathname === "/robots.txt" ||
+    pathname === "/manifest.webmanifest" ||
+    pathname === "/apple-icon"
+  ) {
+    return NextResponse.next();
+  }
+
   // 공개 경로는 인증 없이 통과
   if (isPublicPath(pathname)) {
     return intlMiddleware(req);
