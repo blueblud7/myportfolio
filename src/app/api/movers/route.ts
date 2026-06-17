@@ -4,6 +4,7 @@ import { getSessionUser } from "@/lib/auth";
 import YahooFinance from "yahoo-finance2";
 import { resolveYahooSymbol, isKoreanTicker } from "@/lib/ticker-resolver";
 import { decryptNum } from "@/lib/crypto";
+import { todayKST } from "@/lib/tz";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const yf = new (YahooFinance as any)({ suppressNotices: ["yahooSurvey"] });
@@ -69,7 +70,7 @@ export async function GET(req: NextRequest) {
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const sql = getDb();
-  const today = new Date().toISOString().split("T")[0];
+  const today = todayKST(); // 라벨용 — UTC가 아닌 한국시간 기준 오늘
 
   type Row = { ticker: string; name: string; currency: string; change_pct: string | null; price: string };
   const rows = await sql`

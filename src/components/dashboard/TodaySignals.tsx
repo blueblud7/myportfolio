@@ -4,6 +4,12 @@ import { useEffect, useState } from "react";
 import type { MoverItem, MoverSignal } from "@/app/api/movers/route";
 import type { MarketMoverItem, MarketMoversResponse } from "@/app/api/market-movers/route";
 
+// 한국 데이터 기준일 라벨. KRX EOD(YYYYMMDD)면 "MM/DD 기준", 라이브 폴백(null)이면 "실시간".
+function fmtKrBasis(krDate: string | null): string {
+  if (!krDate || krDate.length !== 8) return "실시간";
+  return `${krDate.slice(4, 6)}/${krDate.slice(6, 8)} 기준`;
+}
+
 const SIGNAL_META: Record<MoverSignal, { label: string; tone: string }> = {
   up5:       { label: "+5%↑",    tone: "up" },
   up3:       { label: "+3%↑",    tone: "up" },
@@ -218,7 +224,7 @@ export function TodaySignals() {
         {/* Footer */}
         <div style={{ marginTop: 12, fontSize: 10, color: "var(--fg-4)", fontFamily: "var(--font-mono)" }}>
           {tab === "market" && market &&
-            `Yahoo Finance 기준 · 10분 캐시 · ${new Date(market.updatedAt).toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" })} 업데이트`}
+            `미국 실시간 · 한국 ${fmtKrBasis(market.krDate)} · 10분 캐시 · ${new Date(market.updatedAt).toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" })} 업데이트`}
           {tab === "portfolio" && portfolioDate && `${portfolioDate} 기준 · ±2% 이상 보유 종목`}
         </div>
       </div>

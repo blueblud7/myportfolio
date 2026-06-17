@@ -80,12 +80,8 @@ export interface KrxStockPrice {
 let _allPricesCache: { ts: number; data: KrxStockPrice[] } | null = null;
 const ALL_PRICES_TTL = 30 * 60 * 1000; // 30분
 
-async function fetchAllStockPrices(date?: string): Promise<KrxStockPrice[]> {
-  if (!date && _allPricesCache && Date.now() - _allPricesCache.ts < ALL_PRICES_TTL) {
-    return _allPricesCache.data;
-  }
-  const rows = await krxApi("sto/stk_bydd_trd", date);
-  const result: KrxStockPrice[] = rows
+function mapKrxStockRows(rows: Record<string, string>[]): KrxStockPrice[] {
+  return rows
     .filter(r => r.ISU_CD && r.MKT_NM)
     .map(r => {
       // ISU_CD는 ISIN(KR7XXXXXXXXX) 형태 → 6자리 단축코드 추출
@@ -112,6 +108,14 @@ async function fetchAllStockPrices(date?: string): Promise<KrxStockPrice[]> {
       };
     })
     .filter(p => /^\d/.test(p.code));
+}
+
+async function fetchAllStockPrices(date?: string): Promise<KrxStockPrice[]> {
+  if (!date && _allPricesCache && Date.now() - _allPricesCache.ts < ALL_PRICES_TTL) {
+    return _allPricesCache.data;
+  }
+  const rows = await krxApi("sto/stk_bydd_trd", date);
+  const result = mapKrxStockRows(rows);
   if (!date) _allPricesCache = { ts: Date.now(), data: result };
   return result;
 }
@@ -120,6 +124,18 @@ export async function getKrxAllPrices(mktId: "STK" | "KSQ", date?: string): Prom
   const all = await fetchAllStockPrices(date);
   const target = mktId === "STK" ? "KOSPI" : "KOSDAQ";
   return all.filter(p => p.market === target);
+}
+
+/**
+ * 전 종목 시세 + 실제 기준일(BAS_DD).
+ * KST 오늘부터 조회해, 장 마감 후 당일 EOD가 나오면 자동으로 당일 데이터로 올라간다.
+ * 당일 데이터가 아직 없으면 krxApi가 직전 영업일로 walk-back 하며, 그 실제 날짜를 함께 반환한다.
+ * (Today's Signals 등 "당일" 표기가 필요한 곳 전용 — 전역 기본값 T-1은 건드리지 않음)
+ */
+export async function getKrxAllPricesWithDate(): Promise<{ prices: KrxStockPrice[]; basDd: string | null }> {
+  const rows = await krxApi("sto/stk_bydd_trd", recentTradingDay(0));
+  const basDd = rows[0]?.BAS_DD ?? null; // YYYYMMDD — 실제 조회된 거래일
+  return { prices: mapKrxStockRows(rows), basDd };
 }
 
 /** 전 종목(KOSPI+KOSDAQ) 6자리 코드 → 정식 한글명 맵. ETF 구성종목 이름 교정용. */

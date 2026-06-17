@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getKrxAllPrices } from "@/lib/krx";
+import { getKrxAllPricesWithDate } from "@/lib/krx";
 
 export interface MarketMoverItem {
   ticker: string;
@@ -22,6 +22,8 @@ export interface MarketMoversResponse {
     losers: MarketMoverItem[];
     active: MarketMoverItem[];
   };
+  /** 한국 데이터 실제 기준일(YYYYMMDD). KRX EOD면 해당 거래일, Yahoo 라이브 폴백이면 null(실시간). */
+  krDate: string | null;
   updatedAt: string;
 }
 
@@ -63,12 +65,9 @@ async function fetchYfScreener(scrId: string, count = 7): Promise<MarketMoverIte
 
 // ─── KR: KRX 전체 종목 기반 급등/급락주 (fallback: Yahoo Finance 30개 대형주) ─
 
-async function fetchKrMoversKrx(count = 7): Promise<{ gainers: MarketMoverItem[]; losers: MarketMoverItem[]; active: MarketMoverItem[] } | null> {
-  const [kospi, kosdaq] = await Promise.all([
-    getKrxAllPrices("STK").catch(() => []),
-    getKrxAllPrices("KSQ").catch(() => []),
-  ]);
-  const all = [...kospi, ...kosdaq].filter(p => p.close > 0);
+async function fetchKrMoversKrx(count = 7): Promise<{ gainers: MarketMoverItem[]; losers: MarketMoverItem[]; active: MarketMoverItem[]; basDd: string | null } | null> {
+  const { prices, basDd } = await getKrxAllPricesWithDate().catch(() => ({ prices: [], basDd: null }));
+  const all = prices.filter(p => p.close > 0);
   if (all.length < 20) return null; // KRX_API_KEY 미설정 등
 
   const stocks: MarketMoverItem[] = all.map(p => ({
@@ -87,6 +86,7 @@ async function fetchKrMoversKrx(count = 7): Promise<{ gainers: MarketMoverItem[]
     gainers: byChange.filter(s => s.changePct > 0).slice(0, count),
     losers: byChange.filter(s => s.changePct < 0).slice(-count).reverse(),
     active: byVolume.slice(0, count),
+    basDd,
   };
 }
 
@@ -99,12 +99,12 @@ const KR_FALLBACK_TICKERS = [
   "373220.KS", "247540.KS", "091990.KS", "036570.KS", "003670.KS",
 ];
 
-async function fetchKrMoversFallback(count = 7): Promise<{ gainers: MarketMoverItem[]; losers: MarketMoverItem[]; active: MarketMoverItem[] }> {
+async function fetchKrMoversFallback(count = 7): Promise<{ gainers: MarketMoverItem[]; losers: MarketMoverItem[]; active: MarketMoverItem[]; basDd: string | null }> {
   try {
     const symbols = KR_FALLBACK_TICKERS.join(",");
     const url = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${encodeURIComponent(symbols)}&fields=symbol,shortName,regularMarketPrice,regularMarketChangePercent,regularMarketVolume,averageDailyVolume3Month,currency`;
     const res = await fetch(url, { headers: YF_HEADERS, next: { revalidate: 300 } });
-    if (!res.ok) return { gainers: [], losers: [], active: [] };
+    if (!res.ok) return { gainers: [], losers: [], active: [], basDd: null };
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const json: any = await res.json();
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -128,13 +128,14 @@ async function fetchKrMoversFallback(count = 7): Promise<{ gainers: MarketMoverI
       gainers: byChange.slice(0, count),
       losers: byChange.slice(-count).reverse(),
       active: byVolume.slice(0, count),
+      basDd: null, // Yahoo 라이브 폴백 = 실시간(당일)
     };
   } catch {
-    return { gainers: [], losers: [], active: [] };
+    return { gainers: [], losers: [], active: [], basDd: null };
   }
 }
 
-async function fetchKrMovers(count = 7): Promise<{ gainers: MarketMoverItem[]; losers: MarketMoverItem[]; active: MarketMoverItem[] }> {
+async function fetchKrMovers(count = 7): Promise<{ gainers: MarketMoverItem[]; losers: MarketMoverItem[]; active: MarketMoverItem[]; basDd: string | null }> {
   const krx = await fetchKrMoversKrx(count);
   if (krx) return krx;
   return fetchKrMoversFallback(count);
@@ -163,6 +164,7 @@ export async function GET() {
   const data: MarketMoversResponse = {
     us: { gainers: usGainers, losers: usLosers, active: usActive },
     kr: { gainers: kr.gainers, losers: kr.losers, active: kr.active },
+    krDate: kr.basDd,
     updatedAt: new Date().toISOString(),
   };
 
