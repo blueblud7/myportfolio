@@ -153,9 +153,21 @@ interface TickerInput {
   metaChange: string;
 }
 
+/** 포트폴리오 집계 요약 한 줄 — 종합의견(안정성·집중도) 판단용. */
+export function summarizePortfolio(rows: { pct: number; gainLossPct: number }[]): string {
+  if (rows.length === 0) return "";
+  const sorted = [...rows].sort((a, b) => b.pct - a.pct);
+  const top3 = sorted.slice(0, 3).reduce((s, r) => s + r.pct, 0);
+  const weightedReturn = rows.reduce((s, r) => s + (r.pct / 100) * r.gainLossPct, 0);
+  const gainers = rows.filter((r) => r.gainLossPct > 0).length;
+  const losers = rows.filter((r) => r.gainLossPct < 0).length;
+  return `종목 ${rows.length}개 · 최대비중 ${sorted[0].pct}% · 상위3 집중도 ${Math.round(top3)}% · 가중평균수익률 ${weightedReturn > 0 ? "+" : ""}${weightedReturn.toFixed(1)}% · 상승 ${gainers}/하락 ${losers}`;
+}
+
 function buildContext(period: DigestPeriod, inputs: TickerInput[]): string {
   const lines: string[] = [];
   lines.push(`# ${PERIOD_LABEL[period]} 보유종목 브리핑 입력 데이터 (기준: ${todayKST()})`);
+  lines.push(`\n## 포트폴리오 종합\n${summarizePortfolio(inputs.map((i) => i.holding))}`);
   for (const inp of inputs) {
     const h = inp.holding;
     lines.push(`\n## ${h.ticker} ${h.name} — 비중 ${h.pct}%, 수익률 ${h.gainLossPct > 0 ? "+" : ""}${h.gainLossPct}%`);
@@ -189,7 +201,7 @@ async function synthesize(period: DigestPeriod, context: string): Promise<AiOutp
 제공된 보유종목별 뉴스·애널리스트 데이터만 근거로, 과장 없이 사실 중심으로 작성하세요. 데이터에 없는 내용을 지어내지 마세요.
 반드시 아래 JSON 스키마로만 응답하세요(한국어):
 {
-  "briefing_md": "마크다운 브리핑. 구성: (1) ## 한눈에 — 3~5줄 핵심 요약, (2) ## 주안점 변화 — 투자의견/목표가/중대 뉴스 변화가 있는 종목만 불릿, (3) ## 종목별 — 각 종목 한두 줄. 금액·비중 수치는 단정하지 말고 데이터에 있는 것만 인용.",
+  "briefing_md": "마크다운 브리핑. 구성: (1) ## 한눈에 — 3~5줄 핵심 요약, (2) ## 주안점 변화 — 투자의견/목표가/중대 뉴스 변화가 있는 종목만 불릿, (3) ## 종목별 — 각 종목 한두 줄, (4) ## 포트폴리오 종합의견 — 집중도·손익분포·뉴스/애널리스트 신호를 근거로 (a) 안정성/리스크 평가, (b) 지금 어떻게 할지 권고(리밸런싱·비중조절·관망 등). 단정적 매수/매도 지시 대신 근거 기반 제안으로. 금액·비중 수치는 데이터에 있는 것만 인용.",
   "highlights": [ { "ticker": "AAPL", "thesis": "한 줄 핵심", "changeNote": "전 기간 대비 변화 한 줄(없으면 빈 문자열)" } ]
 }`;
   const res = await client.chat.completions.create({

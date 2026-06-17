@@ -6,7 +6,7 @@ import { getFinnhubEarnings } from "./finnhub";
 import { webSearch, isWebSearchConfigured } from "./websearch";
 import { todayKST } from "./tz";
 import {
-  getUserHoldings, getPreviousFocus, computeMetaChange, persistDigest,
+  getUserHoldings, getPreviousFocus, computeMetaChange, persistDigest, summarizePortfolio,
   PERIOD_DAYS, type DigestPeriod, type DigestRecord, type FocusPoint, type Holding,
 } from "./digest";
 
@@ -88,7 +88,7 @@ export async function generateAgentDigest(userId: number, period: DigestPeriod):
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const messages: any[] = [
     { role: "system", content: system },
-    { role: "user", content: `## 내 보유종목 (비중순)\n${holdingLines}\n\n${prevLines ? `## 직전 ${PERIOD_LABEL[period]} 브리핑 요지 (변화 비교용)\n${prevLines}\n\n` : ""}위 종목들을 조사한 뒤 알려줄게요.` },
+    { role: "user", content: `## 포트폴리오 종합\n${summarizePortfolio(holdings)}\n\n## 내 보유종목 (비중순)\n${holdingLines}\n\n${prevLines ? `## 직전 ${PERIOD_LABEL[period]} 브리핑 요지 (변화 비교용)\n${prevLines}\n\n` : ""}위 종목들을 조사한 뒤 알려줄게요.` },
   ];
 
   const client = getDeepSeek();
@@ -128,7 +128,7 @@ export async function generateAgentDigest(userId: number, period: DigestPeriod):
     role: "user",
     content: `이제 조사한 내용을 종합해 최종 브리핑을 JSON으로만 출력하세요:
 {
-  "briefing_md": "마크다운. (1) ## 한눈에 3~5줄 (2) ## 주안점 변화 — 변화 있는 종목만 (3) ## 종목별 요약",
+  "briefing_md": "마크다운. (1) ## 한눈에 3~5줄 (2) ## 주안점 변화 — 변화 있는 종목만 (3) ## 종목별 요약 (4) ## 포트폴리오 종합의견 — 집중도·손익분포·수집한 뉴스/애널리스트 신호를 근거로 (a) 안정성/리스크 평가, (b) 지금 어떻게 할지 권고(리밸런싱·비중조절·관망 등). 단정적 매수/매도 지시 대신 근거 기반 제안.",
   "highlights": [ { "ticker": "...", "thesis": "한 줄 핵심", "changeNote": "전 기간 대비 변화(없으면 빈 문자열)", "rating": "투자의견 또는 null", "targetPrice": 평균목표가숫자또는null } ]
 }`,
   });
