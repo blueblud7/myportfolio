@@ -185,3 +185,16 @@ CREATE TABLE IF NOT EXISTS push_subscriptions (
   user_agent TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+-- 보유종목 데일리/위클리/먼슬리 브리핑(다이제스트).
+-- content_enc: AI 합성 마크다운(암호화). focus: 종목별 구조화 주안점(JSONB) — 전일 대비 변화 diff용.
+CREATE TABLE IF NOT EXISTS digests (
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER NOT NULL REFERENCES users(id),
+  period TEXT NOT NULL CHECK(period IN ('daily','weekly','monthly')),
+  date TEXT NOT NULL,                 -- 기준일 (KST, YYYY-MM-DD)
+  content_enc TEXT,                   -- 암호화된 마크다운 본문
+  focus JSONB,                        -- [{ticker,name,rating,targetPrice,thesis,changeNote}] 변화 추적용
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE(user_id, period, date)
+);

@@ -16,6 +16,7 @@ const PUBLIC_PATHS = [
   "/login",
   // 소프트 게이트: 접근은 허용하되 페이지에서 블러 오버레이로 처리
   "/dashboard",
+  "/briefing",
   "/accounts",
   "/alerts",
   "/budget",

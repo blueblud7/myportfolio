@@ -8,6 +8,7 @@ import { usePrivacy } from "@/contexts/privacy-context";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useReports } from "@/hooks/use-api";
+import { isPrivatePath } from "@/lib/private-paths";
 
 // Inline SVG icon set matching the design
 function Icon({ name, size = 15 }: { name: string; size?: number }) {
@@ -45,21 +46,22 @@ function Icon({ name, size = 15 }: { name: string; size?: number }) {
     case "history":  return <svg {...p}><path d="M3 12a9 9 0 1 0 9-9 9.74 9.74 0 0 0-7 3L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l3 3"/></svg>;
     case "pie":      return <svg {...p}><path d="M12 2v10l8.66 5A10 10 0 1 1 12 2z"/></svg>;
     case "compass":  return <svg {...p}><circle cx="12" cy="12" r="9"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/></svg>;
+    case "news":     return <svg {...p}><path d="M4 4h13v16H6a2 2 0 0 1-2-2z"/><path d="M17 8h2a1 1 0 0 1 1 1v9a2 2 0 0 1-2 2"/><line x1="7" y1="8" x2="13" y2="8"/><line x1="7" y1="12" x2="13" y2="12"/><line x1="7" y1="16" x2="11" y2="16"/></svg>;
     default: return null;
   }
 }
 
-// requiresAuth: true → 로그인 필요 (비로그인 시 자물쇠 표시)
+// 잠금 여부는 @/lib/private-paths(PRIVATE_PATHS)를 단일 소스로 판별한다.
+// (비로그인 시 자물쇠 표시 + ClientLayout 소프트게이트가 동일 목록 공유)
 const NAV = [
   {
     section: "포트폴리오",
     items: [
-      { href: "/dashboard", label: "대시보드",          icon: "home",       requiresAuth: true },
-      { href: "/accounts",  label: "보유 자산",          icon: "wallet",     requiresAuth: true },
-      { href: "/bank",      label: "은행 잔액",          icon: "bank",       requiresAuth: true },
-      { href: "/watchlist", label: "워치리스트",          icon: "binoculars", requiresAuth: true },
-      { href: "/reports",   label: "리포트 & 목표",      icon: "barchart",   requiresAuth: true },
-      { href: "/tax",       label: "양도소득세",          icon: "scale",     requiresAuth: true },
+      { href: "/dashboard", label: "대시보드",          icon: "home"       },
+      { href: "/briefing",  label: "브리핑",             icon: "news"       },
+      { href: "/accounts",  label: "보유 자산",          icon: "wallet"     },
+      { href: "/watchlist", label: "워치리스트",          icon: "binoculars" },
+      { href: "/reports",   label: "리포트 & 목표",      icon: "barchart"   },
     ],
   },
   {
@@ -83,15 +85,15 @@ const NAV = [
       { href: "/position-lab",   label: "포지션 사이징",   icon: "scale"      },
       { href: "/etf-flow",       label: "ETF 흐름",        icon: "layers"     },
       { href: "/pattern-lab",    label: "패턴 유사도",     icon: "linechart"  },
-      { href: "/insights",       label: "AI 인사이트",     icon: "sparkles",  requiresAuth: true },
-      { href: "/diary",          label: "저널",            icon: "book",      requiresAuth: true },
+      { href: "/insights",       label: "AI 인사이트",     icon: "sparkles"   },
+      { href: "/diary",          label: "저널",            icon: "book"       },
     ],
   },
   {
     section: "도구",
     items: [
-      { href: "/calculator",    label: "계산기",  icon: "trending"               },
-      { href: "/alerts",        label: "알림",    icon: "bell",    requiresAuth: true },
+      { href: "/calculator",    label: "계산기",  icon: "trending" },
+      { href: "/alerts",        label: "알림",    icon: "bell"     },
     ],
   },
 ];
@@ -231,7 +233,7 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
           <div className="nav-section" key={sec.section}>
             <div className="nav-section-title">{sec.section}</div>
             {sec.items.map((it) => {
-              const locked = it.requiresAuth && loggedIn === false;
+              const locked = isPrivatePath(it.href) && loggedIn === false;
               return (
                 <Link
                   key={it.href}

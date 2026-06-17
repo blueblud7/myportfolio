@@ -9,30 +9,28 @@ import { GlobalFooterDisclaimer } from "./Disclaimer";
 import { PrivacyProvider } from "@/contexts/privacy-context";
 import { ThemeProvider } from "@/contexts/theme-context";
 import { useSession } from "@/hooks/use-session";
-
-// 소프트 게이트 적용 경로 (미들웨어는 통과시키되 비로그인 시 블러 오버레이 표시)
-const PRIVATE_PATHS = [
-  "/dashboard",
-  "/accounts",
-  "/alerts",
-  "/budget",
-  "/diary",
-  "/goals",
-  "/insights",
-  "/reports",
-  "/watchlist",
-];
+import { PRIVATE_PATHS, isPrivatePath } from "@/lib/private-paths";
 
 const GATE_META: Record<string, { title: string; desc: string; bullets: string[] }> = {
-  "/dashboard":  { title: "내 포트폴리오", desc: "여러 계좌의 수익률·배분을 한눈에.", bullets: ["다계좌 통합 평가액", "실시간 손익 추적", "섹터·통화 배분 분석"] },
-  "/accounts":   { title: "계좌 관리", desc: "증권사별 보유 종목과 수익률을 확인하세요.", bullets: ["계좌별 보유 종목", "평균 단가·수익률", "파이차트 배분"] },
-  "/watchlist":  { title: "워치리스트", desc: "관심 종목을 저장하고 모니터링하세요.", bullets: ["종목 저장·관리", "가격 알림 연동", "실적 일정 추적"] },
-  "/insights":   { title: "AI 인사이트", desc: "내 포트폴리오 기반 AI 분석.", bullets: ["보유 종목 컨텍스트", "리밸런스 제안", "리스크 시나리오"] },
-  "/reports":    { title: "성과 리포트", desc: "백분위·벤치마크 대비 수익률 분석.", bullets: ["CAGR·샤프 분석", "벤치마크 비교", "리스크 지표"] },
-  "/diary":      { title: "투자 일지", desc: "매매 근거와 결과를 기록하세요.", bullets: ["의사결정 기록", "패턴 발견", "승률 통계"] },
-  "/budget":     { title: "예산 관리", desc: "월별 수입·지출을 추적하세요.", bullets: ["카테고리 분류", "목표 대비 현황", "월별 트렌드"] },
-  "/goals":      { title: "투자 목표", desc: "목표 수익률과 달성도를 추적하세요.", bullets: ["목표 설정·추적", "달성률 시각화", "시뮬레이션"] },
-  "/alerts":     { title: "알림 설정", desc: "가격·이벤트 알림을 설정하세요.", bullets: ["가격 도달 알림", "실적 발표 알림", "맞춤 조건 설정"] },
+  "/dashboard":     { title: "내 포트폴리오", desc: "여러 계좌의 수익률·배분을 한눈에.", bullets: ["다계좌 통합 평가액", "실시간 손익 추적", "섹터·통화 배분 분석"] },
+  "/briefing":      { title: "보유종목 브리핑", desc: "내 종목 뉴스·애널리스트 변화를 매일 요약.", bullets: ["일·주·월 다이제스트", "투자의견·목표가 변화 추적", "푸시 알림"] },
+  "/accounts":      { title: "계좌 관리", desc: "증권사별 보유 종목과 수익률을 확인하세요.", bullets: ["계좌별 보유 종목", "평균 단가·수익률", "파이차트 배분"] },
+  "/bank":          { title: "은행 잔액", desc: "예적금·현금 잔액을 자산에 합산하세요.", bullets: ["계좌별 잔액 기록", "총자산 자동 합산", "통화별 환산"] },
+  "/watchlist":     { title: "워치리스트", desc: "관심 종목을 저장하고 모니터링하세요.", bullets: ["종목 저장·관리", "가격 알림 연동", "실적 일정 추적"] },
+  "/insights":      { title: "AI 인사이트", desc: "내 포트폴리오 기반 AI 분석.", bullets: ["보유 종목 컨텍스트", "리밸런스 제안", "리스크 시나리오"] },
+  "/reports":       { title: "성과 리포트", desc: "백분위·벤치마크 대비 수익률 분석.", bullets: ["CAGR·샤프 분석", "벤치마크 비교", "리스크 지표"] },
+  "/tax":           { title: "양도소득세", desc: "실현 손익 기반 세금을 추정하세요.", bullets: ["실현 손익 집계", "양도세 추정", "절세 시뮬레이션"] },
+  "/diary":         { title: "투자 일지", desc: "매매 근거와 결과를 기록하세요.", bullets: ["의사결정 기록", "패턴 발견", "승률 통계"] },
+  "/budget":        { title: "예산 관리", desc: "월별 수입·지출을 추적하세요.", bullets: ["카테고리 분류", "목표 대비 현황", "월별 트렌드"] },
+  "/goals":         { title: "투자 목표", desc: "목표 수익률과 달성도를 추적하세요.", bullets: ["목표 설정·추적", "달성률 시각화", "시뮬레이션"] },
+  "/alerts":        { title: "알림 설정", desc: "가격·이벤트 알림을 설정하세요.", bullets: ["가격 도달 알림", "실적 발표 알림", "맞춤 조건 설정"] },
+  // 연구실
+  "/strategy-lab":  { title: "전략 연구소", desc: "나만의 투자 전략을 설계·검증하세요.", bullets: ["전략 규칙 설계", "조건 조합 테스트", "AI 전략 제안"] },
+  "/backtest":      { title: "백테스트", desc: "과거 데이터로 전략 성과를 검증하세요.", bullets: ["기간별 수익률", "낙폭·샤프 분석", "벤치마크 비교"] },
+  "/portfolio-mix": { title: "포트폴리오 믹스", desc: "자산 배분 조합을 시뮬레이션하세요.", bullets: ["비중 최적화", "효율적 프론티어", "리스크-수익 분석"] },
+  "/position-lab":  { title: "포지션 사이징", desc: "리스크 기반 매수 규모를 계산하세요.", bullets: ["켈리·고정비율", "손절 기반 사이징", "분할 매수 설계"] },
+  "/etf-flow":      { title: "ETF 흐름", desc: "ETF 자금 유출입 흐름을 추적하세요.", bullets: ["순유입·유출 추이", "섹터별 자금 흐름", "관심 ETF 모니터링"] },
+  "/pattern-lab":   { title: "패턴 유사도", desc: "현재 주가와 닮은 과거 패턴을 찾으세요.", bullets: ["유사 패턴 매칭", "이후 전개 시나리오", "확률 분포 시각화"] },
 };
 
 function LockIcon() {
@@ -160,7 +158,7 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
 
   const stripped = pathname.replace(/^\/(ko|en)/, "") || "/";
   const isNoSidebar = stripped === "/" || stripped === "/login" || stripped === "/landing";
-  const isPrivate = PRIVATE_PATHS.some(p => stripped.startsWith(p));
+  const isPrivate = isPrivatePath(stripped);
   const showGate = isPrivate && loggedIn === false;
 
   if (isNoSidebar) {
