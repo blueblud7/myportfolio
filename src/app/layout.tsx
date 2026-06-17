@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono, Newsreader } from "next/font/google";
 import localFont from "next/font/local";
 import "./globals.css";
+import { Analytics } from "@vercel/analytics/next";
 import { PwaRegister } from "@/components/PwaRegister";
 import {
   SITE_DESCRIPTION,
@@ -113,6 +114,7 @@ export default function RootLayout({
       >
         {children}
         <PwaRegister />
+        <Analytics />
       </body>
     </html>
   );
