@@ -27,6 +27,7 @@ function fmt(price: number, key: string) {
 function prefix(key: string, currency: string) {
   if (key === "kospi") return "";
   if (currency === "USD") return "$";
+  if (currency === "KRW") return "₩";
   return "";
 }
 

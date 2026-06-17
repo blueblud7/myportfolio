@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import YahooFinance from "yahoo-finance2";
 import { getStockCache, setStockCache } from "@/lib/stock-cache";
+import { getLatestExchangeRate } from "@/lib/exchange-rate";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const yf = new (YahooFinance as any)({ suppressNotices: ["yahooSurvey"] });
@@ -13,7 +14,7 @@ const INDICES = [
   { key: "btc",     symbol: "BTC-USD",    label: "BTC/USD",  isYield: false },
   { key: "wti",     symbol: "CL=F",       label: "WTI유가",  isYield: false },
   { key: "us10y",   symbol: "^TNX",       label: "US 10Y",   isYield: true  },
-  { key: "kr10y",   symbol: "KR10YT=RR",  label: "KR 10Y",   isYield: true  },
+  { key: "usdkrw",  symbol: "USDKRW=X",   label: "USD/KRW",  isYield: false },
 ];
 
 // WTI 다음 달 선물 심볼 계산 (콘탱고/백워데이션용)
@@ -38,7 +39,7 @@ export async function GET() {
 
   const [frontSym, nextSym] = getNextWtiSymbols();
 
-  const [indexResults, oilFront, oilNext] = await Promise.all([
+  const [indexResults, oilFront, oilNext, krwRate] = await Promise.all([
     Promise.allSettled(
       INDICES.map(async (idx) => {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -60,6 +61,8 @@ export async function GET() {
     ),
     yf.quote(frontSym).catch(() => null),
     yf.quote(nextSym).catch(() => null),
+    // USD/KRW 표시값은 요약 카드·포트폴리오 평가와 동일한 정식 소스(DB·KST)로 통일.
+    getLatestExchangeRate().catch(() => null),
   ]);
 
   // 콘탱고/백워데이션 계산
@@ -79,6 +82,8 @@ export async function GET() {
       ? r.value
       : { key: INDICES[i].key, label: INDICES[i].label, symbol: INDICES[i].symbol, isYield: INDICES[i].isYield, price: null, change: null, changePct: null, currency: "USD", prevClose: null, oilSpread: null, oilCurve: null };
     if (base.key === "wti") return { ...base, oilSpread, oilCurve };
+    // 환율 가격은 정식 소스 값으로 덮어쓴다(변동률은 Yahoo 일간 변화 유지).
+    if (base.key === "usdkrw" && krwRate != null) return { ...base, price: krwRate };
     return base;
   });
 
