@@ -240,8 +240,8 @@ export default function ReportsPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {report.top_performers.map((p) => (
-                    <TableRow key={p.ticker}>
+                  {report.top_performers.map((p, i) => (
+                    <TableRow key={`${p.ticker}-${i}`}>
                       <TableCell>
                         <div className="font-medium">{p.name}</div>
                         <div className="text-xs text-muted-foreground">{p.ticker}</div>
@@ -281,8 +281,8 @@ export default function ReportsPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {report.worst_performers.map((p) => (
-                    <TableRow key={p.ticker}>
+                  {report.worst_performers.map((p, i) => (
+                    <TableRow key={`${p.ticker}-${i}`}>
                       <TableCell>
                         <div className="font-medium">{p.name}</div>
                         <div className="text-xs text-muted-foreground">{p.ticker}</div>
@@ -343,7 +343,7 @@ export default function ReportsPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {sortedPerformers.map((p) => {
+                  {sortedPerformers.map((p, i) => {
                     const toDisplay = (val: number) => {
                       if (perfCurrency === "KRW") {
                         const krw = p.currency === "USD" ? val * exchangeRate : val;
@@ -354,7 +354,7 @@ export default function ReportsPage() {
                       }
                     };
                     return (
-                      <TableRow key={`${p.ticker}-${p.account_name}`}>
+                      <TableRow key={`${p.ticker}-${p.account_name}-${i}`}>
                         <TableCell>
                           <div className="font-medium">{p.name}</div>
                           <div className="text-xs text-muted-foreground">{p.ticker}</div>
