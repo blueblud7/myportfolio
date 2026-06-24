@@ -19,11 +19,12 @@ import {
   ReferenceLine,
 } from "recharts";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, Building2, RefreshCw, Users } from "lucide-react";
+import { ArrowLeft, Building2, RefreshCw, Users, TrendingUp } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { StockDetailResponse } from "@/app/api/stock-detail/route";
 import type { StockPeersResponse, PeerItem, PeerRankingItem } from "@/app/api/stock-peers/route";
 import type { KrxStockInvestorDay } from "@/lib/krx";
+import type { ExportTrendResponse } from "@/app/api/export-trend/route";
 
 // ─── 유틸 ────────────────────────────────────────────────────────────────────
 
@@ -498,6 +499,119 @@ function KrxInvestorChart({ ticker }: { ticker: string }) {
         </div>
       )}
     </div>
+  );
+}
+
+// ─── 수출추이 (한국 수출주 전용 · 관세청 데이터) ──────────────────────────────
+
+function fmtUsd(v: number): string {
+  const a = Math.abs(v);
+  if (a >= 1e9) return `$${(v / 1e9).toFixed(2)}B`;
+  if (a >= 1e6) return `$${(v / 1e6).toFixed(0)}M`;
+  return `$${v.toLocaleString("en-US")}`;
+}
+
+function ExportTrendChart({ ticker }: { ticker: string }) {
+  const [resp, setResp] = useState<ExportTrendResponse | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    setLoading(true);
+    fetch(`/api/export-trend?ticker=${encodeURIComponent(ticker)}&months=18`)
+      .then(r => r.json())
+      .then((d: ExportTrendResponse) => setResp(d))
+      .catch(() => setResp(null))
+      .finally(() => setLoading(false));
+  }, [ticker]);
+
+  if (loading) return <div className="h-48 animate-pulse rounded-lg bg-muted/30" />;
+  // 수출 매핑이 없는 종목은 섹션 자체를 숨김
+  if (!resp || !resp.supported) return null;
+
+  const Wrapper = ({ children }: { children: React.ReactNode }) => (
+    <div className="card">
+      <div className="card-head">
+        <div className="flex items-center gap-2">
+          <TrendingUp className="h-4 w-4 text-muted-foreground" />
+          <h3 className="card-title">수출 추이</h3>
+          <span className="text-xs text-muted-foreground font-normal">
+            관세청 · {resp.item ?? ""}{resp.hs ? ` (HS ${resp.hs})` : ""}
+          </span>
+        </div>
+      </div>
+      <div className="card-body card-body-padded">{children}</div>
+    </div>
+  );
+
+  if (!resp.configured) {
+    return <Wrapper><p className="py-6 text-center text-sm text-muted-foreground">관세청 API 키 미설정 (DATA_GO_KR_KEY)</p></Wrapper>;
+  }
+  const months = resp.total?.months ?? [];
+  if (!months.length) {
+    return <Wrapper><p className="py-6 text-center text-sm text-muted-foreground">데이터 없음</p></Wrapper>;
+  }
+
+  const chartData = months.map(m => ({
+    ym: `${m.yymm.slice(2, 4)}.${m.yymm.slice(4, 6)}`,
+    exp: m.expUsd / 1e9, // $B
+    yoy: m.expYoY,
+  }));
+  const latest = resp.total!.latest!;
+
+  return (
+    <Wrapper>
+      <div className="space-y-3">
+        {/* 요약 */}
+        <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
+          <div className="flex items-baseline gap-1.5">
+            <span className="text-xs text-muted-foreground">최신({`${latest.yymm.slice(0, 4)}.${latest.yymm.slice(4, 6)}`})</span>
+            <span className="text-lg font-bold tabular-nums">{fmtUsd(latest.expUsd)}</span>
+          </div>
+          {latest.expYoY != null && (
+            <span className={cn("text-sm font-medium tabular-nums", latest.expYoY >= 0 ? "text-emerald-400" : "text-red-400")}>
+              전년比 {fmtPct(latest.expYoY)}
+            </span>
+          )}
+          {/* 국가별 최신월 YoY */}
+          {resp.byCountry.filter(c => c.trend?.latest?.expYoY != null).map(c => (
+            <span key={c.code} className="text-xs text-muted-foreground">
+              {c.label} <span className={cn("font-medium", (c.trend!.latest!.expYoY ?? 0) >= 0 ? "text-emerald-400" : "text-red-400")}>{fmtPct(c.trend!.latest!.expYoY)}</span>
+            </span>
+          ))}
+        </div>
+
+        {/* 범례 */}
+        <div className="flex gap-4 text-xs text-muted-foreground">
+          <span className="flex items-center gap-1"><span className="inline-block w-3 h-1.5 rounded bg-blue-400" />월 수출액($B)</span>
+          <span className="flex items-center gap-1"><span className="inline-block w-3 h-1.5 rounded bg-amber-400" />전년동월비(%)</span>
+        </div>
+
+        <ResponsiveContainer width="100%" height={220}>
+          <ComposedChart data={chartData} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+            <XAxis dataKey="ym" tick={{ fill: "var(--fg-4)", fontSize: 10 }} tickLine={false} axisLine={false} interval={2} />
+            <YAxis yAxisId="exp" tick={{ fill: "var(--fg-4)", fontSize: 10 }} tickLine={false} axisLine={false} width={40}
+              tickFormatter={(v: number) => `$${v.toFixed(0)}B`} />
+            <YAxis yAxisId="yoy" orientation="right" tick={{ fill: "var(--fg-4)", fontSize: 10 }} tickLine={false} axisLine={false} width={40}
+              tickFormatter={(v: number) => `${v.toFixed(0)}%`} />
+            <Tooltip
+              contentStyle={{ background: "var(--bg-2)", border: "1px solid var(--border)", borderRadius: 8, fontSize: 11 }}
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              formatter={(value: any, name: any) => name === "exp"
+                ? [`$${(value as number).toFixed(2)}B`, "월 수출액"]
+                : [value == null ? "—" : `${(value as number) >= 0 ? "+" : ""}${(value as number).toFixed(1)}%`, "전년동월비"]}
+            />
+            <ReferenceLine yAxisId="yoy" y={0} stroke="var(--border)" strokeWidth={1} />
+            <Bar yAxisId="exp" dataKey="exp" fill="#60a5fa" radius={[2, 2, 0, 0]} maxBarSize={18} />
+            <Line yAxisId="yoy" type="monotone" dataKey="yoy" stroke="#fbbf24" strokeWidth={2} dot={false} connectNulls />
+          </ComposedChart>
+        </ResponsiveContainer>
+
+        <p className="text-xs text-muted-foreground">
+          종목 실적의 선행지표 — 대표 품목({resp.item})의 월별 수출 증감입니다. 개별 기업 실적과 정확히 일치하지 않을 수 있습니다.
+        </p>
+      </div>
+    </Wrapper>
   );
 }
 
@@ -992,6 +1106,9 @@ export default function StockDetailPage({
           </div>
         </div>
       )}
+
+      {/* 수출 추이 (한국 수출주 전용 — 비수출주는 자동 숨김) */}
+      {isKorean && <ExportTrendChart ticker={ticker} />}
 
       {/* 피어 비교 */}
       <div className="card">
