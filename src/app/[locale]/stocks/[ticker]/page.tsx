@@ -26,6 +26,7 @@ import type { StockPeersResponse, PeerItem, PeerRankingItem } from "@/app/api/st
 import type { KrxStockInvestorDay } from "@/lib/krx";
 import type { ExportTrendResponse } from "@/app/api/export-trend/route";
 import type { StockEarningsResponse } from "@/app/api/stock-earnings/route";
+import type { StockResearchResponse } from "@/app/api/stock-research/route";
 
 // ─── 유틸 ────────────────────────────────────────────────────────────────────
 
@@ -843,6 +844,107 @@ function AiSummaryCard({ data, ticker, isKorean }: { data: StockDetailResponse; 
   );
 }
 
+// ─── 경량 마크다운 렌더러 ─────────────────────────────────────────────────────
+
+function MdLite({ text }: { text: string }) {
+  const strip = (s: string) => s.replace(/\*\*(.*?)\*\*/g, "$1").replace(/`(.*?)`/g, "$1");
+  return (
+    <div className="space-y-0.5">
+      {text.split("\n").map((line, i) => {
+        if (line.startsWith("### ")) return <h4 key={i} className="mt-3 mb-1 text-sm font-semibold">{strip(line.slice(4))}</h4>;
+        if (line.startsWith("## ")) return <h3 key={i} className="mt-4 mb-1 text-base font-bold">{strip(line.slice(3))}</h3>;
+        if (line.startsWith("- ") || line.startsWith("* ")) return <li key={i} className="ml-4 list-disc text-sm leading-relaxed">{strip(line.slice(2))}</li>;
+        if (line.match(/^\d+\.\s/)) return <li key={i} className="ml-4 list-decimal text-sm leading-relaxed">{strip(line.replace(/^\d+\.\s/, ""))}</li>;
+        if (line === "---") return <hr key={i} className="my-3" style={{ borderColor: "var(--border)" }} />;
+        if (line.trim()) return <p key={i} className="text-sm leading-relaxed text-muted-foreground">{strip(line)}</p>;
+        return <div key={i} className="h-2" />;
+      })}
+    </div>
+  );
+}
+
+// ─── AI 심층 리서치 에이전트 (버튼 클릭 · pull) ───────────────────────────────
+
+function AiResearchCard({ ticker, name }: { ticker: string; name: string }) {
+  const [resp, setResp] = useState<StockResearchResponse | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const generate = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/stock-research", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ticker, name }),
+      });
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        throw new Error(j.error ?? "리서치 실패");
+      }
+      setResp(await res.json());
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "리서치 실패");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const stanceMeta: Record<string, { label: string; cls: string }> = {
+    bullish: { label: "강세 우위", cls: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30" },
+    neutral: { label: "중립", cls: "bg-amber-500/15 text-amber-400 border-amber-500/30" },
+    bearish: { label: "약세 우위", cls: "bg-red-500/15 text-red-400 border-red-500/30" },
+  };
+
+  return (
+    <div className="card">
+      <div className="card-head">
+        <div className="flex items-center gap-2">
+          <h3 className="card-title">AI 심층 리서치</h3>
+          <span className="text-xs text-muted-foreground font-normal">에이전트 · 뉴스·애널리스트·실적·수출·웹</span>
+          {resp && (
+            <span className={cn("badge border text-xs", stanceMeta[resp.stance]?.cls)}>{stanceMeta[resp.stance]?.label}</span>
+          )}
+        </div>
+        <button className="btn btn-sm" onClick={generate} disabled={loading}>
+          <RefreshCw className={cn("h-3.5 w-3.5", loading && "animate-spin")} />
+          <span>{loading ? "조사 중…" : resp ? "다시 조사" : "리서치 생성"}</span>
+        </button>
+      </div>
+      <div className="card-body card-body-padded">
+        {error && <p className="text-sm text-red-400">{error}</p>}
+        {loading && !resp && (
+          <p className="text-sm text-muted-foreground">에이전트가 뉴스·애널리스트·실적·수출 데이터를 자율 조사 중입니다. 20~60초 걸릴 수 있어요…</p>
+        )}
+        {!resp && !error && !loading && (
+          <p className="text-sm text-muted-foreground">AI 에이전트가 여러 소스를 직접 조사해 강세/약세 논거와 리포트를 만듭니다.</p>
+        )}
+        {resp && (
+          <div className="space-y-4">
+            <div className="grid gap-3 md:grid-cols-2">
+              <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-3">
+                <p className="mb-1.5 text-xs font-semibold text-emerald-400">▲ 강세 요인</p>
+                {resp.bullish.length ? (
+                  <ul className="space-y-1">{resp.bullish.map((b, i) => <li key={i} className="text-sm leading-relaxed">· {b}</li>)}</ul>
+                ) : <p className="text-sm text-muted-foreground">—</p>}
+              </div>
+              <div className="rounded-lg border border-red-500/20 bg-red-500/5 p-3">
+                <p className="mb-1.5 text-xs font-semibold text-red-400">▼ 약세 요인</p>
+                {resp.bearish.length ? (
+                  <ul className="space-y-1">{resp.bearish.map((b, i) => <li key={i} className="text-sm leading-relaxed">· {b}</li>)}</ul>
+                ) : <p className="text-sm text-muted-foreground">—</p>}
+              </div>
+            </div>
+            {resp.report_md && <MdLite text={resp.report_md} />}
+            <p className="text-xs text-muted-foreground">🤖 에이전트 분석 (도구 {resp.toolCalls}회 호출) · 투자 판단 참고용, 정확성 보장 안 함.</p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ─── 메인 페이지 ──────────────────────────────────────────────────────────────
 
 export default function StockDetailPage({
@@ -1379,6 +1481,9 @@ export default function StockDetailPage({
           </div>
         </div>
       )}
+
+      {/* AI 심층 리서치 에이전트 (버튼 생성) */}
+      <AiResearchCard ticker={ticker} name={data.name} />
     </div>
   );
 }
