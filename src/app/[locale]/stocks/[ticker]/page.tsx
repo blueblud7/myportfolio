@@ -25,6 +25,7 @@ import type { StockDetailResponse } from "@/app/api/stock-detail/route";
 import type { StockPeersResponse, PeerItem, PeerRankingItem } from "@/app/api/stock-peers/route";
 import type { KrxStockInvestorDay } from "@/lib/krx";
 import type { ExportTrendResponse } from "@/app/api/export-trend/route";
+import type { StockEarningsResponse } from "@/app/api/stock-earnings/route";
 
 // ─── 유틸 ────────────────────────────────────────────────────────────────────
 
@@ -612,6 +613,123 @@ function ExportTrendChart({ ticker }: { ticker: string }) {
         </p>
       </div>
     </Wrapper>
+  );
+}
+
+// ─── 분기 실적 추이 + EPS 서프라이즈 (미국 종목) ──────────────────────────────
+
+function QuarterlyEarningsChart({ ticker }: { ticker: string }) {
+  const [resp, setResp] = useState<StockEarningsResponse | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    setLoading(true);
+    fetch(`/api/stock-earnings?ticker=${encodeURIComponent(ticker)}`)
+      .then(r => r.json())
+      .then((d: StockEarningsResponse) => setResp(d))
+      .catch(() => setResp(null))
+      .finally(() => setLoading(false));
+  }, [ticker]);
+
+  if (loading) return <div className="h-48 animate-pulse rounded-lg bg-muted/30" />;
+  if (!resp || !resp.supported || resp.quarters.length === 0) return null;
+
+  const qs = resp.quarters;
+  const chartData = qs.map(q => ({
+    q: q.quarter.replace(/(\dQ)(\d{4})/, "$2 $1"), // "2025 1Q"
+    actual: q.epsActual,
+    estimate: q.epsEstimate,
+    surprise: q.surprisePct,
+  }));
+  const beats = qs.filter(q => q.surprisePct != null && q.surprisePct > 0).length;
+  const counted = qs.filter(q => q.surprisePct != null).length;
+  const last = qs[qs.length - 1];
+
+  return (
+    <div className="card">
+      <div className="card-head">
+        <div className="flex items-center gap-2">
+          <h3 className="card-title">분기 실적 · EPS 서프라이즈</h3>
+          <span className="text-xs text-muted-foreground font-normal">Yahoo</span>
+        </div>
+      </div>
+      <div className="card-body card-body-padded">
+        <div className="space-y-3">
+          {/* 요약 */}
+          <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1 text-sm">
+            {last.surprisePct != null && (
+              <span>
+                최신({last.quarter}) 서프라이즈{" "}
+                <span className={cn("font-semibold tabular-nums", last.surprisePct >= 0 ? "text-emerald-400" : "text-red-400")}>
+                  {fmtPct(last.surprisePct)}
+                </span>
+              </span>
+            )}
+            {counted > 0 && (
+              <span className="text-muted-foreground">
+                최근 {counted}분기 중 <span className="font-medium text-emerald-400">{beats}회</span> 컨센서스 상회
+              </span>
+            )}
+          </div>
+
+          {/* 범례 */}
+          <div className="flex gap-4 text-xs text-muted-foreground">
+            <span className="flex items-center gap-1"><span className="inline-block w-3 h-1.5 rounded bg-blue-400" />EPS 실적</span>
+            <span className="flex items-center gap-1"><span className="inline-block w-3 h-1.5 rounded bg-zinc-500" />EPS 컨센서스</span>
+            <span className="flex items-center gap-1"><span className="inline-block w-3 h-1.5 rounded bg-amber-400" />서프라이즈(%)</span>
+          </div>
+
+          <ResponsiveContainer width="100%" height={220}>
+            <ComposedChart data={chartData} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+              <XAxis dataKey="q" tick={{ fill: "var(--fg-4)", fontSize: 10 }} tickLine={false} axisLine={false} />
+              <YAxis yAxisId="eps" tick={{ fill: "var(--fg-4)", fontSize: 10 }} tickLine={false} axisLine={false} width={40} />
+              <YAxis yAxisId="sp" orientation="right" tick={{ fill: "var(--fg-4)", fontSize: 10 }} tickLine={false} axisLine={false} width={40}
+                tickFormatter={(v: number) => `${v.toFixed(0)}%`} />
+              <Tooltip
+                contentStyle={{ background: "var(--bg-2)", border: "1px solid var(--border)", borderRadius: 8, fontSize: 11 }}
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                formatter={(value: any, name: any) => {
+                  if (value == null) return ["—", name];
+                  if (name === "surprise") return [`${(value as number) >= 0 ? "+" : ""}${(value as number).toFixed(1)}%`, "서프라이즈"];
+                  return [(value as number).toFixed(2), name === "actual" ? "EPS 실적" : "EPS 컨센서스"];
+                }}
+              />
+              <ReferenceLine yAxisId="sp" y={0} stroke="var(--border)" strokeWidth={1} />
+              <Bar yAxisId="eps" dataKey="estimate" fill="#71717a" radius={[2, 2, 0, 0]} maxBarSize={14} />
+              <Bar yAxisId="eps" dataKey="actual" fill="#60a5fa" radius={[2, 2, 0, 0]} maxBarSize={14} />
+              <Line yAxisId="sp" type="monotone" dataKey="surprise" stroke="#fbbf24" strokeWidth={2} dot={{ r: 2 }} connectNulls />
+            </ComposedChart>
+          </ResponsiveContainer>
+
+          {/* 분기 테이블 (매출 있으면 포함) */}
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="border-b border-border/50 text-muted-foreground">
+                  <th className="py-1.5 text-left font-medium">분기</th>
+                  <th className="py-1.5 text-right font-medium">EPS 실적</th>
+                  <th className="py-1.5 text-right font-medium">컨센서스</th>
+                  <th className="py-1.5 text-right font-medium">서프라이즈</th>
+                </tr>
+              </thead>
+              <tbody>
+                {qs.slice().reverse().map(q => (
+                  <tr key={q.quarter} className="border-b border-border/30">
+                    <td className="py-1 font-mono text-muted-foreground">{q.quarter}</td>
+                    <td className="py-1 text-right tabular-nums font-mono">{q.epsActual != null ? q.epsActual.toFixed(2) : "—"}</td>
+                    <td className="py-1 text-right tabular-nums font-mono text-muted-foreground">{q.epsEstimate != null ? q.epsEstimate.toFixed(2) : "—"}</td>
+                    <td className={cn("py-1 text-right tabular-nums font-mono", q.surprisePct == null ? "text-muted-foreground" : q.surprisePct >= 0 ? "text-emerald-400" : "text-red-400")}>
+                      {q.surprisePct != null ? fmtPct(q.surprisePct) : "—"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -1203,6 +1321,9 @@ export default function StockDetailPage({
           </Tabs>
         </div>
       </div>
+
+      {/* 분기 실적 · EPS 서프라이즈 (미국 종목 — 데이터 없으면 자동 숨김) */}
+      <QuarterlyEarningsChart ticker={ticker} />
 
       {/* 투자자별 매매동향 (한국 주식 전용) */}
       {isKorean && (
