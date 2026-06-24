@@ -197,6 +197,11 @@ export interface AccountDailyValue {
 export async function getAccountDailyValues(userId: number): Promise<Map<number, AccountDailyValue>> {
   const sql = getDb();
   const exchangeRate = await getLatestExchangeRate();
+  // 전일 환율: 오늘(KST) 이전 가장 최근 기록. 없으면 오늘 환율(=FX 변동 0).
+  const [prevRateRow] = await sql`
+    SELECT rate FROM exchange_rates WHERE date < ${todayKST()} ORDER BY date DESC LIMIT 1
+  ` as { rate: number }[];
+  const prevRate = prevRateRow?.rate ?? exchangeRate;
   const values = new Map<number, AccountDailyValue>();
   const add = (id: number, current: number, prev: number) => {
     const v = values.get(id) ?? { current: 0, prev: 0 };
@@ -239,7 +244,9 @@ export async function getAccountDailyValues(userId: number): Promise<Map<number,
     const cost = d.avg_cost ?? 0;
     const manual = d.manual_price;
     const live = qMap.get(raw.ticker);
+    // 현재값은 오늘 환율, 전일값은 어제 환율 → 일간 변화에 FX 변동까지 포함
     const mul = raw.currency === "USD" ? exchangeRate : 1;
+    const prevMul = raw.currency === "USD" ? prevRate : 1;
 
     const price =
       raw.ticker === "CASH" ? cost :
@@ -249,7 +256,7 @@ export async function getAccountDailyValues(userId: number): Promise<Map<number,
     const changePct = (raw.ticker === "CASH" || manual != null) ? 0 : (live?.changePct ?? 0);
     const prevPrice = changePct !== 0 ? price / (1 + changePct / 100) : price;
 
-    add(raw.account_id, qty * price * mul, qty * prevPrice * mul);
+    add(raw.account_id, qty * price * mul, qty * prevPrice * prevMul);
   }
 
   // 은행 계좌: 최신 잔액 (일간 변동 없음 → 전일=현재)
@@ -263,8 +270,12 @@ export async function getAccountDailyValues(userId: number): Promise<Map<number,
     ` as { balance: number | null; balance_enc: string | null }[];
     if (!latest) continue;
     const bal = latest.balance_enc !== null ? (decryptNum(latest.balance_enc) ?? 0) : (latest.balance ?? 0);
-    const krw = acct.currency === "USD" ? bal * exchangeRate : bal;
-    add(acct.id, krw, krw);
+    // 잔액은 그대로지만 USD 계좌는 환율 변동만큼 원화 평가액이 일간 변함
+    if (acct.currency === "USD") {
+      add(acct.id, bal * exchangeRate, bal * prevRate);
+    } else {
+      add(acct.id, bal, bal);
+    }
   }
 
   return values;
