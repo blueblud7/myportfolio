@@ -158,7 +158,8 @@ export function useAccountDailyChange() {
   return useSWR<import("@/app/api/account-snapshots/daily/route").AccountDailyChange[]>(
     "/api/account-snapshots/daily",
     arrayFetcher,
-    { revalidateOnFocus: false, dedupingInterval: 300_000 }
+    // 현재값이 실시간 시세 기반이므로 시세 갱신 주기(5분)·포커스 복귀 시 함께 재검증
+    { revalidateOnFocus: true, refreshInterval: 5 * 60 * 1000, dedupingInterval: 60_000 }
   );
 }
 

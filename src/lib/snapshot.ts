@@ -1,8 +1,9 @@
 import { getDb } from "./db";
 import { getLatestExchangeRate } from "./exchange-rate";
-import { todayPST } from "./tz";
+import { todayKST } from "./tz";
 import { encryptNum, decryptNum } from "./crypto";
 import { decryptHoldingFields } from "./holdings-crypto";
+import { getQuotes } from "./yahoo-finance";
 
 async function initSnapshotColumn(sql: ReturnType<typeof getDb>) {
   await sql`ALTER TABLE snapshots ADD COLUMN IF NOT EXISTS user_id INTEGER REFERENCES users(id)`;
@@ -46,7 +47,7 @@ async function initSnapshotColumn(sql: ReturnType<typeof getDb>) {
 
 export async function createDailySnapshot(userId: number): Promise<boolean> {
   const sql = getDb();
-  const today = todayPST();
+  const today = todayKST();
   await initSnapshotColumn(sql);
 
   const existing = await sql`SELECT id FROM snapshots WHERE date = ${today} AND user_id = ${userId}`;
@@ -121,7 +122,7 @@ export async function createDailySnapshot(userId: number): Promise<boolean> {
 
 export async function createAccountSnapshots(userId: number): Promise<void> {
   const sql = getDb();
-  const today = todayPST();
+  const today = todayKST();
   const exchangeRate = await getLatestExchangeRate();
 
   const accounts = await sql`SELECT id, type, currency FROM accounts WHERE user_id = ${userId}` as {
@@ -179,6 +180,94 @@ export async function createAccountSnapshots(userId: number): Promise<void> {
       ON CONFLICT (account_id, date) DO UPDATE SET value_krw_enc = EXCLUDED.value_krw_enc
     `;
   }
+}
+
+export interface AccountDailyValue {
+  current: number; // 현재 평가액 (KRW)
+  prev: number;    // 전일 종가 기준 평가액 (KRW)
+}
+
+/**
+ * 계좌별 "현재"·"전일 종가" 평가액(KRW)을 실시간 시세로 계산.
+ *   - 주식: 실시간 시세(getQuotes)의 등락률로 전일 종가를 역산 → 스냅샷 불필요.
+ *           manual_price는 전일=현재(변동 0), 실패 시 price_history fallback(변동 0).
+ *   - 은행: 최신 잔액 (전일=현재, 일간 변동 없음).
+ * "오늘 변화량" = current − prev. 종목별 실제 전일 종가 기준이라 장중 실시간 갱신 + KST 정확.
+ */
+export async function getAccountDailyValues(userId: number): Promise<Map<number, AccountDailyValue>> {
+  const sql = getDb();
+  const exchangeRate = await getLatestExchangeRate();
+  const values = new Map<number, AccountDailyValue>();
+  const add = (id: number, current: number, prev: number) => {
+    const v = values.get(id) ?? { current: 0, prev: 0 };
+    v.current += current;
+    v.prev += prev;
+    values.set(id, v);
+  };
+
+  await sql`ALTER TABLE holdings ADD COLUMN IF NOT EXISTS quantity_enc TEXT`.catch(() => {});
+  await sql`ALTER TABLE holdings ADD COLUMN IF NOT EXISTS avg_cost_enc TEXT`.catch(() => {});
+  await sql`ALTER TABLE holdings ADD COLUMN IF NOT EXISTS manual_price_enc TEXT`.catch(() => {});
+
+  const holdingsRaw = await sql`
+    SELECT h.account_id, h.ticker, h.currency,
+           h.quantity, h.quantity_enc, h.avg_cost, h.avg_cost_enc,
+           h.manual_price, h.manual_price_enc,
+           COALESCE(p.price, 0) as price_market
+    FROM holdings h
+    JOIN accounts a ON h.account_id = a.id
+    LEFT JOIN price_history p ON h.ticker = p.ticker
+      AND p.date = (SELECT MAX(date) FROM price_history WHERE ticker = h.ticker)
+    WHERE a.type = 'stock' AND a.user_id = ${userId}
+  ` as { account_id: number; ticker: string; currency: string;
+         quantity: number | null; quantity_enc: string | null;
+         avg_cost: number | null; avg_cost_enc: string | null;
+         manual_price: number | null; manual_price_enc: string | null;
+         price_market: number }[];
+
+  const decrypted = holdingsRaw.map((h) => ({ raw: h, d: decryptHoldingFields(h) }));
+  const liveTickers = [...new Set(
+    decrypted
+      .filter((x) => x.raw.ticker !== "CASH" && (x.d.manual_price === null || x.d.manual_price === undefined))
+      .map((x) => x.raw.ticker),
+  )];
+  const quotes = liveTickers.length > 0 ? await getQuotes(liveTickers) : [];
+  const qMap = new Map(quotes.map((q) => [q.ticker, q]));
+
+  for (const { raw, d } of decrypted) {
+    const qty = d.quantity ?? 0;
+    const cost = d.avg_cost ?? 0;
+    const manual = d.manual_price;
+    const live = qMap.get(raw.ticker);
+    const mul = raw.currency === "USD" ? exchangeRate : 1;
+
+    const price =
+      raw.ticker === "CASH" ? cost :
+      manual !== null && manual !== undefined && manual > 0 ? manual :
+      (live?.price ?? (raw.price_market || cost));
+    // 전일 종가 = 현재가 / (1 + 등락률). 라이브 시세 없으면 변동 0(전일=현재).
+    const changePct = (raw.ticker === "CASH" || manual != null) ? 0 : (live?.changePct ?? 0);
+    const prevPrice = changePct !== 0 ? price / (1 + changePct / 100) : price;
+
+    add(raw.account_id, qty * price * mul, qty * prevPrice * mul);
+  }
+
+  // 은행 계좌: 최신 잔액 (일간 변동 없음 → 전일=현재)
+  const bankAccounts = await sql`
+    SELECT id, currency FROM accounts WHERE user_id = ${userId} AND type = 'bank'
+  ` as { id: number; currency: string }[];
+  for (const acct of bankAccounts) {
+    const [latest] = await sql`
+      SELECT balance, balance_enc FROM bank_balances
+      WHERE account_id = ${acct.id} ORDER BY date DESC LIMIT 1
+    ` as { balance: number | null; balance_enc: string | null }[];
+    if (!latest) continue;
+    const bal = latest.balance_enc !== null ? (decryptNum(latest.balance_enc) ?? 0) : (latest.balance ?? 0);
+    const krw = acct.currency === "USD" ? bal * exchangeRate : bal;
+    add(acct.id, krw, krw);
+  }
+
+  return values;
 }
 
 interface SnapshotRow {

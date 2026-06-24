@@ -20,7 +20,7 @@ export default function AccountsPage() {
   const { data: accounts, mutate } = useAccounts();
   const { data: holdings, mutate: mutateHoldings } = useHoldings(undefined, { refreshInterval: 5 * 60 * 1000 });
   const { data: exchangeRateData } = useExchangeRate();
-  const { data: dailyChanges } = useAccountDailyChange();
+  const { data: dailyChanges, mutate: mutateDaily } = useAccountDailyChange();
   const [formOpen, setFormOpen] = useState(false);
   const [editingAccount, setEditingAccount] = useState<Account | null>(null);
   const [refreshing, setRefreshing] = useState(false);
@@ -113,13 +113,15 @@ export default function AccountsPage() {
       } else {
         await mutateHoldings();
       }
+      // 현재값이 실시간 시세 기반이므로 "오늘 변화"도 함께 재계산
+      await mutateDaily();
     } catch (e) {
       setRefreshResult({ updated: 0, failed: tickers });
       console.error("refresh failed", e);
     } finally {
       setRefreshing(false);
     }
-  }, [holdings, mutateHoldings]);
+  }, [holdings, mutateHoldings, mutateDaily]);
 
   const initialRefreshed = useRef(false);
   useEffect(() => {
@@ -339,7 +341,7 @@ export default function AccountsPage() {
 
       {totalDailyChange && (
         <div className="flex items-center justify-between rounded-lg border bg-card px-4 py-2.5 text-sm">
-          <span className="text-muted-foreground">오늘 전체 변화</span>
+          <span className="text-muted-foreground">오늘 전체 변화 <span className="text-xs opacity-70">(전일 종가 대비·KST)</span></span>
           <span className={cn("font-semibold tabular-nums", gainLossColor(totalDailyChange.change))}>
             <Money
               value={currency === "USD" ? totalDailyChange.change / exchangeRate : totalDailyChange.change}
