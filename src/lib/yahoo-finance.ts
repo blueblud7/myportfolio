@@ -104,6 +104,32 @@ export async function getQuote(ticker: string): Promise<QuoteResult | null> {
 
   // 해외 종목: Yahoo Finance
   const symbol = resolveYahooSymbol(ticker);
+
+  // 1차: yf2.quote — 프리/애프터장 반영 (marketState + pre/postMarketPrice)
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const q = (await yf2.quote(symbol)) as any;
+    const reg = q?.regularMarketPrice as number | undefined;
+    if (reg != null) {
+      const state = q.marketState as string | undefined; // PRE/REGULAR/POST/POSTPOST/CLOSED
+      const prevClose = (q.regularMarketPreviousClose ?? reg) as number;
+      // 연장거래 가격을 현재가로 사용, 변동률은 "전일 정규장 종가 대비"로 일관 계산
+      const price =
+        state === "PRE" && q.preMarketPrice != null ? (q.preMarketPrice as number) :
+        (state === "POST" || state === "POSTPOST") && q.postMarketPrice != null ? (q.postMarketPrice as number) :
+        reg;
+      const changePct = prevClose ? ((price - prevClose) / prevClose) * 100 : (q.regularMarketChangePercent as number) ?? 0;
+      return {
+        ticker,
+        price,
+        changePct,
+        currency: (q.currency as string) ?? "USD",
+        name: (q.shortName ?? q.longName ?? symbol) as string,
+      };
+    }
+  } catch { /* chart fallback */ }
+
+  // 2차: chart fallback (정규장 기준)
   const data = await fetchYahooChart(symbol);
   if (!data) return null;
   const meta = data.meta;
