@@ -615,6 +615,116 @@ function ExportTrendChart({ ticker }: { ticker: string }) {
   );
 }
 
+// ─── AI 종합요약 (버튼 클릭 시 생성 · pull) ───────────────────────────────────
+
+function AiSummaryCard({ data, ticker, isKorean }: { data: StockDetailResponse; ticker: string; isKorean: boolean }) {
+  const [summary, setSummary] = useState<import("@/app/api/stock-summary/route").StockSummaryResponse | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const generate = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      // 수출 모멘텀(한국 수출주만) 함께 첨부
+      let exportTrend: { item: string; latestYymm: string; latestUsd: number; latestYoY: number | null } | null = null;
+      if (isKorean) {
+        try {
+          const er = await fetch(`/api/export-trend?ticker=${encodeURIComponent(ticker)}&months=3`).then(r => r.json()) as ExportTrendResponse;
+          const l = er.total?.latest;
+          if (er.supported && er.item && l) {
+            exportTrend = { item: er.item, latestYymm: l.yymm, latestUsd: l.expUsd, latestYoY: l.expYoY };
+          }
+        } catch { /* 무시 */ }
+      }
+
+      const metrics = {
+        price: data.price,
+        changePct: data.changePct,
+        "52주범위내위치%": data.fiftyTwoWeekHigh > data.fiftyTwoWeekLow
+          ? Math.round(((data.price - data.fiftyTwoWeekLow) / (data.fiftyTwoWeekHigh - data.fiftyTwoWeekLow)) * 100)
+          : null,
+        PER: data.trailingPE, 선행PER: data.forwardPE, PBR: data.priceToBook,
+        PSR: data.priceToSales, EVEBITDA: data.evToEbitda, PEG: data.pegRatio,
+        ROE: data.returnOnEquity, ROA: data.returnOnAssets,
+        매출총이익률: data.grossMargins, 영업이익률: data.operatingMargins, 순이익률: data.profitMargins,
+        매출성장률: data.revenueGrowth, 이익성장률: data.earningsGrowth,
+        배당수익률: data.dividendYield, 베타: data.beta, 시가총액: data.marketCap,
+        섹터: data.sector, 산업: data.industry,
+      };
+
+      const res = await fetch("/api/stock-summary", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ticker: data.ticker, name: data.name, currency: data.currency, metrics, exportTrend }),
+      });
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        throw new Error(j.error ?? "생성 실패");
+      }
+      setSummary(await res.json());
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "생성 실패");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const stanceMeta: Record<string, { label: string; cls: string }> = {
+    bullish: { label: "긍정적", cls: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30" },
+    neutral: { label: "중립", cls: "bg-amber-500/15 text-amber-400 border-amber-500/30" },
+    bearish: { label: "부정적", cls: "bg-red-500/15 text-red-400 border-red-500/30" },
+  };
+  const toneCls: Record<string, string> = {
+    positive: "text-emerald-400", negative: "text-red-400", neutral: "text-muted-foreground",
+  };
+
+  return (
+    <div className="card">
+      <div className="card-head">
+        <div className="flex items-center gap-2">
+          <h3 className="card-title">AI 종합요약</h3>
+          {summary && (
+            <span className={cn("badge border text-xs", stanceMeta[summary.stance]?.cls)}>
+              {stanceMeta[summary.stance]?.label}
+            </span>
+          )}
+        </div>
+        <button className="btn btn-sm" onClick={generate} disabled={loading}>
+          <RefreshCw className={cn("h-3.5 w-3.5", loading && "animate-spin")} />
+          <span>{loading ? "생성 중…" : summary ? "다시 생성" : "생성"}</span>
+        </button>
+      </div>
+      <div className="card-body card-body-padded">
+        {error && <p className="text-sm text-red-400">{error}</p>}
+        {!summary && !error && (
+          <p className="text-sm text-muted-foreground">
+            밸류에이션·성장·수익성{isKorean ? "·수출 모멘텀" : ""}을 종합한 AI 의견을 생성합니다.
+          </p>
+        )}
+        {summary && (
+          <div className="space-y-3">
+            <p className="text-sm leading-relaxed">{summary.thesis}</p>
+            {summary.signals.length > 0 && (
+              <div className="flex flex-col gap-1.5">
+                {summary.signals.map((s, i) => (
+                  <div key={i} className="flex items-baseline gap-2 text-sm">
+                    <span className={cn("font-medium shrink-0", toneCls[s.tone])}>
+                      {s.tone === "positive" ? "▲" : s.tone === "negative" ? "▼" : "•"} {s.label}
+                    </span>
+                    <span className="text-muted-foreground">{s.detail}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+            <p className="text-xs text-muted-foreground">AI 생성 · 투자 판단의 참고용이며 정확성을 보장하지 않습니다.</p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ─── 메인 페이지 ──────────────────────────────────────────────────────────────
 
 export default function StockDetailPage({
@@ -749,6 +859,9 @@ export default function StockDetailPage({
           </div>
         </div>
       </div>
+
+      {/* AI 종합요약 (버튼 생성) */}
+      <AiSummaryCard data={data} ticker={ticker} isKorean={isKorean} />
 
       {/* 요약 카드 */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
