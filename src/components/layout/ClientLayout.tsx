@@ -27,6 +27,7 @@ const GATE_META: Record<string, { title: string; desc: string; bullets: string[]
   // 연구실
   "/strategy-lab":  { title: "전략 연구소", desc: "나만의 투자 전략을 설계·검증하세요.", bullets: ["전략 규칙 설계", "조건 조합 테스트", "AI 전략 제안"] },
   "/backtest":      { title: "백테스트", desc: "과거 데이터로 전략 성과를 검증하세요.", bullets: ["기간별 수익률", "낙폭·샤프 분석", "벤치마크 비교"] },
+  "/threshold-lab": { title: "임계값 매매 랩", desc: "X% 하락 매수·Y% 상승 매도 규칙을 검증하고 최적 임계값을 찾으세요.", bullets: ["임계값 백테스트", "기간별 변동성 추이", "임계값 그리드 추천"] },
   "/portfolio-mix": { title: "포트폴리오 믹스", desc: "자산 배분 조합을 시뮬레이션하세요.", bullets: ["비중 최적화", "효율적 프론티어", "리스크-수익 분석"] },
   "/position-lab":  { title: "포지션 사이징", desc: "리스크 기반 매수 규모를 계산하세요.", bullets: ["켈리·고정비율", "손절 기반 사이징", "분할 매수 설계"] },
   "/etf-flow":      { title: "ETF 흐름", desc: "ETF 자금 유출입 흐름을 추적하세요.", bullets: ["순유입·유출 추이", "섹터별 자금 흐름", "관심 ETF 모니터링"] },

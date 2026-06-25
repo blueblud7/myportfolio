@@ -81,6 +81,7 @@ const NAV = [
     items: [
       { href: "/strategy-lab",   label: "전략 연구소",     icon: "microscope" },
       { href: "/backtest",       label: "백테스트",        icon: "history"    },
+      { href: "/threshold-lab",  label: "임계값 매매 랩",  icon: "target"     },
       { href: "/portfolio-mix",  label: "포트폴리오 믹스", icon: "pie"        },
       { href: "/position-lab",   label: "포지션 사이징",   icon: "scale"      },
       { href: "/etf-flow",       label: "ETF 흐름",        icon: "layers"     },

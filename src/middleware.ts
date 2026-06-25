@@ -36,6 +36,7 @@ const PUBLIC_PATHS = [
   "/fomo-agents",
   "/strategy-lab",
   "/backtest",
+  "/threshold-lab",
   "/portfolio-mix",
   "/calculator",
   "/compare",
