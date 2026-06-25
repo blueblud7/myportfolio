@@ -61,11 +61,13 @@ function SortIcon({ active, dir }: { active: boolean; dir: "asc" | "desc" }) {
 
 // ─── 모바일 카드 ─────────────────────────────────────────────────────────────
 function MobileHoldingCard({
-  h, locale, isPrivate, onEdit, onDelete,
+  h, locale, isPrivate, accountCurrency, exchangeRate, onEdit, onDelete,
 }: {
   h: HoldingRow;
   locale: string;
   isPrivate: boolean;
+  accountCurrency: string;
+  exchangeRate: number;
   onEdit: (h: HoldingRow) => void;
   onDelete: (id: number) => void;
 }) {
@@ -76,6 +78,8 @@ function MobileHoldingCard({
   const gainLoss = marketValue - costBasis;
   const gainLossPct = costBasis > 0 ? (gainLoss / costBasis) * 100 : 0;
 
+  const toAcct = (v: number, c: string) =>
+    c === accountCurrency ? v : c === "USD" ? v * exchangeRate : v / exchangeRate;
   const fmt = (v: number, cur: string) =>
     isPrivate ? MASK : formatCompact(v, cur, locale);
 
@@ -85,12 +89,15 @@ function MobileHoldingCard({
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 3 }}>
         <div style={{ fontWeight: 600, fontSize: 14, minWidth: 0, flex: 1, marginRight: 8, lineHeight: 1.3 }}>
           {h.name}
+          {!isCash && h.currency !== accountCurrency && (
+            <span style={{ fontSize: 10, color: "#60a5fa", marginLeft: 5, fontWeight: 500 }}>{h.currency}</span>
+          )}
           {h.manual_price != null && (
             <span style={{ fontSize: 10, color: "var(--fg-4)", marginLeft: 5, fontWeight: 400 }}>수동</span>
           )}
         </div>
         <div style={{ fontFamily: "var(--font-mono)", fontSize: 14, fontWeight: 600, flexShrink: 0 }}>
-          {fmt(marketValue, h.currency)}
+          {fmt(toAcct(marketValue, h.currency), accountCurrency)}
         </div>
       </div>
 
@@ -112,7 +119,7 @@ function MobileHoldingCard({
               className={gainLossColor(gainLoss)}
               style={{ fontSize: 12, fontFamily: "var(--font-mono)" }}
             >
-              {fmt(gainLoss, h.currency)}
+              {fmt(toAcct(gainLoss, h.currency), accountCurrency)}
             </span>
             <span
               className={gainLossColor(gainLossPct)}
@@ -137,8 +144,8 @@ function MobileHoldingCard({
         <div style={{ display: "flex", flexWrap: "wrap", gap: "2px 12px", marginTop: 5 }}>
           {[
             { label: "수량", val: isPrivate ? MASK : h.quantity.toLocaleString() },
-            { label: "평단", val: fmt(h.avg_cost, h.currency) },
-            h.current_price > 0 ? { label: "현재", val: fmt(h.current_price, h.currency) } : null,
+            { label: "평단", val: fmt(toAcct(h.avg_cost, h.currency), accountCurrency) },
+            h.current_price > 0 ? { label: "현재", val: fmt(toAcct(h.current_price, h.currency), accountCurrency) } : null,
           ].filter(Boolean).map((item) => (
             <span key={item!.label} style={{ fontSize: 11, color: "var(--fg-4)", fontFamily: "var(--font-mono)" }}>
               <span style={{ color: "var(--fg-4)" }}>{item!.label} </span>{item!.val}
@@ -170,6 +177,10 @@ export function HoldingsTable({ holdings, accountCurrency, exchangeRate, onEdit,
   const [sortKey, setSortKey] = useState<SortKey>("marketValue");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
 
+  // 종목 native 통화값 → 계좌 통화로 환산 (한국+미국 혼합 계좌에서 컬럼 단위 통일)
+  const toAcct = (v: number, c: string) =>
+    c === accountCurrency ? v : c === "USD" ? v * exchangeRate : v / exchangeRate;
+
   const handleSort = (key: SortKey) => {
     if (sortKey === key) {
       setSortDir((d) => (d === "asc" ? "desc" : "asc"));
@@ -181,12 +192,12 @@ export function HoldingsTable({ holdings, accountCurrency, exchangeRate, onEdit,
 
   const sorted = useMemo(() => {
     return [...holdings].sort((a, b) => {
-      const aPrice = a.current_price || a.avg_cost;
-      const bPrice = b.current_price || b.avg_cost;
+      const aPrice = toAcct(a.current_price || a.avg_cost, a.currency);
+      const bPrice = toAcct(b.current_price || b.avg_cost, b.currency);
       const aVal = a.quantity * aPrice;
       const bVal = b.quantity * bPrice;
-      const aCost = a.quantity * a.avg_cost;
-      const bCost = b.quantity * b.avg_cost;
+      const aCost = a.quantity * toAcct(a.avg_cost, a.currency);
+      const bCost = b.quantity * toAcct(b.avg_cost, b.currency);
 
       let diff = 0;
       switch (sortKey) {
@@ -206,7 +217,7 @@ export function HoldingsTable({ holdings, accountCurrency, exchangeRate, onEdit,
       }
       return sortDir === "asc" ? diff : -diff;
     });
-  }, [holdings, sortKey, sortDir, locale]);
+  }, [holdings, sortKey, sortDir, locale, accountCurrency, exchangeRate]);
 
   const fmt = (value: number, currency: string) =>
     isPrivate ? MASK : formatCompact(value, currency, locale);
@@ -286,6 +297,11 @@ export function HoldingsTable({ holdings, accountCurrency, exchangeRate, onEdit,
                     <div>
                       <div className="flex items-center gap-1.5 font-medium">
                         {h.name}
+                        {!isCash && h.currency !== accountCurrency && (
+                          <Badge variant="outline" className="text-[10px] px-1 py-0 h-4 border-blue-400/40 text-blue-400">
+                            {h.currency}
+                          </Badge>
+                        )}
                         {isManual && (
                           <Badge variant="outline" className="text-[10px] px-1 py-0 h-4 text-muted-foreground">
                             {t("manual")}
@@ -313,16 +329,16 @@ export function HoldingsTable({ holdings, accountCurrency, exchangeRate, onEdit,
                     {isCash ? "-" : (isPrivate ? MASK : h.quantity.toLocaleString())}
                   </TableCell>
                   <TableCell className="text-right font-mono">
-                    {isCash ? "-" : fmt(h.avg_cost, h.currency)}
+                    {isCash ? "-" : fmt(toAcct(h.avg_cost, h.currency), accountCurrency)}
                   </TableCell>
                   <TableCell className="text-right font-mono">
-                    {isCash ? "-" : (h.current_price > 0 ? fmt(h.current_price, h.currency) : "-")}
+                    {isCash ? "-" : (h.current_price > 0 ? fmt(toAcct(h.current_price, h.currency), accountCurrency) : "-")}
                   </TableCell>
                   <TableCell className="text-right font-mono font-medium">
-                    {fmt(marketValue, h.currency)}
+                    {fmt(toAcct(marketValue, h.currency), accountCurrency)}
                   </TableCell>
                   <TableCell className={cn("text-right font-mono", gainLossColor(gainLoss))}>
-                    {isCash ? "-" : fmt(gainLoss, h.currency)}
+                    {isCash ? "-" : fmt(toAcct(gainLoss, h.currency), accountCurrency)}
                   </TableCell>
                   <TableCell className={cn("text-right font-mono", gainLossColor(gainLossPct))}>
                     {isCash ? "-" : formatPercent(gainLossPct)}
@@ -370,6 +386,8 @@ export function HoldingsTable({ holdings, accountCurrency, exchangeRate, onEdit,
             h={h}
             locale={locale}
             isPrivate={isPrivate}
+            accountCurrency={accountCurrency}
+            exchangeRate={exchangeRate}
             onEdit={onEdit}
             onDelete={onDelete}
           />

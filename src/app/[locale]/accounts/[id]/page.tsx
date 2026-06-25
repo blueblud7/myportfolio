@@ -136,22 +136,24 @@ export default function AccountDetailPage() {
     mutateTransactions();
   };
 
-  const totalValue = holdings?.reduce((sum: number, h: { quantity: number; current_price: number; avg_cost: number }) => {
+  // 합계는 항상 KRW로 정규화 (USD 종목은 환율 곱해서 합산) — 한국+미국 혼합 계좌 대응
+  const fx = (c: string) => (c === "USD" ? exchangeRate : 1);
+  const totalValue = holdings?.reduce((sum: number, h: { quantity: number; current_price: number; avg_cost: number; currency: string }) => {
     const price = h.current_price || h.avg_cost;
-    return sum + h.quantity * price;
+    return sum + h.quantity * price * fx(h.currency);
   }, 0) ?? 0;
 
-  const totalCost = holdings?.reduce((sum: number, h: { quantity: number; avg_cost: number }) => {
-    return sum + h.quantity * h.avg_cost;
+  const totalCost = holdings?.reduce((sum: number, h: { quantity: number; avg_cost: number; currency: string }) => {
+    return sum + h.quantity * h.avg_cost * fx(h.currency);
   }, 0) ?? 0;
 
   const totalGainLoss = totalValue - totalCost;
   const totalGainLossPct = totalCost > 0 ? (totalGainLoss / totalCost) * 100 : 0;
 
-  const totalDailyProfit = holdings?.reduce((sum: number, h: { quantity: number; current_price: number; change_pct: number; ticker: string; avg_cost: number }) => {
+  const totalDailyProfit = holdings?.reduce((sum: number, h: { quantity: number; current_price: number; change_pct: number; ticker: string; avg_cost: number; currency: string }) => {
     if (h.ticker === "CASH") return sum;
     const price = h.current_price || h.avg_cost;
-    return sum + h.quantity * price * ((h.change_pct ?? 0) / 100);
+    return sum + h.quantity * price * ((h.change_pct ?? 0) / 100) * fx(h.currency);
   }, 0) ?? 0;
 
   const holdingsAllocation = useMemo(() => {
@@ -239,9 +241,7 @@ export default function AccountDetailPage() {
           <div className="section-title"><span>{t("valuation")}</span></div>
           <div className="num" style={{ fontSize: "clamp(16px, 4vw, 22px)", fontWeight: 500, letterSpacing: "-0.02em", marginTop: 4 }}>
             <Money
-              value={currency === "USD"
-                ? ((account?.currency ?? "KRW") === "KRW" ? totalValue / exchangeRate : totalValue)
-                : ((account?.currency ?? "KRW") === "USD" ? totalValue * exchangeRate : totalValue)}
+              value={currency === "USD" ? totalValue / exchangeRate : totalValue}
               currency={currency}
             />
           </div>
@@ -250,9 +250,7 @@ export default function AccountDetailPage() {
           <div className="section-title"><span>{t("totalGainLoss")}</span></div>
           <div className={cn("num", gainLossColor(totalGainLoss))} style={{ fontSize: "clamp(16px, 4vw, 22px)", fontWeight: 500, letterSpacing: "-0.02em", marginTop: 4 }}>
             <Money
-              value={currency === "USD"
-                ? ((account?.currency ?? "KRW") === "KRW" ? totalGainLoss / exchangeRate : totalGainLoss)
-                : ((account?.currency ?? "KRW") === "USD" ? totalGainLoss * exchangeRate : totalGainLoss)}
+              value={currency === "USD" ? totalGainLoss / exchangeRate : totalGainLoss}
               currency={currency}
             />
           </div>
@@ -267,9 +265,7 @@ export default function AccountDetailPage() {
           <div className="section-title"><span>{t("dailyProfit")}</span></div>
           <div className={cn("num", gainLossColor(totalDailyProfit))} style={{ fontSize: "clamp(16px, 4vw, 22px)", fontWeight: 500, letterSpacing: "-0.02em", marginTop: 4 }}>
             <Money
-              value={currency === "USD"
-                ? ((account?.currency ?? "KRW") === "KRW" ? totalDailyProfit / exchangeRate : totalDailyProfit)
-                : ((account?.currency ?? "KRW") === "USD" ? totalDailyProfit * exchangeRate : totalDailyProfit)}
+              value={currency === "USD" ? totalDailyProfit / exchangeRate : totalDailyProfit}
               currency={currency}
             />
           </div>
