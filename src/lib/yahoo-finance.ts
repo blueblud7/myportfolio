@@ -111,13 +111,22 @@ export async function getQuote(ticker: string): Promise<QuoteResult | null> {
     const q = (await yf2.quote(symbol)) as any;
     const reg = q?.regularMarketPrice as number | undefined;
     if (reg != null) {
-      const state = q.marketState as string | undefined; // PRE/REGULAR/POST/POSTPOST/CLOSED
+      // marketState: PRE(프리) / REGULAR(정규) / POST·POSTPOST(애프터) / PREPRE(애프터종료~프리시작, 밤) / CLOSED
+      const state = q.marketState as string | undefined;
+      const preMarket = q.preMarketPrice as number | null | undefined;
+      const postMarket = q.postMarketPrice as number | null | undefined;
       const prevClose = (q.regularMarketPreviousClose ?? reg) as number;
-      // 연장거래 가격을 현재가로 사용, 변동률은 "전일 정규장 종가 대비"로 일관 계산
-      const price =
-        state === "PRE" && q.preMarketPrice != null ? (q.preMarketPrice as number) :
-        (state === "POST" || state === "POSTPOST") && q.postMarketPrice != null ? (q.postMarketPrice as number) :
-        reg;
+      // 가장 최근 체결가를 현재가로 사용 (정규장 외에는 연장거래가 우선),
+      // 변동률은 "전일 정규장 종가 대비"로 일관 계산.
+      let price = reg;
+      if (state === "REGULAR") {
+        price = reg;
+      } else if (state === "PRE") {
+        price = preMarket ?? reg;
+      } else {
+        // POST·POSTPOST·PREPRE(밤)·CLOSED → 마지막 연장거래가(애프터 우선, 없으면 프리)
+        price = postMarket ?? preMarket ?? reg;
+      }
       const changePct = prevClose ? ((price - prevClose) / prevClose) * 100 : (q.regularMarketChangePercent as number) ?? 0;
       return {
         ticker,
