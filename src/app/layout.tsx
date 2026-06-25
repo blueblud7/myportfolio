@@ -76,6 +76,11 @@ export const metadata: Metadata = {
     title: SITE_TITLE_DEFAULT,
     description: SITE_DESCRIPTION,
   },
+  verification: {
+    other: {
+      "naver-site-verification": "512e4175d98467648f42f5aad40fb9647438a3be",
+    },
+  },
   robots: {
     index: true,
     follow: true,
