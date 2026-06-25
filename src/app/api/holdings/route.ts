@@ -4,6 +4,7 @@ import { getSessionUser } from "@/lib/auth";
 import { encrypt, encryptNum } from "@/lib/crypto";
 import { decryptHoldingFields, type HoldingEncFields } from "@/lib/holdings-crypto";
 import { getQuotes } from "@/lib/yahoo-finance";
+import { getCurrencyFromTicker } from "@/lib/ticker-resolver";
 
 async function ensureSchema(sql: ReturnType<typeof getDb>) {
   await sql`ALTER TABLE holdings ADD COLUMN IF NOT EXISTS quantity_enc TEXT`;
@@ -34,6 +35,27 @@ async function ensureSchema(sql: ReturnType<typeof getDb>) {
   await sql`INSERT INTO _migrations (name) VALUES ('encrypt_holdings_v1')`;
 }
 
+/**
+ * 종목 통화가 계좌 통화를 잘못 상속받은 경우 티커 기준으로 일괄 교정 (CASH 제외, 1회).
+ * 명확히 판별되는 것만: 미국 티커(영문 1~5자)→USD, 한국 6자리 코드→KRW.
+ * 한글명 비상장 등은 건드리지 않음(원화 유지).
+ */
+async function fixHoldingCurrency(sql: ReturnType<typeof getDb>) {
+  const [done] = await sql`SELECT name FROM _migrations WHERE name = 'fix_holding_currency_v2'` as { name: string }[];
+  if (done) return;
+  // 미국 티커(영문 1~5자 + 클래스주) → USD
+  await sql`
+    UPDATE holdings SET currency = 'USD'
+    WHERE ticker <> 'CASH' AND currency <> 'USD' AND ticker ~* '^[A-Za-z]{1,5}([.-][A-Za-z])?$'
+  `;
+  // 한국 6자리 코드 → KRW
+  await sql`
+    UPDATE holdings SET currency = 'KRW'
+    WHERE ticker <> 'CASH' AND currency <> 'KRW' AND ticker ~* '^[0-9][A-Za-z0-9]{5}$'
+  `;
+  await sql`INSERT INTO _migrations (name) VALUES ('fix_holding_currency_v2')`;
+}
+
 interface HoldingRow extends HoldingEncFields {
   id: number;
   account_id: number;
@@ -51,6 +73,7 @@ export async function GET(req: NextRequest) {
   const accountId = new URL(req.url).searchParams.get("account_id");
   const sql = getDb();
   await ensureSchema(sql);
+  await fixHoldingCurrency(sql);
 
   // current_price/change_pct는 SQL CASE에서 평문 manual_price/avg_cost에 의존했었음.
   // 암호화 후엔 일단 0으로 두고 JS에서 복호화 후 계산.
@@ -122,13 +145,19 @@ export async function POST(req: NextRequest) {
   const owns = await sql`SELECT id FROM accounts WHERE id=${account_id} AND user_id=${user.id}`;
   if (owns.length === 0) return NextResponse.json({ error: "Not found" }, { status: 404 });
   const holdingDate = date ?? new Date().toISOString().slice(0, 10);
+  // 통화는 티커로 판별 가능하면 강제 (미국 ETF가 원화로 계산되는 문제 방지).
+  // 한글명 비상장 등 판별 불가 종목은 전달된(계좌) 통화 유지. CASH도 계좌 통화.
+  const trimmedTicker = ticker.trim();
+  const effectiveCurrency = trimmedTicker === "CASH"
+    ? (currency ?? "KRW")
+    : (getCurrencyFromTicker(trimmedTicker) ?? currency ?? "KRW");
   const [holding] = await sql`
     INSERT INTO holdings (
       account_id, ticker, name, currency, date,
       quantity_enc, avg_cost_enc, note_enc, manual_price_enc
     )
     VALUES (
-      ${account_id}, ${ticker.trim()}, ${name.trim()}, ${currency ?? "KRW"}, ${holdingDate},
+      ${account_id}, ${trimmedTicker}, ${name.trim()}, ${effectiveCurrency}, ${holdingDate},
       ${encryptNum(Number(quantity ?? 0))}, ${encryptNum(Number(avg_cost ?? 0))},
       ${encrypt(note ?? "")}, ${manual_price !== null && manual_price !== undefined ? encryptNum(Number(manual_price)) : null}
     )
@@ -151,9 +180,12 @@ export async function PUT(req: NextRequest) {
   `;
   if (existing.length === 0) return NextResponse.json({ error: "Not found" }, { status: 404 });
   const holdingDate = date ?? (existing[0] as { date: string }).date ?? new Date().toISOString().slice(0, 10);
+  const effectiveCurrency = ticker === "CASH"
+    ? (currency ?? "KRW")
+    : (getCurrencyFromTicker(ticker) ?? currency ?? "KRW");
   const [holding] = await sql`
     UPDATE holdings SET
-      ticker=${ticker}, name=${name}, currency=${currency}, date=${holdingDate},
+      ticker=${ticker}, name=${name}, currency=${effectiveCurrency}, date=${holdingDate},
       quantity_enc=${encryptNum(Number(quantity ?? 0))},
       avg_cost_enc=${encryptNum(Number(avg_cost ?? 0))},
       note_enc=${encrypt(note ?? "")},

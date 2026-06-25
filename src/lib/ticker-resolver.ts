@@ -13,6 +13,24 @@ export function isKoreanTicker(ticker: string): boolean {
   return /^\d[A-Z0-9]{5}$/i.test(ticker);
 }
 
+/** 미국 티커 패턴: 영문 1~5자 (+ 클래스주 .B/-B). 예: QLD, AAPL, BRK.B */
+export function isUsTicker(ticker: string): boolean {
+  return /^[A-Za-z]{1,5}([.-][A-Za-z])?$/.test(ticker);
+}
+
+/**
+ * 티커로부터 거래 통화를 판별한다.
+ *   한국 6자리 코드 → "KRW", 미국 티커(영문) → "USD",
+ *   그 외(한글명 비상장 등) → null(판별 불가, 기존/계좌 통화 유지).
+ * 종목 통화가 계좌 통화를 잘못 상속받는 문제(미국 ETF가 원화로 계산)를 막기 위해 사용.
+ * (CASH는 은행 계좌 통화를 따르므로 호출 측에서 별도 처리)
+ */
+export function getCurrencyFromTicker(ticker: string): "KRW" | "USD" | null {
+  if (isKoreanTicker(ticker)) return "KRW";
+  if (isUsTicker(ticker)) return "USD";
+  return null;
+}
+
 export function resolveYahooSymbol(ticker: string): string {
   if (!isKoreanTicker(ticker)) {
     return ticker.toUpperCase();
